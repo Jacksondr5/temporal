@@ -218,6 +218,135 @@ Each reviewer definition should include:
 - prompt or checklist
 - run policy, such as once per head SHA or once per PR
 
+### Specialized Reviewer Knowledge Packs
+
+Specialized reviewers exist to load deeper, domain-specific knowledge only when it is needed.
+
+Rationale:
+
+- avoid bloating the context of general-purpose review/fix agents
+- let a reviewer focus deeply on one system or framework
+- support larger PRs by narrowing the active review domain
+
+### Reviewer Pack Repository
+
+Reviewer knowledge should live in a separate git repository that is managed independently of the orchestration codebase.
+
+This pack repository is the source of truth for:
+
+- reviewer registry entries
+- reviewer README files
+- supporting markdown/reference documents
+- optional metadata describing handoff expectations or recommended tools
+
+The orchestrator should sync or clone this repository once under the shared workspace root, not separately inside each PR clone.
+
+Suggested layout:
+
+- `WORKSPACE_ROOT/_reviewer-packs/...`
+- `WORKSPACE_ROOT/<owner>/<repo>/pr-<number>/...`
+
+This avoids duplicating the same knowledge into each PR workspace while still allowing reviewers to read structured markdown files at execution time.
+
+### Registry Ownership
+
+The reviewer-pack repository owns the reviewer registry.
+
+This orchestration repo should not duplicate that registry in application config or Convex.
+
+Repo policy should only specify:
+
+- which reviewer IDs are enabled for a repo
+- the execution order for those reviewer IDs
+
+The order is the array order in repo policy.
+
+### Context Loading Strategy
+
+The primary knowledge-loading mechanism for specialized reviewers should be files in the reviewer-pack repository, not prompt stuffing and not global provider-specific skills.
+
+Execution-time reviewer context should include:
+
+- reviewer identity and purpose
+- path to the reviewer pack
+- the top-level README file to start from
+- instructions to load additional markdown files from the pack as needed
+- current PR snapshot and changed files
+- information about where this reviewer appears in the overall workflow
+
+This keeps the system more portable across provider implementations.
+
+### MCP And CLI Tooling
+
+MCP should be treated as a way to give reviewers extra capabilities, not as the primary mechanism for distributing reviewer knowledge.
+
+CLI tools remain first-class and may be preferable in many cases because:
+
+- they are often more feature-complete
+- coding agents already use them effectively
+- they fit well into local execution environments
+
+The system should therefore allow reviewer packs to recommend:
+
+- markdown knowledge files
+- CLI tools
+- optional MCP resources or tools
+
+without making MCP mandatory.
+
+### Scope Guardrails
+
+Specialized reviewers should use soft scope guardrails, not hard tool/file restrictions.
+
+Each reviewer should know:
+
+- the domain it is primarily responsible for
+- which changed files caused it to run
+- which areas it should focus on first
+
+Cross-cutting edits should still be allowed when required for correctness.
+
+### Reviewer Coordination
+
+Specialized reviewers should not communicate through shared agent sessions.
+
+Instead, coordination happens through the workflow.
+
+Each reviewer may emit structured handoff items describing:
+
+- changes it made that later reviewers should account for
+- follow-up considerations for downstream reviewers
+
+Later reviewers should receive:
+
+- a concise summary of prior reviewer runs
+- any structured handoff items produced earlier in the sequence
+- knowledge of which reviewers will still run after them
+
+This gives reviewers awareness of their place in the process without coupling their execution.
+
+### Specialized Reviewer Output Shape
+
+Specialized reviewers should reuse the same top-level execution envelope as the existing agent runs:
+
+- `overallSummary`
+- `investigationSummary`
+- `finalAssessment`
+- `whyNoCommit`
+- `commandsSummary`
+- `commitSha`
+- `usage`
+- `providerMetadata`
+
+They should then add reviewer-specific fields such as:
+
+- `reviewerId`
+- `matchedFiles`
+- `findings`
+- `handoffItems`
+
+This keeps persistence and UI rendering uniform while still supporting reviewer-specific detail.
+
 Execution order:
 
 1. after allowlisted failing checks are handled
@@ -398,6 +527,71 @@ Collections or tables expected for v1:
 - The poller runs locally and communicates outbound to GitHub, Convex, and Linear.
 - Convex stores reasoning summaries and metadata, not raw code excerpts by default.
 - Public-repo untrusted code should not execute on infrastructure that has privileged access to the private orchestration system.
+
+## AI Execution Design
+
+Code Rabbit handling should be executed by a spawned AI agent rather than by narrow helper logic inside the Temporal worker.
+
+### Provider Strategy
+
+- Default provider: Codex via the Vercel AI SDK Codex CLI provider.
+- Future provider override: specialized reviewers may choose a different provider later, such as Claude Code.
+- The implementation owner should still explicitly brainstorm the OpenClaw integration with Jackson before using it elsewhere in the system.
+
+### Workspace Strategy
+
+- Use a managed disposable clone per active PR rather than git worktrees.
+- The runtime prepares the clone before each agent run by refreshing from origin and resetting to the PR branch head.
+- The workspace root should live under `WORKSPACE_ROOT`.
+- Stale workspace cleanup can be handled later by a janitor process, but the runtime should already structure the directories so that safe deletion is trivial.
+
+### Code Rabbit Batch Handling
+
+- One agent run handles the full unresolved Code Rabbit batch for a PR reconciliation pass.
+- The batch must be fully addressed, but mixed outcomes are allowed across threads.
+- Allowed per-thread outcomes:
+  - `fix`
+  - `false_positive`
+  - `defer`
+- If code is changed, the agent should push exactly once at the end of the run.
+- The agent should not comment on threads that were fixed in code.
+- The agent should only post GitHub replies for:
+  - `false_positive`
+  - `defer`
+- For deferred items, the agent should create one Linear ticket per deferred thread and include that ticket in the GitHub reply.
+
+### Agent Trust Boundary
+
+- The agent process receives GitHub and Linear credentials directly in its environment.
+- The agent owns the external side effects for Code Rabbit handling:
+  - code edits
+  - git commit/push
+  - GitHub replies
+  - Linear ticket creation
+- Temporal should treat the agent as a side-effecting external actor and reconcile from observed reality afterward instead of assuming retries are safe.
+
+### Expected Agent Result
+
+The agent should return a structured summary suitable for persistence in Convex:
+
+- per-thread dispositions
+- reasoning summary text
+- optional commit SHA
+- GitHub reply/comment IDs for false positives and deferrals
+- Linear issue IDs for deferred threads
+- overall success/failure and retryability hint
+
+This preserves a durable audit trail while still allowing the agent to act autonomously.
+
+## Initial Execution Slice
+
+The first implementation slice should focus on the `handle_code_rabbit` action and leave specialized reviewers deferred until the main AI runtime path is proven.
+
+- Wire the long-running PR workflow so a `handle_code_rabbit` reconciliation result invokes the agent runtime.
+- Use Codex CLI through the Vercel AI SDK in process-per-call mode first.
+- Prepare and refresh a PR clone before each Code Rabbit run.
+- Persist per-thread decisions and artifact references into Convex after the run completes.
+- Treat missing local AI runtime configuration as a blocked/skipped execution state rather than trying to fake completion.
 
 ## Recommended Next Step
 

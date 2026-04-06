@@ -1,44 +1,144 @@
-# Hello World
+# PR Review Orchestrator
 
-This is the default project that is scaffolded out when you run `npx @temporalio/create@latest ./myfolder`.
+This repo is the foundation for an AI-driven pull request review system built on Temporal. A local poller detects GitHub pull request activity, signals one long-running workflow per PR, and the workflow coordinates follow-up actions such as failing-check remediation, Code Rabbit review handling, specialized reviewer passes, and Linear deferrals.
 
-The [Hello World Tutorial](https://learn.temporal.io/getting_started/typescript/hello_world_in_typescript/) walks through the code in this sample.
+Temporal remains private on the home network. Convex is the control-plane store for repo policy, dedupe state, decisions, reasoning summaries, and artifact references.
 
-### Running this sample
+## Repo Structure
 
-1. `temporal server start-dev` to start [Temporal Server](https://github.com/temporalio/cli/#installation).
-1. `npm install` to install dependencies.
-1. `npm run start.watch` to start the Worker.
-1. In another shell, `npm run workflow` to run the Workflow Client.
+This is a pnpm monorepo with two apps and a shared packages directory.
 
-The Workflow should return:
-
-```bash
-Hello, Temporal!
+```
+/
+  apps/
+    orchestrator/        Temporal worker, poller, and AI agent runtime
+    web/                 Next.js operator dashboard
+  convex/                Convex backend (schema, queries, mutations)
+  packages/
+    domain/              Shared TypeScript types (extract when needed)
+  docs/
+    plans/               Design documents and implementation plans
 ```
 
-### Pointing at your own Temporal server
+### `apps/orchestrator`
 
-Both the worker and client now read connection settings from the standard Temporal environment variables provided by `@temporalio/envconfig`.
+The Temporal worker and local GitHub poller. Runs continuously on the home network.
 
-Common variables:
+### `apps/web`
 
-- `TEMPORAL_ADDRESS` for the gRPC frontend, for example `127.0.0.1:7233`
-- `TEMPORAL_NAMESPACE` for the namespace to use, for example `default`
-- `TEMPORAL_TASK_QUEUE` for this sample's task queue, defaults to `hello-world`
-- `TEMPORAL_PROFILE` if you prefer loading a named profile from a Temporal CLI config file
+Next.js 16 operator UI with Tailwind CSS and shadcn/ui. Provides real-time visibility into PR workflows, review thread decisions, artifacts, errors, and repo policy management.
 
-Example:
+### `convex/`
+
+Shared Convex backend at the repo root. Both apps connect to the same Convex deployment. Contains the schema and all query/mutation functions.
+
+### `packages/domain`
+
+Placeholder for shared TypeScript contracts. Types should only be extracted here when actual duplication pressure appears between apps.
+
+## Runtime Defaults
+
+- Temporal address: `temporal.j5:7233`
+- Temporal namespace: `pr-review`
+- Main task queue: `pr-review-orchestrator`
+
+## Local Development
+
+1. Install dependencies.
 
 ```bash
-export TEMPORAL_ADDRESS=127.0.0.1:7233
-export TEMPORAL_NAMESPACE=default
-export TEMPORAL_TASK_QUEUE=hello-world
-npm run start.watch
+pnpm install
 ```
 
-In another shell with the same environment:
+2. Copy the env template and fill in secrets.
 
 ```bash
-npm run workflow
+cp sample.env.local .env.local
 ```
+
+3. Start Convex dev server.
+
+```bash
+pnpm convex:dev
+```
+
+4. Start the operator UI.
+
+```bash
+pnpm web:dev
+```
+
+The UI will be available at `http://localhost:3000`.
+
+5. Start the Temporal worker.
+
+```bash
+pnpm worker
+```
+
+6. Start the GitHub poller.
+
+```bash
+pnpm poller
+```
+
+7. Optionally run the smoke test.
+
+```bash
+pnpm smoke
+```
+
+## Environment
+
+The orchestrator loads `.env` first and then `.env.local`, with `.env.local` taking precedence. Real secrets should stay in `.env.local` or the deployment environment and should not be committed.
+
+The web app uses `NEXT_PUBLIC_CONVEX_URL` from `apps/web/.env.local`.
+
+Primary settings:
+
+- `TEMPORAL_ADDRESS`
+- `TEMPORAL_NAMESPACE`
+- `TEMPORAL_TASK_QUEUE`
+- `GITHUB_TOKEN`
+- `CONVEX_URL`
+- `CONVEX_DEPLOY_KEY`
+- `LINEAR_API_KEY`
+- `NEXT_PUBLIC_CONVEX_URL` (for the web app)
+
+## Source Layout
+
+### Orchestrator (`apps/orchestrator/src/`)
+
+- `config.ts` - Runtime config loading and defaults
+- `domain/` - Shared types for GitHub, workflow, policy, and review concepts
+- `workflows/` - PR workflow implementations
+- `activities/` - Activity implementations and exported activity surface
+- `poller/` - Local polling entrypoints
+- `integrations/` - External service integration boundaries
+- `testing/` - Test scaffolding and future simulation helpers
+
+### Web UI (`apps/web/`)
+
+- `app/page.tsx` - PR list (home page)
+- `app/pr/[repoSlug]/[prNumber]/page.tsx` - PR detail with tabs
+- `app/policies/page.tsx` - Repo policy list
+- `app/policies/[repoSlug]/page.tsx` - Policy editor
+- `components/` - Shared UI components
+
+### Convex (`convex/`)
+
+- `schema.ts` - Database schema (11 tables)
+- `ui.ts` - UI-optimized read-model queries
+- `repos.ts`, `repoPolicies.ts`, etc. - Per-table query and mutation functions
+
+## TODO
+
+- [ ] Authentication for the operator UI (currently open, suitable for private network only)
+- [ ] Policy editing admin workflows
+- [ ] Rich operator UI for error recovery and manual re-drives
+
+## Design Documents
+
+- [Architecture Design](docs/plans/2026-04-03-ai-code-review-design.md)
+- [Implementation Plan](docs/plans/2026-04-03-ai-code-review-implementation-plan.md)
+- [Operator UI Repo Structure](docs/plans/2026-04-04-operator-ui-repo-structure-design.md)

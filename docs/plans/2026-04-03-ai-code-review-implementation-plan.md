@@ -443,3 +443,8 @@ Stop after these checkpoints and review behavior before proceeding:
 - Concurrent reviewer execution
 - Rich operator UI
 - Raw code excerpt archival in Convex
+
+## Follow-Up Notes
+
+- Add a friendlier policy-management workflow after the core orchestration path is stable. The current direct-Convex approach is acceptable for development, but repo policy editing should eventually move to a safer and more discoverable interface such as a script, CLI, seeded config flow, or small admin surface.
+- Consider splitting `git push` out of agent execution and into a separate orchestrator-owned activity. The current system allows agents to push directly, but a later refinement should let agents keep local commits while deferring branch publication to a workflow-controlled push step. This would reduce noisy intermediate PR updates without forcing the workflow to own unrelated side effects like GitHub replies or Linear ticket creation.
