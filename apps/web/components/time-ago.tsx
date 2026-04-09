@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { cn } from "@/lib/utils";
+import { cn } from "../lib/utils";
 
 function formatTimeAgo(dateStr: string | null): string {
   if (!dateStr) return "Never";

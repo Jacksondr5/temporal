@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { cn } from "@/lib/utils";
+import { cn } from "../lib/utils";
 import { GitPullRequest, Settings, Radio } from "lucide-react";
 
 const navItems = [

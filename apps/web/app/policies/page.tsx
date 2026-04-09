@@ -3,7 +3,7 @@
 import { useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
 import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "../../components/ui/badge";
 import { Settings, ChevronRight, FolderGit2 } from "lucide-react";
 
 export default function PoliciesListPage() {

@@ -8,9 +8,9 @@ import {
   PhaseBadge,
   DirtyBadge,
   DispositionBadge,
-} from "@/components/status-badge";
-import { TimeAgo } from "@/components/time-ago";
-import { RunTimeline, ReviewerRunList } from "@/components/run-detail";
+} from "../../../../components/status-badge";
+import { TimeAgo } from "../../../../components/time-ago";
+import { RunTimeline, ReviewerRunList } from "../../../../components/run-detail";
 import {
   ArrowLeft,
   GitCommit,

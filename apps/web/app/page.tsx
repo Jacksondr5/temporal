@@ -3,8 +3,8 @@
 import { useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
 import Link from "next/link";
-import { PhaseBadge, DirtyBadge } from "@/components/status-badge";
-import { TimeAgo } from "@/components/time-ago";
+import { PhaseBadge, DirtyBadge } from "../components/status-badge";
+import { TimeAgo } from "../components/time-ago";
 import { AlertCircle, ChevronRight, GitPullRequest } from "lucide-react";
 
 export default function PullRequestListPage() {

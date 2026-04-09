@@ -16,7 +16,7 @@ import {
   type HandoffItem,
   type TokenUsage,
   type ReviewerPack,
-} from "@/lib/run-details";
+} from "../lib/run-details";
 import { PhaseBadge, RunStatusBadge, DispositionBadge } from "./status-badge";
 import { TimeAgo } from "./time-ago";
 import { ErrorTypeBadge } from "./status-badge";
