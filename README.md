@@ -53,7 +53,7 @@ pnpm install
 2. Copy the env template and fill in secrets.
 
 ```bash
-cp sample.env.local .env.local
+cp .env.example .env.local
 ```
 
 3. Start Convex dev server.
@@ -110,6 +110,92 @@ Primary settings:
 - `CONVEX_DEPLOY_KEY`
 - `LINEAR_API_KEY`
 - `NEXT_PUBLIC_CONVEX_URL` (for the web app)
+
+## Docker Worker Image
+
+The repo includes a worker-only Docker image. The container builds the compiled `apps/orchestrator` runtime and starts the Temporal worker by default.
+
+### Build And Push To Docker Hub
+
+1. Log in to Docker Hub.
+
+```bash
+docker login
+```
+
+2. Build and push the worker image.
+
+```bash
+scripts/build-and-push.sh your-dockerhub-user/pr-review-orchestrator
+```
+
+You can also pass a full image reference with the version tag included:
+
+```bash
+scripts/build-and-push.sh your-dockerhub-user/pr-review-orchestrator:0.0.2
+```
+
+The script uses `docker buildx` and publishes a multi-platform image for:
+
+- `linux/amd64`
+- `linux/arm64`
+
+It pushes two tags:
+
+- `latest`
+- `sha-<git-sha>` by default, or a custom tag if you pass one either in the first argument or as the second argument
+
+You can optionally override the platform list:
+
+```bash
+PLATFORMS=linux/amd64 scripts/build-and-push.sh your-dockerhub-user/pr-review-orchestrator
+```
+
+### Pull And Run Later
+
+Pull the image:
+
+```bash
+docker pull your-dockerhub-user/pr-review-orchestrator:latest
+```
+
+Run the worker with environment variables from a local file:
+
+```bash
+docker run --rm \
+  --name pr-review-worker \
+  --env-file /absolute/path/to/orchestrator.env \
+  your-dockerhub-user/pr-review-orchestrator:latest
+```
+
+At minimum, the worker needs the runtime settings already used by `apps/orchestrator/src/config.ts`, especially:
+
+- `TEMPORAL_ADDRESS`
+- `TEMPORAL_NAMESPACE`
+- `TEMPORAL_TASK_QUEUE`
+- `GITHUB_TOKEN`
+- `CONVEX_URL`
+- `CONVEX_DEPLOY_KEY`
+
+If you want the worker to clone PR workspaces or load reviewer packs from the host, mount those directories and point the runtime at the in-container paths:
+
+```bash
+docker run --rm \
+  --name pr-review-worker \
+  --env-file /absolute/path/to/orchestrator.env \
+  -e WORKSPACE_ROOT=/var/orchestrator/workspaces \
+  -e REVIEWER_PACKS_REPO_PATH=/opt/reviewer-packs \
+  -v /absolute/path/to/workspaces:/var/orchestrator/workspaces \
+  -v /absolute/path/to/reviewer-packs:/opt/reviewer-packs \
+  your-dockerhub-user/pr-review-orchestrator:latest
+```
+
+Notes:
+
+- The container runs the Temporal worker only. The GitHub poller is still a separate process.
+- The image includes `git` and `gh` because worker activities rely on them.
+- `TEMPORAL_ADDRESS` must be reachable from inside the container. If `temporal.j5` only resolves on your home network, run the container on that network or use a reachable address.
+- Secrets stay in the runtime environment or env file and are not baked into the image.
 
 ## Source Layout
 
