@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { ConvexClientProvider } from "@/components/convex-provider";
-import { Nav } from "@/components/nav";
-import { TooltipProvider } from "@/components/ui/tooltip";
+import { ConvexClientProvider } from "../components/convex-provider";
+import { Nav } from "../components/nav";
+import { TooltipProvider } from "../components/ui/tooltip";
 
 // All pages use real-time Convex subscriptions; skip static prerendering.
 export const dynamic = "force-dynamic";
