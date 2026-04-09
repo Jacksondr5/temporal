@@ -36,28 +36,28 @@ export interface PollerRuntimeConfig {
 }
 
 export interface GitHubRuntimeConfig {
-  token: string | null;
+  token: string;
   apiUrl: string;
 }
 
 export interface ConvexRuntimeConfig {
-  url: string | null;
-  deployKey: string | null;
+  url: string;
+  deployKey: string;
 }
 
 export interface LinearRuntimeConfig {
-  apiKey: string | null;
-  teamId: string | null;
-  defaultProjectId: string | null;
+  apiKey: string;
+  teamId: string;
+  defaultProjectId: string;
 }
 
 export interface CodexRuntimeConfig {
-  model: string | null;
+  model: string;
   allowNpx: boolean;
 }
 
 export interface ClaudeCodeRuntimeConfig {
-  model: string | null;
+  model: string;
 }
 
 export interface AiRuntimeConfig {
@@ -74,9 +74,9 @@ export interface RuntimeConfig {
   linear: LinearRuntimeConfig;
   ai: AiRuntimeConfig;
   logLevel: string;
-  workspaceRoot: string | null;
+  workspaceRoot: string;
   reviewerPacksRepoPath: string;
-  reviewerPacksRepoUrl: string | null;
+  reviewerPacksRepoUrl: string;
 }
 
 const DEFAULT_TEMPORAL_ADDRESS = 'temporal.j5:7233';
@@ -87,7 +87,6 @@ const DEFAULT_POLL_INTERVAL_SECONDS = 60;
 const DEFAULT_LOG_LEVEL = 'info';
 const DEFAULT_CODEX_MODEL = 'gpt-5.3-codex';
 const DEFAULT_CLAUDE_CODE_MODEL = 'sonnet';
-const DEFAULT_REVIEWER_PACKS_REPO_PATH = resolve(repoRoot, '..', 'reviewer-packs');
 
 function trimString(value: unknown): string | undefined {
   if (typeof value !== 'string') {
@@ -169,16 +168,16 @@ const env = createEnv({
     ),
     GITHUB_ALLOWED_REPOS: z.preprocess(parseCsv, z.array(z.string()).default([])),
     GITHUB_ALLOWED_AUTHOR: z.preprocess(trimString, z.string().optional()),
-    GITHUB_TOKEN: z.preprocess(trimString, z.string().optional()),
+    GITHUB_TOKEN: z.preprocess(trimString, z.string()),
     GITHUB_API_URL: z.preprocess(
       trimString,
       z.string().url().default(DEFAULT_GITHUB_API_URL),
     ),
-    CONVEX_URL: z.preprocess(trimString, z.string().optional()),
-    CONVEX_DEPLOY_KEY: z.preprocess(trimString, z.string().optional()),
-    LINEAR_API_KEY: z.preprocess(trimString, z.string().optional()),
-    LINEAR_TEAM_ID: z.preprocess(trimString, z.string().optional()),
-    LINEAR_DEFAULT_PROJECT_ID: z.preprocess(trimString, z.string().optional()),
+    CONVEX_URL: z.preprocess(trimString, z.string()),
+    CONVEX_DEPLOY_KEY: z.preprocess(trimString, z.string()),
+    LINEAR_API_KEY: z.preprocess(trimString, z.string()),
+    LINEAR_TEAM_ID: z.preprocess(trimString, z.string()),
+    LINEAR_DEFAULT_PROJECT_ID: z.preprocess(trimString, z.string()),
     AI_DEFAULT_PROVIDER: z.literal('codex').default('codex'),
     CODEX_MODEL: z.preprocess(trimString, z.string().default(DEFAULT_CODEX_MODEL)),
     CODEX_ALLOW_NPX: z.preprocess(parseBoolean, z.boolean().default(true)),
@@ -187,12 +186,9 @@ const env = createEnv({
       z.string().default(DEFAULT_CLAUDE_CODE_MODEL),
     ),
     LOG_LEVEL: z.preprocess(trimString, z.string().default(DEFAULT_LOG_LEVEL)),
-    WORKSPACE_ROOT: z.preprocess(trimString, z.string().optional()),
-    REVIEWER_PACKS_REPO_PATH: z.preprocess(
-      trimString,
-      z.string().default(DEFAULT_REVIEWER_PACKS_REPO_PATH),
-    ),
-    REVIEWER_PACKS_REPO_URL: z.preprocess(trimString, z.string().optional()),
+    WORKSPACE_ROOT: z.preprocess(trimString, z.string()),
+    REVIEWER_PACKS_REPO_PATH: z.preprocess(trimString, z.string()),
+    REVIEWER_PACKS_REPO_URL: z.preprocess(trimString, z.string()),
   },
   runtimeEnv: process.env,
 });
@@ -219,17 +215,17 @@ export function loadRuntimeConfig(): RuntimeConfig {
       allowedAuthor: toNullableString(env.GITHUB_ALLOWED_AUTHOR),
     },
     github: {
-      token: toNullableString(env.GITHUB_TOKEN),
+      token: env.GITHUB_TOKEN,
       apiUrl: env.GITHUB_API_URL,
     },
     convex: {
-      url: toNullableString(env.CONVEX_URL),
-      deployKey: toNullableString(env.CONVEX_DEPLOY_KEY),
+      url: env.CONVEX_URL,
+      deployKey: env.CONVEX_DEPLOY_KEY,
     },
     linear: {
-      apiKey: toNullableString(env.LINEAR_API_KEY),
-      teamId: toNullableString(env.LINEAR_TEAM_ID),
-      defaultProjectId: toNullableString(env.LINEAR_DEFAULT_PROJECT_ID),
+      apiKey: env.LINEAR_API_KEY,
+      teamId: env.LINEAR_TEAM_ID,
+      defaultProjectId: env.LINEAR_DEFAULT_PROJECT_ID,
     },
     ai: {
       defaultProvider: env.AI_DEFAULT_PROVIDER,
@@ -242,8 +238,8 @@ export function loadRuntimeConfig(): RuntimeConfig {
       },
     },
     logLevel: env.LOG_LEVEL,
-    workspaceRoot: toNullableString(env.WORKSPACE_ROOT),
+    workspaceRoot: env.WORKSPACE_ROOT,
     reviewerPacksRepoPath: env.REVIEWER_PACKS_REPO_PATH,
-    reviewerPacksRepoUrl: toNullableString(env.REVIEWER_PACKS_REPO_URL),
+    reviewerPacksRepoUrl: env.REVIEWER_PACKS_REPO_URL,
   };
 }

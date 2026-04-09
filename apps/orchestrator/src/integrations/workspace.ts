@@ -58,19 +58,11 @@ async function cloneWorkspace(path: string, remoteUrl: string): Promise<void> {
 }
 
 export function createWorkspaceManager(options: {
-  workspaceRoot: string | null;
+  workspaceRoot: string;
   github: GitHubRuntimeConfig;
 }): WorkspaceManager {
   return {
     preparePullRequestWorkspace: async (pr) => {
-      if (options.workspaceRoot === null) {
-        throw new Error('WORKSPACE_ROOT is required to prepare PR workspaces.');
-      }
-
-      if (options.github.token === null) {
-        throw new Error('GITHUB_TOKEN is required to prepare PR workspaces.');
-      }
-
       const workspacePath = getWorkspacePath(options.workspaceRoot, pr);
       const remoteUrl = formatRepositoryUrl(pr, options.github.token);
       const exists = await pathExists(workspacePath);
@@ -112,10 +104,6 @@ export function createWorkspaceManager(options: {
       };
     },
     removePullRequestWorkspace: async (pr) => {
-      if (options.workspaceRoot === null) {
-        return;
-      }
-
       await rm(getWorkspacePath(options.workspaceRoot, pr), {
         recursive: true,
         force: true,

@@ -68,7 +68,7 @@ async function isCleanGitWorktree(path: string): Promise<boolean> {
 
 export async function ensureReviewerPacksRepo(input: {
   repoPath: string;
-  repoUrl: string | null;
+  repoUrl: string;
 }): Promise<{
   repoPath: string;
   repoCommitSha: string | null;
@@ -76,12 +76,6 @@ export async function ensureReviewerPacksRepo(input: {
   const exists = await pathExists(input.repoPath);
 
   if (!exists) {
-    if (input.repoUrl === null) {
-      throw new Error(
-        `Reviewer packs repo is missing at ${input.repoPath} and REVIEWER_PACKS_REPO_URL is not configured.`,
-      );
-    }
-
     await mkdir(join(input.repoPath, '..'), { recursive: true });
     await runGit(['clone', input.repoUrl, input.repoPath]);
 
@@ -105,19 +99,17 @@ export async function ensureReviewerPacksRepo(input: {
     };
   }
 
-  if (input.repoUrl !== null) {
-    try {
-      await runGit(['remote', 'set-url', 'origin', input.repoUrl], input.repoPath);
-      await runGit(['pull', '--ff-only'], input.repoPath);
-    } catch (error) {
-      console.warn(
-        [
-          'Failed to sync reviewer packs repo; using local checkout as-is',
-          `path=${input.repoPath}`,
-          `error=${error instanceof Error ? error.message : 'unknown'}`,
-        ].join(' | '),
-      );
-    }
+  try {
+    await runGit(['remote', 'set-url', 'origin', input.repoUrl], input.repoPath);
+    await runGit(['pull', '--ff-only'], input.repoPath);
+  } catch (error) {
+    console.warn(
+      [
+        'Failed to sync reviewer packs repo; using local checkout as-is',
+        `path=${input.repoPath}`,
+        `error=${error instanceof Error ? error.message : 'unknown'}`,
+      ].join(' | '),
+    );
   }
 
   return {

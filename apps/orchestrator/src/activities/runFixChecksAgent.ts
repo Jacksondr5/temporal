@@ -10,13 +10,10 @@ export async function runFixChecksAgent(
   input: FixChecksAgentRunInput,
 ): Promise<FixChecksAgentExecution> {
   const config = loadRuntimeConfig();
-  const workspaceManager =
-    config.workspaceRoot === null
-      ? null
-      : createWorkspaceManager({
-          workspaceRoot: config.workspaceRoot,
-          github: config.github,
-        });
+  const workspaceManager = createWorkspaceManager({
+    workspaceRoot: config.workspaceRoot,
+    github: config.github,
+  });
 
   const runtime = createAgentRuntimeClient({
     ai: config.ai,

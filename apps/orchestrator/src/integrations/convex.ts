@@ -58,9 +58,7 @@ interface ConvexReviewerRunRecord {
 }
 
 export interface ConvexClient {
-  readonly url: string | null;
-  readonly hasDeployKey: boolean;
-  readonly isConfigured: boolean;
+  readonly url: string;
   ensureRepoWithPolicy(owner: string, name: string): Promise<unknown>;
   getRepoPolicy(repoSlug: string): Promise<RepositoryPolicy | null>;
   getPollCursor(repoSlug: string, cursorKey: string): Promise<unknown | null>;
@@ -183,46 +181,11 @@ async function callConvexFunction<TValue>(
   return payload.value;
 }
 
-function createUnconfiguredClient(
-  config: ConvexRuntimeConfig,
-): ConvexClient {
-  const fail = async (): Promise<never> => {
-    throw new Error('Convex client is not configured. Set CONVEX_URL first.');
-  };
-
-  return {
-    url: config.url,
-    hasDeployKey: config.deployKey !== null,
-    isConfigured: false,
-    ensureRepoWithPolicy: fail,
-    getRepoPolicy: fail,
-    getPollCursor: fail,
-    setPollCursor: fail,
-    recordGitHubEvent: fail,
-    recordCheckObservation: fail,
-    upsertPullRequest: fail,
-    syncPullRequestStatus: fail,
-    upsertPrRun: fail,
-    getLatestThreadDecisions: fail,
-    insertThreadDecision: fail,
-    upsertArtifact: fail,
-    insertWorkflowError: fail,
-    listReviewerRunsForPullRequest: fail,
-    insertReviewerRun: fail,
-  };
-}
-
 export function createConvexClient(config: ConvexRuntimeConfig): ConvexClient {
-  if (config.url === null) {
-    return createUnconfiguredClient(config);
-  }
-
   const baseUrl = config.url;
 
   return {
     url: baseUrl,
-    hasDeployKey: config.deployKey !== null,
-    isConfigured: true,
     ensureRepoWithPolicy: async (owner, name) =>
       await callConvexFunction(baseUrl, 'mutation', 'repos:ensureRepoWithPolicy', {
         slug: `${owner}/${name}`,

@@ -27,13 +27,11 @@ export async function selectCodeRabbitThreads(
   const runtimeConfig = loadRuntimeConfig();
   const convex = createConvexClient(runtimeConfig.convex);
   const repoSlug = `${snapshot.pr.repository.owner}/${snapshot.pr.repository.name}`;
-  const latestDecisions = convex.isConfigured
-    ? await convex.getLatestThreadDecisions({
-        repoSlug,
-        prNumber: snapshot.pr.number,
-        threadKeys: candidateThreads.map((thread) => thread.key),
-      })
-    : [];
+  const latestDecisions = await convex.getLatestThreadDecisions({
+    repoSlug,
+    prNumber: snapshot.pr.number,
+    threadKeys: candidateThreads.map((thread) => thread.key),
+  });
   const decisionByThreadKey = new Map(
     latestDecisions.map((decision) => [decision.threadKey, decision]),
   );

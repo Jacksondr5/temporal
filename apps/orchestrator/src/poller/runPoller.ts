@@ -4,7 +4,6 @@ import { loadRuntimeConfig } from '../config.js';
 import { createAgentRuntimeClient } from '../integrations/agentRuntime.js';
 import { createConvexClient } from '../integrations/convex.js';
 import { createGitHubClient } from '../integrations/github.js';
-import { createLinearClient } from '../integrations/linear.js';
 import { createWorkspaceManager } from '../integrations/workspace.js';
 import { discoverEventsForPullRequest } from './discoverEvents.js';
 import { discoverPullRequests } from './discoverPullRequests.js';
@@ -20,14 +19,10 @@ export async function runPoller(): Promise<PollerRunSummary> {
   const config = loadRuntimeConfig();
   const github = createGitHubClient(config.github);
   const convex = createConvexClient(config.convex);
-  const linear = createLinearClient(config.linear);
-  const workspaceManager =
-    config.workspaceRoot === null
-      ? null
-      : createWorkspaceManager({
-          workspaceRoot: config.workspaceRoot,
-          github: config.github,
-        });
+  const workspaceManager = createWorkspaceManager({
+    workspaceRoot: config.workspaceRoot,
+    github: config.github,
+  });
   const agentRuntime = createAgentRuntimeClient({
     ai: config.ai,
     github: config.github,
@@ -41,10 +36,6 @@ export async function runPoller(): Promise<PollerRunSummary> {
       `interval=${config.poller.intervalSeconds}s`,
       `allowedRepos=${config.poller.allowedRepos.length}`,
       `allowedAuthor=${config.poller.allowedAuthor ?? 'unset'}`,
-      `githubConfigured=${github.hasToken}`,
-      `convexConfigured=${convex.isConfigured}`,
-      `linearConfigured=${linear.hasApiKey}`,
-      `agentConfigured=${agentRuntime.configured}`,
     ].join(' | '),
   );
 

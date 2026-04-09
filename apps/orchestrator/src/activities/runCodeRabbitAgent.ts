@@ -10,13 +10,10 @@ export async function runCodeRabbitAgent(
   input: CodeRabbitAgentRunInput,
 ): Promise<CodeRabbitAgentExecution> {
   const config = loadRuntimeConfig();
-  const workspaceManager =
-    config.workspaceRoot === null
-      ? null
-      : createWorkspaceManager({
-          workspaceRoot: config.workspaceRoot,
-          github: config.github,
-        });
+  const workspaceManager = createWorkspaceManager({
+    workspaceRoot: config.workspaceRoot,
+    github: config.github,
+  });
 
   const runtime = createAgentRuntimeClient({
     ai: config.ai,
