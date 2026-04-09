@@ -5,7 +5,7 @@ import type {
   AiRuntimeConfig,
   GitHubRuntimeConfig,
   LinearRuntimeConfig,
-} from '../config';
+} from '../config.js';
 import type {
   AgentProvider,
   CodeRabbitAgentExecution,
@@ -14,7 +14,7 @@ import type {
   FixChecksAgentRunInput,
   SpecializedReviewerAgentRunInput,
   SpecializedReviewerExecution,
-} from '../domain/agentRuntime';
+} from '../domain/agentRuntime.js';
 import {
   codeRabbitBatchResultSchema,
   fixChecksBatchResultSchema,
@@ -22,10 +22,10 @@ import {
   normalizeFixCheckOutcomes,
   normalizeSpecializedReviewerResult,
   specializedReviewerResultSchema,
-} from '../domain/agentRuntime';
-import type { GitHubCheckRun } from '../domain/github';
-import type { CodeRabbitReviewItem } from '../domain/review';
-import type { WorkspaceManager } from './workspace';
+} from '../domain/agentRuntime.js';
+import type { GitHubCheckRun } from '../domain/github.js';
+import type { CodeRabbitReviewItem } from '../domain/review.js';
+import type { WorkspaceManager } from './workspace.js';
 
 const execFileAsync = promisify(execFile);
 

@@ -1,9 +1,9 @@
-import { loadRuntimeConfig } from '../config';
+import { loadRuntimeConfig } from '../config.js';
 import type {
   PrReviewWorkflowInput,
   PrReviewWorkflowStatusRecord,
-} from '../domain/workflow';
-import { createConvexClient } from '../integrations/convex';
+} from '../domain/workflow.js';
+import { createConvexClient } from '../integrations/convex.js';
 
 export async function recordWorkflowState(
   input: PrReviewWorkflowInput,

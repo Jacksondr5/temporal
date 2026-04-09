@@ -1,8 +1,8 @@
-import { loadRuntimeConfig } from '../config';
+import { loadRuntimeConfig } from '../config.js';
 import {
   ensureReviewerPacksRepo,
   loadReviewerPack,
-} from '../integrations/reviewerPacks';
+} from '../integrations/reviewerPacks.js';
 
 export async function loadReviewerPackDefinition(
   reviewerId: string,

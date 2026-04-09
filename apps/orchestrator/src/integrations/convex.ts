@@ -1,17 +1,17 @@
-import type { ConvexRuntimeConfig } from '../config';
+import type { ConvexRuntimeConfig } from '../config.js';
 import type {
   GitHubCheckState,
   GitHubPrEvent,
   PullRequestRef,
-} from '../domain/github';
+} from '../domain/github.js';
 import type {
   RepositoryPolicy,
   SpecializedReviewerDefinition,
-} from '../domain/policy';
-import type { ReviewDecisionRecord } from '../domain/review';
-import type { PrReviewWorkflowStatusRecord } from '../domain/workflow';
-import { formatPrWorkflowId } from '../domain/workflow';
-import { parseRepositorySlug } from '../domain/policy';
+} from '../domain/policy.js';
+import type { ReviewDecisionRecord } from '../domain/review.js';
+import type { PrReviewWorkflowStatusRecord } from '../domain/workflow.js';
+import { formatPrWorkflowId } from '../domain/workflow.js';
+import { parseRepositorySlug } from '../domain/policy.js';
 
 interface ConvexFunctionSuccess<TValue> {
   status: 'success';

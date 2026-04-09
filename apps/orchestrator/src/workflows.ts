@@ -1,2 +1,2 @@
-export { prReviewOrchestratorWorkflow } from './workflows/prReviewOrchestrator';
-export { pollerScheduleWorkflow } from './workflows/pollerSchedule';
+export { prReviewOrchestratorWorkflow } from './workflows/prReviewOrchestrator.js';
+export { pollerScheduleWorkflow } from './workflows/pollerSchedule.js';

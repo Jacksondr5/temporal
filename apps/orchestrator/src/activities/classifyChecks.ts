@@ -1,8 +1,8 @@
-import type { PullRequestSnapshot } from '../domain/github';
+import type { PullRequestSnapshot } from '../domain/github.js';
 import type {
   CheckClassificationResult,
   RepositoryPolicy,
-} from '../domain/policy';
+} from '../domain/policy.js';
 
 export async function classifyChecks(
   snapshot: PullRequestSnapshot,

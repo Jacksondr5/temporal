@@ -1,10 +1,10 @@
-import { loadRuntimeConfig } from '../config';
+import { loadRuntimeConfig } from '../config.js';
 import type {
   CodeRabbitAgentExecution,
   CodeRabbitAgentRunInput,
-} from '../domain/agentRuntime';
-import { createAgentRuntimeClient } from '../integrations/agentRuntime';
-import { createWorkspaceManager } from '../integrations/workspace';
+} from '../domain/agentRuntime.js';
+import { createAgentRuntimeClient } from '../integrations/agentRuntime.js';
+import { createWorkspaceManager } from '../integrations/workspace.js';
 
 export async function runCodeRabbitAgent(
   input: CodeRabbitAgentRunInput,

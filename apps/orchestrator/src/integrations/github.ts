@@ -1,4 +1,4 @@
-import type { GitHubRuntimeConfig } from '../config';
+import type { GitHubRuntimeConfig } from '../config.js';
 import type {
   GitHubActor,
   GitHubCheckRun,
@@ -7,7 +7,7 @@ import type {
   PullRequestSnapshot,
   PullRequestRef,
   RepositoryRef,
-} from '../domain/github';
+} from '../domain/github.js';
 
 export interface GitHubPullRequestListItem {
   pr: PullRequestRef;

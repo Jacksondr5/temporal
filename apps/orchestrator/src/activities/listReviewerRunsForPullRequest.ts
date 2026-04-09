@@ -1,6 +1,6 @@
-import { loadRuntimeConfig } from '../config';
-import type { PullRequestRef } from '../domain/github';
-import { createConvexClient } from '../integrations/convex';
+import { loadRuntimeConfig } from '../config.js';
+import type { PullRequestRef } from '../domain/github.js';
+import { createConvexClient } from '../integrations/convex.js';
 
 export async function listReviewerRunsForPullRequest(
   pr: PullRequestRef,

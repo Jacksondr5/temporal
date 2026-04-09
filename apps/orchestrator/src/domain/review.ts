@@ -1,4 +1,4 @@
-import type { GitHubReviewThread, GitHubReviewThreadRef } from './github';
+import type { GitHubReviewThread, GitHubReviewThreadRef } from './github.js';
 
 export type ReviewDisposition = 'fix' | 'false_positive' | 'defer';
 

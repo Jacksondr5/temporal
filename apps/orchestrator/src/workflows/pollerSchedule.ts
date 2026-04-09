@@ -1,6 +1,6 @@
 import { proxyActivities } from '@temporalio/workflow';
-import type * as activities from '../activities';
-import type { PollerRunSummary } from '../poller/runPoller';
+import type * as activities from '../activities.js';
+import type { PollerRunSummary } from '../poller/runPoller.js';
 
 const { runScheduledPollerTick } = proxyActivities<typeof activities>({
   startToCloseTimeout: '15 minutes',

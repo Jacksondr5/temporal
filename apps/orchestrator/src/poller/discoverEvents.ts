@@ -2,16 +2,16 @@ import type {
   GitHubCheckRun,
   GitHubCheckState,
   GitHubPrEvent,
-} from '../domain/github';
-import type { ConvexClient } from '../integrations/convex';
-import type { GitHubClient } from '../integrations/github';
-import type { DiscoveredPullRequest } from './discoverPullRequests';
+} from '../domain/github.js';
+import type { ConvexClient } from '../integrations/convex.js';
+import type { GitHubClient } from '../integrations/github.js';
+import type { DiscoveredPullRequest } from './discoverPullRequests.js';
 import {
   normalizeCheckEvent,
   normalizeHeadEvent,
   normalizeReviewCommentEvent,
   normalizeReviewEvent,
-} from './normalizeEvent';
+} from './normalizeEvent.js';
 
 export async function discoverEventsForPullRequest(
   github: GitHubClient,

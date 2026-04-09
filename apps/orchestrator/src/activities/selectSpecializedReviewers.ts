@@ -1,11 +1,11 @@
-import { loadRuntimeConfig } from '../config';
-import { fileMatchesGlobs } from '../domain/glob';
-import type { PullRequestSnapshot } from '../domain/github';
+import { loadRuntimeConfig } from '../config.js';
+import { fileMatchesGlobs } from '../domain/glob.js';
+import type { PullRequestSnapshot } from '../domain/github.js';
 import type {
   RepositoryPolicy,
   SpecializedReviewerDefinition,
-} from '../domain/policy';
-import { createConvexClient } from '../integrations/convex';
+} from '../domain/policy.js';
+import { createConvexClient } from '../integrations/convex.js';
 
 export async function selectSpecializedReviewers(
   snapshot: PullRequestSnapshot,

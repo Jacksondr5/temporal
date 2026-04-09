@@ -2,9 +2,9 @@ import { mkdir, rm, stat } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import type { GitHubRuntimeConfig } from '../config';
-import type { PullRequestRef } from '../domain/github';
-import type { PreparedPullRequestWorkspace } from '../domain/agentRuntime';
+import type { GitHubRuntimeConfig } from '../config.js';
+import type { PullRequestRef } from '../domain/github.js';
+import type { PreparedPullRequestWorkspace } from '../domain/agentRuntime.js';
 
 const execFileAsync = promisify(execFile);
 

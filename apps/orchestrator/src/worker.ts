@@ -1,6 +1,17 @@
+import { existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { NativeConnection, Worker } from '@temporalio/worker';
-import * as activities from './activities';
-import { loadTemporalRuntimeConfig } from './config';
+import * as activities from './activities.js';
+import { loadTemporalRuntimeConfig } from './config.js';
+
+function resolveWorkflowsPath(): string {
+  const tsPath = fileURLToPath(new URL('./workflows.ts', import.meta.url));
+  if (existsSync(tsPath)) {
+    return tsPath;
+  }
+
+  return fileURLToPath(new URL('./workflows.js', import.meta.url));
+}
 
 async function run() {
   const config = loadTemporalRuntimeConfig();
@@ -10,7 +21,7 @@ async function run() {
       connection,
       namespace: config.namespace,
       taskQueue: config.taskQueue,
-      workflowsPath: require.resolve('./workflows'),
+      workflowsPath: resolveWorkflowsPath(),
       activities,
     });
     console.info(

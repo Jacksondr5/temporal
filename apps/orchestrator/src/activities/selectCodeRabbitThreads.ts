@@ -1,8 +1,8 @@
-import { loadRuntimeConfig } from '../config';
-import type { PullRequestSnapshot } from '../domain/github';
-import type { CodeRabbitReviewItem } from '../domain/review';
-import { toCodeRabbitReviewItem } from '../domain/review';
-import { createConvexClient } from '../integrations/convex';
+import { loadRuntimeConfig } from '../config.js';
+import type { PullRequestSnapshot } from '../domain/github.js';
+import type { CodeRabbitReviewItem } from '../domain/review.js';
+import { toCodeRabbitReviewItem } from '../domain/review.js';
+import { createConvexClient } from '../integrations/convex.js';
 
 function isCodeRabbitAuthor(login: string | null | undefined): boolean {
   if (!login) {
