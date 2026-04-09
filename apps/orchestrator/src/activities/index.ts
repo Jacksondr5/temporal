@@ -1,8 +1,5 @@
-export async function runPollerTickSummary(): Promise<string> {
-  return 'Poller foundation scaffold only. No GitHub polling implemented yet.';
-}
-
 export * from './initializePrReviewWorkflow';
+export * from './runScheduledPollerTick';
 export * from './fetchPullRequestSnapshot';
 export * from './loadRepoPolicy';
 export * from './classifyChecks';

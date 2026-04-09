@@ -10,6 +10,7 @@
     "worker:watch": "tsx watch src/worker.ts",
     "poller": "tsx src/poller/index.ts",
     "poller:watch": "tsx watch src/poller/index.ts",
+    "ensure-poller-schedule": "tsx src/ensurePollerSchedule.ts",
     "signal-pr": "tsx src/signalPr.ts",
     "smoke": "tsx src/smoke.ts"
   },

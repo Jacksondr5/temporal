@@ -10,7 +10,13 @@ import { discoverEventsForPullRequest } from './discoverEvents';
 import { discoverPullRequests } from './discoverPullRequests';
 import { discoverAllowedRepositories } from './discoverRepos';
 
-export async function runPoller(): Promise<void> {
+export interface PollerRunSummary {
+  repositories: number;
+  events: number;
+  signals: number;
+}
+
+export async function runPoller(): Promise<PollerRunSummary> {
   const config = loadRuntimeConfig();
   const github = createGitHubClient(config.github);
   const convex = createConvexClient(config.convex);
@@ -105,4 +111,10 @@ export async function runPoller(): Promise<void> {
       `signals=${signaledWorkflowCount}`,
     ].join(' | '),
   );
+
+  return {
+    repositories: repositories.length,
+    events: discoveredEventCount,
+    signals: signaledWorkflowCount,
+  };
 }

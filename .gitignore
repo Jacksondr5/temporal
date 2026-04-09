@@ -1,8 +1,11 @@
 node_modules
 lib
+!/apps/web/lib/
+!/apps/web/lib/**
 dist
 .next
 .env
 .env.local
 test-workspace
 .pnpm-debug.log
+.vercel
