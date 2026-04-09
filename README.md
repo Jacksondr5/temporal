@@ -22,7 +22,7 @@ This is a pnpm monorepo with two apps and a shared packages directory.
 
 ### `apps/orchestrator`
 
-The Temporal worker and local GitHub poller. Runs continuously on the home network.
+The Temporal worker and local GitHub poller logic. The worker runs continuously on the home network; the poller can be run manually or via a Temporal Schedule.
 
 ### `apps/web`
 
@@ -76,13 +76,19 @@ The UI will be available at `http://localhost:3000`.
 pnpm worker
 ```
 
-6. Start the GitHub poller.
+6. Run a one-off GitHub poller pass if you want to test polling manually.
 
 ```bash
 pnpm poller
 ```
 
-7. Optionally run the smoke test.
+7. Or, create/update the recurring Temporal Schedule that runs the poller every minute.
+
+```bash
+pnpm ensure-poller-schedule
+```
+
+8. Optionally run the smoke test.
 
 ```bash
 pnpm smoke
@@ -114,6 +120,7 @@ Primary settings:
 - `workflows/` - PR workflow implementations
 - `activities/` - Activity implementations and exported activity surface
 - `poller/` - Local polling entrypoints
+- `ensurePollerSchedule.ts` - Creates or updates the recurring Temporal Schedule for polling
 - `integrations/` - External service integration boundaries
 - `testing/` - Test scaffolding and future simulation helpers
 
@@ -136,6 +143,16 @@ Primary settings:
 - [ ] Authentication for the operator UI (currently open, suitable for private network only)
 - [ ] Policy editing admin workflows
 - [ ] Rich operator UI for error recovery and manual re-drives
+
+## Deployment Shape
+
+For deployed operation, the preferred model is:
+
+- run `pnpm worker` continuously
+- run `pnpm ensure-poller-schedule` once at startup/deploy time
+- let Temporal Schedules trigger the one-shot poller workflow every minute
+
+The standalone `pnpm poller` command remains useful for manual local testing and debugging.
 
 ## Design Documents
 

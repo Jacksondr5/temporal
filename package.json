@@ -11,6 +11,7 @@
     "worker:watch": "pnpm --filter orchestrator worker:watch",
     "poller": "pnpm --filter orchestrator poller",
     "poller:watch": "pnpm --filter orchestrator poller:watch",
+    "ensure-poller-schedule": "pnpm --filter orchestrator ensure-poller-schedule",
     "signal-pr": "pnpm --filter orchestrator signal-pr",
     "smoke": "pnpm --filter orchestrator smoke",
     "web:dev": "pnpm --filter web dev",
