@@ -1,4 +1,4 @@
-import type { RepositoryRef } from './github';
+import type { RepositoryRef } from './github.js';
 
 export type CheckClassification =
   | 'fixable_blocking'

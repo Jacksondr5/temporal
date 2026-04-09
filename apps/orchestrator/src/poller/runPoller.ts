@@ -1,14 +1,13 @@
-import { signalPullRequestActivity } from '../client';
-import { formatPrWorkflowId } from '../domain/workflow';
-import { loadRuntimeConfig } from '../config';
-import { createAgentRuntimeClient } from '../integrations/agentRuntime';
-import { createConvexClient } from '../integrations/convex';
-import { createGitHubClient } from '../integrations/github';
-import { createLinearClient } from '../integrations/linear';
-import { createWorkspaceManager } from '../integrations/workspace';
-import { discoverEventsForPullRequest } from './discoverEvents';
-import { discoverPullRequests } from './discoverPullRequests';
-import { discoverAllowedRepositories } from './discoverRepos';
+import { signalPullRequestActivity } from '../client.js';
+import { formatPrWorkflowId } from '../domain/workflow.js';
+import { loadRuntimeConfig } from '../config.js';
+import { createAgentRuntimeClient } from '../integrations/agentRuntime.js';
+import { createConvexClient } from '../integrations/convex.js';
+import { createGitHubClient } from '../integrations/github.js';
+import { createWorkspaceManager } from '../integrations/workspace.js';
+import { discoverEventsForPullRequest } from './discoverEvents.js';
+import { discoverPullRequests } from './discoverPullRequests.js';
+import { discoverAllowedRepositories } from './discoverRepos.js';
 
 export interface PollerRunSummary {
   repositories: number;
@@ -20,14 +19,10 @@ export async function runPoller(): Promise<PollerRunSummary> {
   const config = loadRuntimeConfig();
   const github = createGitHubClient(config.github);
   const convex = createConvexClient(config.convex);
-  const linear = createLinearClient(config.linear);
-  const workspaceManager =
-    config.workspaceRoot === null
-      ? null
-      : createWorkspaceManager({
-          workspaceRoot: config.workspaceRoot,
-          github: config.github,
-        });
+  const workspaceManager = createWorkspaceManager({
+    workspaceRoot: config.workspaceRoot,
+    github: config.github,
+  });
   const agentRuntime = createAgentRuntimeClient({
     ai: config.ai,
     github: config.github,
@@ -41,10 +36,6 @@ export async function runPoller(): Promise<PollerRunSummary> {
       `interval=${config.poller.intervalSeconds}s`,
       `allowedRepos=${config.poller.allowedRepos.length}`,
       `allowedAuthor=${config.poller.allowedAuthor ?? 'unset'}`,
-      `githubConfigured=${github.hasToken}`,
-      `convexConfigured=${convex.isConfigured}`,
-      `linearConfigured=${linear.hasApiKey}`,
-      `agentConfigured=${agentRuntime.configured}`,
     ].join(' | '),
   );
 

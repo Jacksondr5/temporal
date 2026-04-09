@@ -1,12 +1,12 @@
 import type { LanguageModelUsage, ProviderMetadata } from 'ai';
 import { z } from 'zod';
-import type { GitHubCheckRun, PullRequestSnapshot } from './github';
+import type { GitHubCheckRun, PullRequestSnapshot } from './github.js';
 import type {
   CodeRabbitReviewItem,
   ReviewDisposition,
   SpecializedReviewerFinding,
   SpecializedReviewerHandoffItem,
-} from './review';
+} from './review.js';
 
 export type AgentProvider = 'codex' | 'claude_code';
 

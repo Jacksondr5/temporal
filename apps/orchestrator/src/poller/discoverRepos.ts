@@ -1,4 +1,4 @@
-import type { RepositoryRef } from '../domain/github';
+import type { RepositoryRef } from '../domain/github.js';
 
 export function discoverAllowedRepositories(allowedRepos: string[]): RepositoryRef[] {
   return allowedRepos

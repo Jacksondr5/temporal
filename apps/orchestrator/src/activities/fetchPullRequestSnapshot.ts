@@ -1,6 +1,6 @@
-import { loadRuntimeConfig } from '../config';
-import type { PullRequestRef, PullRequestSnapshot } from '../domain/github';
-import { createGitHubClient } from '../integrations/github';
+import { loadRuntimeConfig } from '../config.js';
+import type { PullRequestRef, PullRequestSnapshot } from '../domain/github.js';
+import { createGitHubClient } from '../integrations/github.js';
 
 export async function fetchPullRequestSnapshot(
   pr: PullRequestRef,

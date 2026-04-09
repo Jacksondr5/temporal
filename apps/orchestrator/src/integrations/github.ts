@@ -1,4 +1,4 @@
-import type { GitHubRuntimeConfig } from '../config';
+import type { GitHubRuntimeConfig } from '../config.js';
 import type {
   GitHubActor,
   GitHubCheckRun,
@@ -7,7 +7,7 @@ import type {
   PullRequestSnapshot,
   PullRequestRef,
   RepositoryRef,
-} from '../domain/github';
+} from '../domain/github.js';
 
 export interface GitHubPullRequestListItem {
   pr: PullRequestRef;
@@ -135,7 +135,6 @@ interface GitHubGraphQlPageInfo {
 
 export interface GitHubClient {
   readonly apiUrl: string;
-  readonly hasToken: boolean;
   listOpenPullRequests(
     repository: RepositoryRef,
     allowedAuthor: string | null,
@@ -176,10 +175,6 @@ async function requestGitHub<TResponse>(
   path: string,
   query: Record<string, string | number> = {},
 ): Promise<TResponse> {
-  if (config.token === null) {
-    throw new Error('GITHUB_TOKEN is required for GitHub polling.');
-  }
-
   const url = new URL(path, config.apiUrl.endsWith('/') ? config.apiUrl : `${config.apiUrl}/`);
   for (const [key, value] of Object.entries(query)) {
     url.searchParams.set(key, String(value));
@@ -205,10 +200,6 @@ async function requestGitHubGraphQl<TResponse>(
   query: string,
   variables: Record<string, unknown>,
 ): Promise<TResponse> {
-  if (config.token === null) {
-    throw new Error('GITHUB_TOKEN is required for GitHub polling.');
-  }
-
   const response = await fetch('https://api.github.com/graphql', {
     method: 'POST',
     headers: {
@@ -274,7 +265,6 @@ function toReviewThread(
 export function createGitHubClient(config: GitHubRuntimeConfig): GitHubClient {
   return {
     apiUrl: config.apiUrl,
-    hasToken: config.token !== null,
     listOpenPullRequests: async (repository, allowedAuthor) => {
       const pulls = await requestGitHub<GitHubApiPullRequest[]>(
         config,

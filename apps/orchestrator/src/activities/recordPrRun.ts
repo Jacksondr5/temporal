@@ -1,5 +1,5 @@
-import { loadRuntimeConfig } from '../config';
-import { createConvexClient } from '../integrations/convex';
+import { loadRuntimeConfig } from '../config.js';
+import { createConvexClient } from '../integrations/convex.js';
 
 export async function recordPrRun(input: {
   repoSlug: string;

@@ -1,1 +1,1 @@
-export * from './activities/index';
+export * from './activities/index.js';

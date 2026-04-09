@@ -1,8 +1,8 @@
-import { loadRuntimeConfig } from '../config';
-import type { CodeRabbitAgentExecution } from '../domain/agentRuntime';
-import type { PullRequestRef } from '../domain/github';
-import type { ReviewDecisionRecord } from '../domain/review';
-import { createConvexClient } from '../integrations/convex';
+import { loadRuntimeConfig } from '../config.js';
+import type { CodeRabbitAgentExecution } from '../domain/agentRuntime.js';
+import type { PullRequestRef } from '../domain/github.js';
+import type { ReviewDecisionRecord } from '../domain/review.js';
+import { createConvexClient } from '../integrations/convex.js';
 
 export async function persistCodeRabbitExecution(input: {
   pr: PullRequestRef;

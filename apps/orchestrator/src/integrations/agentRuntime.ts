@@ -5,7 +5,7 @@ import type {
   AiRuntimeConfig,
   GitHubRuntimeConfig,
   LinearRuntimeConfig,
-} from '../config';
+} from '../config.js';
 import type {
   AgentProvider,
   CodeRabbitAgentExecution,
@@ -14,7 +14,7 @@ import type {
   FixChecksAgentRunInput,
   SpecializedReviewerAgentRunInput,
   SpecializedReviewerExecution,
-} from '../domain/agentRuntime';
+} from '../domain/agentRuntime.js';
 import {
   codeRabbitBatchResultSchema,
   fixChecksBatchResultSchema,
@@ -22,10 +22,10 @@ import {
   normalizeFixCheckOutcomes,
   normalizeSpecializedReviewerResult,
   specializedReviewerResultSchema,
-} from '../domain/agentRuntime';
-import type { GitHubCheckRun } from '../domain/github';
-import type { CodeRabbitReviewItem } from '../domain/review';
-import type { WorkspaceManager } from './workspace';
+} from '../domain/agentRuntime.js';
+import type { GitHubCheckRun } from '../domain/github.js';
+import type { CodeRabbitReviewItem } from '../domain/review.js';
+import type { WorkspaceManager } from './workspace.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -376,18 +376,10 @@ function buildAgentEnvironment(
     }
   }
 
-  if (github.token !== null) {
-    env.GITHUB_TOKEN = github.token;
-  }
-  if (linear.apiKey !== null) {
-    env.LINEAR_API_KEY = linear.apiKey;
-  }
-  if (linear.teamId !== null) {
-    env.LINEAR_TEAM_ID = linear.teamId;
-  }
-  if (linear.defaultProjectId !== null) {
-    env.LINEAR_DEFAULT_PROJECT_ID = linear.defaultProjectId;
-  }
+  env.GITHUB_TOKEN = github.token;
+  env.LINEAR_API_KEY = linear.apiKey;
+  env.LINEAR_TEAM_ID = linear.teamId;
+  env.LINEAR_DEFAULT_PROJECT_ID = linear.defaultProjectId;
 
   return env;
 }
@@ -558,32 +550,12 @@ export function createAgentRuntimeClient(options: {
   ai: AiRuntimeConfig;
   github: GitHubRuntimeConfig;
   linear: LinearRuntimeConfig;
-  workspaceManager: WorkspaceManager | null;
+  workspaceManager: WorkspaceManager;
 }): AgentRuntimeClient {
   return {
     defaultProvider: options.ai.defaultProvider,
-    configured:
-      options.ai.codex.model !== null &&
-      options.workspaceManager !== null &&
-      options.github.token !== null,
+    configured: true,
     runFixChecksBatch: async (input) => {
-      if (options.workspaceManager === null) {
-        return {
-          status: 'skipped',
-          provider: 'codex',
-          workspace: null,
-          logFilePath: null,
-          startingHeadSha: input.snapshot.pr.headSha,
-          localHeadAfter: null,
-          remoteHeadAfter: null,
-          summary: 'Skipped fix-check handling because WORKSPACE_ROOT is not configured.',
-          blockedReason: 'WORKSPACE_ROOT is not configured.',
-          usage: null,
-          providerMetadata: null,
-          result: null,
-        };
-      }
-
       const provider = input.provider ?? options.ai.defaultProvider;
       if (provider !== 'codex') {
         return {
@@ -596,23 +568,6 @@ export function createAgentRuntimeClient(options: {
           remoteHeadAfter: null,
           summary: `Skipped fix-check handling because provider "${provider}" is not implemented yet.`,
           blockedReason: `Provider "${provider}" is not implemented yet.`,
-          usage: null,
-          providerMetadata: null,
-          result: null,
-        };
-      }
-
-      if (options.ai.codex.model === null) {
-        return {
-          status: 'skipped',
-          provider: 'codex',
-          workspace: null,
-          logFilePath: null,
-          startingHeadSha: input.snapshot.pr.headSha,
-          localHeadAfter: null,
-          remoteHeadAfter: null,
-          summary: 'Skipped fix-check handling because CODEX_MODEL is not configured.',
-          blockedReason: 'CODEX_MODEL is not configured.',
           usage: null,
           providerMetadata: null,
           result: null,
@@ -680,23 +635,6 @@ export function createAgentRuntimeClient(options: {
       };
     },
     runCodeRabbitBatch: async (input) => {
-      if (options.workspaceManager === null) {
-        return {
-          status: 'skipped',
-          provider: 'codex',
-          workspace: null,
-          logFilePath: null,
-          startingHeadSha: input.snapshot.pr.headSha,
-          localHeadAfter: null,
-          remoteHeadAfter: null,
-          summary: 'Skipped Code Rabbit handling because WORKSPACE_ROOT is not configured.',
-          blockedReason: 'WORKSPACE_ROOT is not configured.',
-          usage: null,
-          providerMetadata: null,
-          result: null,
-        };
-      }
-
       const provider = input.provider ?? options.ai.defaultProvider;
       if (provider !== 'codex') {
         return {
@@ -709,23 +647,6 @@ export function createAgentRuntimeClient(options: {
           remoteHeadAfter: null,
           summary: `Skipped Code Rabbit handling because provider "${provider}" is not implemented yet.`,
           blockedReason: `Provider "${provider}" is not implemented yet.`,
-          usage: null,
-          providerMetadata: null,
-          result: null,
-        };
-      }
-
-      if (options.ai.codex.model === null) {
-        return {
-          status: 'skipped',
-          provider: 'codex',
-          workspace: null,
-          logFilePath: null,
-          startingHeadSha: input.snapshot.pr.headSha,
-          localHeadAfter: null,
-          remoteHeadAfter: null,
-          summary: 'Skipped Code Rabbit handling because CODEX_MODEL is not configured.',
-          blockedReason: 'CODEX_MODEL is not configured.',
           usage: null,
           providerMetadata: null,
           result: null,
@@ -808,23 +729,6 @@ export function createAgentRuntimeClient(options: {
       };
     },
     runSpecializedReviewer: async (input) => {
-      if (options.workspaceManager === null) {
-        return {
-          status: 'skipped',
-          provider: 'codex',
-          workspace: null,
-          logFilePath: null,
-          startingHeadSha: input.snapshot.pr.headSha,
-          localHeadAfter: null,
-          remoteHeadAfter: null,
-          summary: 'Skipped specialized reviewer because WORKSPACE_ROOT is not configured.',
-          blockedReason: 'WORKSPACE_ROOT is not configured.',
-          usage: null,
-          providerMetadata: null,
-          result: null,
-        };
-      }
-
       const provider = input.provider ?? options.ai.defaultProvider;
       if (provider !== 'codex') {
         return {
@@ -837,23 +741,6 @@ export function createAgentRuntimeClient(options: {
           remoteHeadAfter: null,
           summary: `Skipped specialized reviewer because provider "${provider}" is not implemented yet.`,
           blockedReason: `Provider "${provider}" is not implemented yet.`,
-          usage: null,
-          providerMetadata: null,
-          result: null,
-        };
-      }
-
-      if (options.ai.codex.model === null) {
-        return {
-          status: 'skipped',
-          provider: 'codex',
-          workspace: null,
-          logFilePath: null,
-          startingHeadSha: input.snapshot.pr.headSha,
-          localHeadAfter: null,
-          remoteHeadAfter: null,
-          summary: 'Skipped specialized reviewer because CODEX_MODEL is not configured.',
-          blockedReason: 'CODEX_MODEL is not configured.',
           usage: null,
           providerMetadata: null,
           result: null,

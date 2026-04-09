@@ -1,4 +1,4 @@
-import { runPoller } from './runPoller';
+import { runPoller } from './runPoller.js';
 
 runPoller().catch((error) => {
   console.error(error);

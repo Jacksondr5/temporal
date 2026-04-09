@@ -1,19 +1,19 @@
 import { condition, proxyActivities, setHandler } from '@temporalio/workflow';
-import type * as activities from '../activities';
+import type * as activities from '../activities.js';
 import type {
   CodeRabbitAgentExecution,
   FixChecksAgentExecution,
   SpecializedReviewerExecution,
-} from '../domain/agentRuntime';
-import type { PullRequestSnapshot } from '../domain/github';
-import { fileMatchesGlobs } from '../domain/glob';
-import type { SpecializedReviewerDefinition } from '../domain/policy';
+} from '../domain/agentRuntime.js';
+import type { PullRequestSnapshot } from '../domain/github.js';
+import { fileMatchesGlobs } from '../domain/glob.js';
+import type { SpecializedReviewerDefinition } from '../domain/policy.js';
 import type {
   PrReviewWorkflowInput,
   PrReviewWorkflowSignal,
   PrReviewWorkflowState,
-} from '../domain/workflow';
-import type { SpecializedReviewerHandoffItem } from '../domain/review';
+} from '../domain/workflow.js';
+import type { SpecializedReviewerHandoffItem } from '../domain/review.js';
 import {
   buildReconciliationResult,
   formatPrRunKey,
@@ -21,18 +21,18 @@ import {
   markWorkflowDirtyForHead,
   recordWorkflowSignal,
   toWorkflowStatusRecord,
-} from '../domain/workflow';
+} from '../domain/workflow.js';
 import {
   beginWorkflowPass,
   applyReconciliationActionPhase,
   completeWorkflowPass,
   withFetchedSnapshot,
-} from './reconcile';
+} from './reconcile.js';
 import {
   prActivityObservedSignal,
   prWorkflowShutdownSignal,
   prWorkflowStateQuery,
-} from './signals';
+} from './signals.js';
 
 const {
   initializePrReviewWorkflow,

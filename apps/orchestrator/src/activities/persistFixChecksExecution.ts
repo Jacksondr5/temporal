@@ -1,7 +1,7 @@
-import { loadRuntimeConfig } from '../config';
-import type { FixChecksAgentExecution } from '../domain/agentRuntime';
-import type { PullRequestRef } from '../domain/github';
-import { createConvexClient } from '../integrations/convex';
+import { loadRuntimeConfig } from '../config.js';
+import type { FixChecksAgentExecution } from '../domain/agentRuntime.js';
+import type { PullRequestRef } from '../domain/github.js';
+import { createConvexClient } from '../integrations/convex.js';
 
 export async function persistFixChecksExecution(input: {
   pr: PullRequestRef;
