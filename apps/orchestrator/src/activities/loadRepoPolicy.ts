@@ -1,7 +1,7 @@
-import { loadRuntimeConfig } from '../config';
-import type { RepositoryRef } from '../domain/github';
-import type { RepositoryPolicy } from '../domain/policy';
-import { createConvexClient } from '../integrations/convex';
+import { loadRuntimeConfig } from '../config.js';
+import type { RepositoryRef } from '../domain/github.js';
+import type { RepositoryPolicy } from '../domain/policy.js';
+import { createConvexClient } from '../integrations/convex.js';
 
 export async function loadRepoPolicy(
   repository: RepositoryRef,

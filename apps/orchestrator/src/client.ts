@@ -1,12 +1,12 @@
 import { Connection, Client, WorkflowIdConflictPolicy } from '@temporalio/client';
-import { prReviewOrchestratorWorkflow } from './workflows';
-import { loadTemporalRuntimeConfig } from './config';
+import { prReviewOrchestratorWorkflow } from './workflows.js';
+import { loadTemporalRuntimeConfig } from './config.js';
 import {
   formatPrWorkflowId,
   type PrReviewWorkflowSignal,
   type PrReviewWorkflowInput,
-} from './domain/workflow';
-import { prActivityObservedSignal } from './workflows/signals';
+} from './domain/workflow.js';
+import { prActivityObservedSignal } from './workflows/signals.js';
 
 export async function createTemporalClient(): Promise<Client> {
   const config = loadTemporalRuntimeConfig();

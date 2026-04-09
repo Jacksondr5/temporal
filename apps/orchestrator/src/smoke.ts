@@ -1,9 +1,9 @@
 import { Client, Connection, WorkflowIdConflictPolicy } from '@temporalio/client';
 import { nanoid } from 'nanoid';
-import { loadTemporalRuntimeConfig } from './config';
-import { type PrReviewWorkflowInput, formatPrWorkflowId } from './domain/workflow';
-import { prReviewOrchestratorWorkflow } from './workflows';
-import { prActivityObservedSignal } from './workflows/signals';
+import { loadTemporalRuntimeConfig } from './config.js';
+import { type PrReviewWorkflowInput, formatPrWorkflowId } from './domain/workflow.js';
+import { prReviewOrchestratorWorkflow } from './workflows.js';
+import { prActivityObservedSignal } from './workflows/signals.js';
 
 async function run(): Promise<void> {
   const input: PrReviewWorkflowInput = {

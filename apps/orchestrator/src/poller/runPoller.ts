@@ -1,14 +1,14 @@
-import { signalPullRequestActivity } from '../client';
-import { formatPrWorkflowId } from '../domain/workflow';
-import { loadRuntimeConfig } from '../config';
-import { createAgentRuntimeClient } from '../integrations/agentRuntime';
-import { createConvexClient } from '../integrations/convex';
-import { createGitHubClient } from '../integrations/github';
-import { createLinearClient } from '../integrations/linear';
-import { createWorkspaceManager } from '../integrations/workspace';
-import { discoverEventsForPullRequest } from './discoverEvents';
-import { discoverPullRequests } from './discoverPullRequests';
-import { discoverAllowedRepositories } from './discoverRepos';
+import { signalPullRequestActivity } from '../client.js';
+import { formatPrWorkflowId } from '../domain/workflow.js';
+import { loadRuntimeConfig } from '../config.js';
+import { createAgentRuntimeClient } from '../integrations/agentRuntime.js';
+import { createConvexClient } from '../integrations/convex.js';
+import { createGitHubClient } from '../integrations/github.js';
+import { createLinearClient } from '../integrations/linear.js';
+import { createWorkspaceManager } from '../integrations/workspace.js';
+import { discoverEventsForPullRequest } from './discoverEvents.js';
+import { discoverPullRequests } from './discoverPullRequests.js';
+import { discoverAllowedRepositories } from './discoverRepos.js';
 
 export interface PollerRunSummary {
   repositories: number;

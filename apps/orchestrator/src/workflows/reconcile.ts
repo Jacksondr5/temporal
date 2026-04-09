@@ -1,13 +1,13 @@
-import type { PullRequestSnapshot } from '../domain/github';
+import type { PullRequestSnapshot } from '../domain/github.js';
 import type {
   PrReviewReconciliationResult,
   PrReviewWorkflowState,
-} from '../domain/workflow';
+} from '../domain/workflow.js';
 import {
   finalizeWorkflowPass,
   mapActionToPhase,
   withWorkflowPhase,
-} from '../domain/workflow';
+} from '../domain/workflow.js';
 
 export function withFetchedSnapshot(
   state: PrReviewWorkflowState,

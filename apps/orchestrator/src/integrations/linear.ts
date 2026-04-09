@@ -1,4 +1,4 @@
-import type { LinearRuntimeConfig } from '../config';
+import type { LinearRuntimeConfig } from '../config.js';
 
 export interface LinearClient {
   readonly hasApiKey: boolean;

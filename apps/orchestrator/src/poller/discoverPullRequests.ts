@@ -1,5 +1,5 @@
-import type { PullRequestRef, RepositoryRef } from '../domain/github';
-import type { GitHubClient, GitHubPullRequestListItem } from '../integrations/github';
+import type { PullRequestRef, RepositoryRef } from '../domain/github.js';
+import type { GitHubClient, GitHubPullRequestListItem } from '../integrations/github.js';
 
 export interface DiscoveredPullRequest extends GitHubPullRequestListItem {
   repoSlug: string;

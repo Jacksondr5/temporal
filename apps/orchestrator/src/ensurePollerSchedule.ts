@@ -4,8 +4,8 @@ import {
   ScheduleNotFoundError,
   ScheduleOverlapPolicy,
 } from '@temporalio/client';
-import { loadRuntimeConfig } from './config';
-import { pollerScheduleWorkflow } from './workflows';
+import { loadRuntimeConfig } from './config.js';
+import { pollerScheduleWorkflow } from './workflows.js';
 
 const POLLER_SCHEDULE_ID = 'pr-review-github-poller';
 

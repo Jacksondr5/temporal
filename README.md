@@ -96,7 +96,7 @@ pnpm smoke
 
 ## Environment
 
-The orchestrator loads `.env` first and then `.env.local`, with `.env.local` taking precedence. Real secrets should stay in `.env.local` or the deployment environment and should not be committed.
+The orchestrator loads `.env` first and then `.env.local`, with `.env.local` taking precedence, and validates the resulting values through `t3-env`. Real secrets should stay in `.env.local` or the deployment environment and should not be committed.
 
 The web app uses `NEXT_PUBLIC_CONVEX_URL` from `apps/web/.env.local`.
 

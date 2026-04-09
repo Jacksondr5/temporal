@@ -4,8 +4,8 @@ import type {
   GitHubPrEvent,
   GitHubReviewSummary,
   GitHubReviewThread,
-} from '../domain/github';
-import type { DiscoveredPullRequest } from './discoverPullRequests';
+} from '../domain/github.js';
+import type { DiscoveredPullRequest } from './discoverPullRequests.js';
 
 export function normalizeHeadEvent(
   pullRequest: DiscoveredPullRequest,

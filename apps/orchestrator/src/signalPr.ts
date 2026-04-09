@@ -1,8 +1,8 @@
-import { signalPullRequestActivity } from './client';
-import { loadRuntimeConfig } from './config';
-import type { GitHubPrEvent } from './domain/github';
-import type { RepositoryRef } from './domain/github';
-import { createGitHubClient } from './integrations/github';
+import { signalPullRequestActivity } from './client.js';
+import { loadRuntimeConfig } from './config.js';
+import type { GitHubPrEvent } from './domain/github.js';
+import type { RepositoryRef } from './domain/github.js';
+import { createGitHubClient } from './integrations/github.js';
 
 interface ManualSignalArgs {
   repo: string;

@@ -1,16 +1,16 @@
-import type { GitHubPrEvent, PullRequestSnapshot } from './github';
-import type { CodeRabbitAgentExecution } from './agentRuntime';
+import type { GitHubPrEvent, PullRequestSnapshot } from './github.js';
+import type { CodeRabbitAgentExecution } from './agentRuntime.js';
 import type {
   CheckClassificationResult,
   RepositoryPolicy,
   SpecializedReviewerDefinition,
-} from './policy';
+} from './policy.js';
 import type {
   CodeRabbitReviewItem,
   ReviewDecisionRecord,
   ReviewDecisionSummary,
   SpecializedReviewerRun,
-} from './review';
+} from './review.js';
 
 const WORKFLOW_EVENT_HISTORY_LIMIT = 200;
 
