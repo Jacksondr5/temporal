@@ -37,7 +37,6 @@ export interface GitHubRuntimeConfig {
 
 export interface ConvexRuntimeConfig {
   url: string | null;
-  deployKey: string | null;
 }
 
 export interface LinearRuntimeConfig {
@@ -152,7 +151,6 @@ export function loadRuntimeConfig(): RuntimeConfig {
     },
     convex: {
       url: readOptionalEnv('CONVEX_URL'),
-      deployKey: readOptionalEnv('CONVEX_DEPLOY_KEY'),
     },
     linear: {
       apiKey: readOptionalEnv('LINEAR_API_KEY'),

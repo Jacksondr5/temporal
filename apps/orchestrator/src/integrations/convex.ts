@@ -59,7 +59,6 @@ interface ConvexReviewerRunRecord {
 
 export interface ConvexClient {
   readonly url: string | null;
-  readonly hasDeployKey: boolean;
   readonly isConfigured: boolean;
   ensureRepoWithPolicy(owner: string, name: string): Promise<unknown>;
   getRepoPolicy(repoSlug: string): Promise<RepositoryPolicy | null>;
@@ -192,7 +191,6 @@ function createUnconfiguredClient(
 
   return {
     url: config.url,
-    hasDeployKey: config.deployKey !== null,
     isConfigured: false,
     ensureRepoWithPolicy: fail,
     getRepoPolicy: fail,
@@ -221,7 +219,6 @@ export function createConvexClient(config: ConvexRuntimeConfig): ConvexClient {
 
   return {
     url: baseUrl,
-    hasDeployKey: config.deployKey !== null,
     isConfigured: true,
     ensureRepoWithPolicy: async (owner, name) =>
       await callConvexFunction(baseUrl, 'mutation', 'repos:ensureRepoWithPolicy', {
