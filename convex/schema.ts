@@ -47,6 +47,7 @@ export default defineSchema({
     checkName: v.union(v.string(), v.null()),
   })
     .index('by_event_id', ['eventId'])
+    .index('by_kind_and_event_id', ['kind', 'eventId'])
     .index('by_repo_slug_and_pr_number_and_observed_at', [
       'repoSlug',
       'prNumber',
