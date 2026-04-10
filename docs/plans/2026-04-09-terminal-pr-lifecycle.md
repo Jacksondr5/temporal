@@ -10,7 +10,7 @@
 
 ---
 
-### Task 1: Add Lifecycle State To Domain And Convex
+## Task 1: Add Lifecycle State To Domain And Convex
 
 **Files:**
 
@@ -26,7 +26,7 @@
 3. Persist `lifecycleState` on `pullRequests`.
 4. Add a bounded Convex query for tracked non-terminal PRs by repo.
 
-### Task 2: Teach GitHub Integration About Closed/Merged PRs
+## Task 2: Teach GitHub Integration About Closed/Merged PRs
 
 **Files:**
 
@@ -39,7 +39,7 @@
 2. Return `lifecycleState` from open discovery and snapshot fetches.
 3. Add a method to fetch a single PR summary by repo/number.
 
-### Task 3: Signal Terminal Events From Poller
+## Task 3: Signal Terminal Events From Poller
 
 **Files:**
 
@@ -54,7 +54,7 @@
 2. After processing open PRs, compare open PR numbers against tracked non-terminal PRs.
 3. For tracked PRs no longer open, fetch GitHub state and signal a terminal event when closed/merged.
 
-### Task 4: Complete Workflow On Terminal Snapshot
+## Task 4: Complete Workflow On Terminal Snapshot
 
 **Files:**
 
@@ -67,7 +67,7 @@
 2. After recording the terminal pass and final status, return from the workflow.
 3. Ensure terminal events do not trigger agent execution.
 
-### Task 5: Verify
+## Task 5: Verify
 
 **Commands:**
 
