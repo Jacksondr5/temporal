@@ -137,7 +137,7 @@ export const enqueueManual = mutation({
           .eq('repoSlug', args.repoSlug)
           .eq('prNumber', args.prNumber)
           .eq('kind', 'manual')
-          .eq('processedAt', null),
+          .lte('processedAt', null),
       )
       .order('desc')
       .take(1);
