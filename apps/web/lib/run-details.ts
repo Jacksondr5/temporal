@@ -75,6 +75,13 @@ export interface AgentResult {
   threads?: ThreadOutcome[];
 }
 
+export interface MergeConflictDetails {
+  baseBranchName: string | null;
+  baseSha: string | null;
+  conflictedFiles: string[];
+  mergeOutput: string | null;
+}
+
 // ── Specialized reviewer result ─────────────────────────────────────────────
 
 export interface ReviewerResult {
@@ -106,6 +113,7 @@ export interface SuccessRunDetails {
   reusedExistingClone: boolean | null;
   usage: TokenUsage | null;
   providerMetadata: Record<string, unknown> | null;
+  mergeConflict: MergeConflictDetails | null;
   result: AgentResult;
 }
 
@@ -131,8 +139,21 @@ export interface FailedRunDetails {
   errorType: string;
   errorMessage: string;
   startingHeadSha: string | null;
+  baseBranchName: string | null;
+  baseSha: string | null;
   checkNames: string[];
   threadKeys: string[];
+}
+
+export interface BlockedRunDetails {
+  kind: "blocked";
+  provider: string;
+  workspacePath: string | null;
+  startingHeadSha: string | null;
+  localHeadAfter: string | null;
+  remoteHeadAfter: string | null;
+  blockedReason: string;
+  mergeConflict: MergeConflictDetails | null;
 }
 
 export interface NoopRunDetails {
@@ -155,6 +176,7 @@ export type RunDetails =
   | SuccessRunDetails
   | ReviewerSuccessDetails
   | FailedRunDetails
+  | BlockedRunDetails
   | NoopRunDetails
   | LegacyRunDetails
   | UnknownRunDetails;
@@ -201,6 +223,29 @@ function parseReviewerPack(
     knowledgeFilePaths: Array.isArray(pack.knowledgeFilePaths)
       ? (pack.knowledgeFilePaths as string[])
       : [],
+  };
+}
+
+function parseMergeConflictDetails(
+  raw: Record<string, unknown>,
+): MergeConflictDetails | null {
+  const hasConflictSignal =
+    Array.isArray(raw.conflictedFiles) || typeof raw.mergeOutput === "string";
+
+  if (!hasConflictSignal) {
+    return null;
+  }
+
+  return {
+    baseBranchName:
+      typeof raw.baseBranchName === "string" ? raw.baseBranchName : null,
+    baseSha: typeof raw.baseSha === "string" ? raw.baseSha : null,
+    conflictedFiles: Array.isArray(raw.conflictedFiles)
+      ? raw.conflictedFiles.filter(
+          (file): file is string => typeof file === "string",
+        )
+      : [],
+    mergeOutput: typeof raw.mergeOutput === "string" ? raw.mergeOutput : null,
   };
 }
 
@@ -254,6 +299,26 @@ export function parseRunDetails(detailsJson: string): RunDetails {
       kind: "noop",
       reason: raw.reason,
       snapshotHeadSha: (raw.snapshotHeadSha as string) ?? null,
+    };
+  }
+
+  const mergeConflict = parseMergeConflictDetails(raw);
+
+  if (
+    typeof raw.blockedReason === "string" &&
+    raw.blockedReason.length > 0 &&
+    !raw.errorType &&
+    mergeConflict
+  ) {
+    return {
+      kind: "blocked",
+      provider: (raw.provider as string) ?? "unknown",
+      workspacePath: (raw.workspacePath as string) ?? null,
+      startingHeadSha: (raw.startingHeadSha as string) ?? null,
+      localHeadAfter: (raw.localHeadAfter as string) ?? null,
+      remoteHeadAfter: (raw.remoteHeadAfter as string) ?? null,
+      blockedReason: raw.blockedReason,
+      mergeConflict,
     };
   }
 
@@ -321,6 +386,7 @@ export function parseRunDetails(detailsJson: string): RunDetails {
       reusedExistingClone: (raw.reusedExistingClone as boolean) ?? null,
       usage: parseUsage(raw),
       providerMetadata: parseProviderMetadata(raw),
+      mergeConflict: parseMergeConflictDetails(raw),
       result: {
         overallSummary: (result.overallSummary as string) ?? "",
         investigationSummary: (result.investigationSummary as string) ?? "",
@@ -352,6 +418,8 @@ export function parseRunDetails(detailsJson: string): RunDetails {
       errorType: raw.errorType,
       errorMessage: (raw.errorMessage as string) ?? "",
       startingHeadSha: (raw.startingHeadSha as string) ?? null,
+      baseBranchName: (raw.baseBranchName as string) ?? null,
+      baseSha: (raw.baseSha as string) ?? null,
       checkNames: Array.isArray(raw.checkNames)
         ? (raw.checkNames as string[])
         : [],

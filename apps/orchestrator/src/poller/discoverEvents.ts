@@ -9,6 +9,7 @@ import type { DiscoveredPullRequest } from './discoverPullRequests.js';
 import {
   normalizeCheckEvent,
   normalizeHeadEvent,
+  normalizeMergeabilityEvent,
   normalizeReviewCommentEvent,
   normalizeReviewEvent,
 } from './normalizeEvent.js';
@@ -25,6 +26,23 @@ export async function discoverEventsForPullRequest(
     github.listCommitStatuses(pullRequest.pr),
   ]);
 
+  let mergeability: Awaited<
+    ReturnType<GitHubClient['fetchPullRequestMergeability']>
+  > | null = null;
+  try {
+    mergeability = await github.fetchPullRequestMergeability(pullRequest.pr);
+  } catch (error) {
+    console.warn(
+      'Failed to fetch pull request mergeability. Continuing without mergeability event.',
+      {
+        repoSlug: pullRequest.repoSlug,
+        prNumber: pullRequest.pr.number,
+        headSha: pullRequest.pr.headSha,
+        error,
+      },
+    );
+  }
+
   const checksByName = new Map(checkRuns.map((check) => [check.name, check]));
   for (const status of commitStatuses) {
     if (!checksByName.has(status.name)) {
@@ -33,6 +51,36 @@ export async function discoverEventsForPullRequest(
   }
 
   const events: GitHubPrEvent[] = [normalizeHeadEvent(pullRequest)];
+  let mergeabilityCursorKey: string | null = null;
+  let mergeabilityObservedAt: string | null = null;
+  if (mergeability) {
+    mergeabilityObservedAt = new Date().toISOString();
+    mergeabilityCursorKey = [
+      'mergeability',
+      pullRequest.pr.number,
+      pullRequest.pr.headSha,
+      mergeability.base.sha,
+    ].join(':');
+    const previousMergeabilityRecord = (await convex.getPollCursor(
+      pullRequest.repoSlug,
+      mergeabilityCursorKey,
+    )) as { cursorValue?: string | null } | null;
+    const previousMergeabilityState =
+      previousMergeabilityRecord?.cursorValue ?? null;
+
+    if (
+      previousMergeabilityState !== mergeability.mergeabilityState &&
+      mergeability.mergeabilityState === 'conflicting'
+    ) {
+      events.push(
+        normalizeMergeabilityEvent(pullRequest, {
+          observedAt: mergeabilityObservedAt,
+          baseSha: mergeability.base.sha,
+          mergeabilityState: mergeability.mergeabilityState,
+        }),
+      );
+    }
+  }
 
   for (const review of reviews) {
     events.push(normalizeReviewEvent(pullRequest, review));
@@ -71,6 +119,16 @@ export async function discoverEventsForPullRequest(
         previousState: observation.previousState,
       }),
     );
+  }
+
+  if (mergeability && mergeabilityCursorKey && mergeabilityObservedAt) {
+    await convex.setPollCursor({
+      repoSlug: pullRequest.repoSlug,
+      source: 'github_mergeability',
+      cursorKey: mergeabilityCursorKey,
+      cursorValue: mergeability.mergeabilityState,
+      lastObservedAt: mergeabilityObservedAt,
+    });
   }
 
   return events.sort((left, right) => left.observedAt.localeCompare(right.observedAt));

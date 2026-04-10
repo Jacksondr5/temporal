@@ -1,8 +1,8 @@
 "use client";
 
-import { useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
-import { use } from "react";
+import { use, useState } from "react";
 import Link from "next/link";
 import {
   PhaseBadge,
@@ -23,7 +23,9 @@ import {
   ExternalLink,
   Eye,
   Info,
+  RotateCw,
 } from "lucide-react";
+import { Button } from "../../../../components/ui/button";
 
 export default function PullRequestDetailPage({
   params,
@@ -38,6 +40,9 @@ export default function PullRequestDetailPage({
     repoSlug: decodedSlug,
     prNumber,
   });
+  const enqueueManualReevaluate = useMutation(api.githubEvents.enqueueManual);
+  const [isSubmittingManualRequest, setIsSubmittingManualRequest] = useState(false);
+  const [manualRequestError, setManualRequestError] = useState<string | null>(null);
 
   const githubUrl = `https://github.com/${decodedSlug}/pull/${prNumber}`;
 
@@ -72,6 +77,38 @@ export default function PullRequestDetailPage({
   }
 
   const { pr, threads, runs, reviewerRuns, artifacts, errors, events } = detail;
+  const latestManualEvent = events.find((event) => event.kind === "manual") ?? null;
+  const latestRunStartedAt = runs[0]?.startedAt ?? null;
+  const manualRequestPending =
+    latestManualEvent !== null &&
+    (latestRunStartedAt === null ||
+      new Date(latestRunStartedAt).getTime() <
+        new Date(latestManualEvent.observedAt).getTime());
+  const manualRequestLabel = manualRequestPending
+    ? "Re-evaluate queued"
+    : "Re-evaluate now";
+
+  async function handleManualReevaluate(): Promise<void> {
+    if (isSubmittingManualRequest) {
+      return;
+    }
+
+    setIsSubmittingManualRequest(true);
+    setManualRequestError(null);
+
+    try {
+      await enqueueManualReevaluate({
+        repoSlug: decodedSlug,
+        prNumber,
+      });
+    } catch (error) {
+      setManualRequestError(
+        error instanceof Error ? error.message : "Failed to queue re-evaluate request.",
+      );
+    } finally {
+      setIsSubmittingManualRequest(false);
+    }
+  }
 
   // Derive latest reconciliation context for the status strip
   const latestRun = runs[0] ?? null;
@@ -105,6 +142,18 @@ export default function PullRequestDetailPage({
             <ExternalLink className="h-3 w-3" />
             GitHub
           </a>
+          <Button
+            type="button"
+            variant={manualRequestPending ? "secondary" : "outline"}
+            size="sm"
+            disabled={isSubmittingManualRequest || manualRequestPending}
+            onClick={handleManualReevaluate}
+          >
+            <RotateCw
+              className={isSubmittingManualRequest ? "animate-spin" : undefined}
+            />
+            {isSubmittingManualRequest ? "Queueing..." : manualRequestLabel}
+          </Button>
         </div>
         <div className="mt-1.5 flex items-center gap-3 text-xs text-muted-foreground font-mono">
           <span>
@@ -119,6 +168,22 @@ export default function PullRequestDetailPage({
             </span>
           </span>
         </div>
+        {(latestManualEvent || manualRequestError) && (
+          <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+            {latestManualEvent && (
+              <span>
+                Manual request:{" "}
+                <span className="text-foreground/80">
+                  {manualRequestPending ? "queued" : "picked up"}{" "}
+                  <TimeAgo date={latestManualEvent.observedAt} />
+                </span>
+              </span>
+            )}
+            {manualRequestError && (
+              <span className="text-rose-400">{manualRequestError}</span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ─── Workflow state strip ─── */}
@@ -324,9 +389,9 @@ export default function PullRequestDetailPage({
       )}
 
       {/* ─── Events ─── */}
-      <SectionHeader icon={Zap} title="GitHub Events" count={events.length} />
+      <SectionHeader icon={Zap} title="PR Events" count={events.length} />
       {events.length === 0 ? (
-        <EmptyState icon={Zap} text="No GitHub events recorded" />
+        <EmptyState icon={Zap} text="No PR events recorded" />
       ) : (
         <DataTable
           headers={["Kind", "HEAD SHA", "Actor", "Details", "Observed"]}
@@ -347,7 +412,9 @@ export default function PullRequestDetailPage({
               {ev.actorLogin ?? "-"}
             </span>,
             <span key="detail" className="text-xs text-muted-foreground">
-              {ev.checkName
+              {ev.kind === "manual"
+                ? "Manual re-evaluate request"
+                : ev.checkName
                 ? `Check: ${ev.checkName}`
                 : ev.reviewId
                   ? `Review #${ev.reviewId}`
