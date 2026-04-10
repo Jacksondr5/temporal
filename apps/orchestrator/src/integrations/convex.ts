@@ -197,6 +197,7 @@ export interface ConvexClient {
 
 async function callConvexFunction<TValue>(
   baseUrl: string,
+  deployKey: string,
   kind: 'query' | 'mutation',
   path: string,
   args: Record<string, unknown>,
@@ -205,6 +206,7 @@ async function callConvexFunction<TValue>(
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      Authorization: `Convex ${deployKey}`,
     },
     body: JSON.stringify({
       path,
@@ -231,7 +233,7 @@ export function createConvexClient(config: ConvexRuntimeConfig): ConvexClient {
   return {
     url: baseUrl,
     ensureRepoWithPolicy: async (owner, name) =>
-      await callConvexFunction(baseUrl, 'mutation', 'repos:ensureRepoWithPolicy', {
+      await callConvexFunction(baseUrl, config.deployKey, 'mutation', 'repos:ensureRepoWithPolicy', {
         slug: `${owner}/${name}`,
         owner,
         name,
@@ -239,6 +241,7 @@ export function createConvexClient(config: ConvexRuntimeConfig): ConvexClient {
     getRepoPolicy: async (repoSlug) => {
       const record = await callConvexFunction<ConvexRepoPolicyRecord | null>(
         baseUrl,
+        config.deployKey,
         'query',
         'repoPolicies:getByRepoSlug',
         {
@@ -258,14 +261,14 @@ export function createConvexClient(config: ConvexRuntimeConfig): ConvexClient {
       };
     },
     getPollCursor: async (repoSlug, cursorKey) =>
-      await callConvexFunction(baseUrl, 'query', 'pollState:getCursor', {
+      await callConvexFunction(baseUrl, config.deployKey, 'query', 'pollState:getCursor', {
         repoSlug,
         cursorKey,
       }),
     setPollCursor: async (input) =>
-      await callConvexFunction(baseUrl, 'mutation', 'pollState:setCursor', input),
+      await callConvexFunction(baseUrl, config.deployKey, 'mutation', 'pollState:setCursor', input),
     recordGitHubEvent: async (event) =>
-      await callConvexFunction(baseUrl, 'mutation', 'githubEvents:record', {
+      await callConvexFunction(baseUrl, config.deployKey, 'mutation', 'githubEvents:record', {
         eventId: event.id,
         repoSlug: `${event.pr.repository.owner}/${event.pr.repository.name}`,
         prNumber: event.pr.number,
@@ -278,7 +281,7 @@ export function createConvexClient(config: ConvexRuntimeConfig): ConvexClient {
         checkName: event.checkName ?? null,
       }),
     recordCheckObservation: async (input) =>
-      await callConvexFunction(baseUrl, 'mutation', 'checkObservations:record', {
+      await callConvexFunction(baseUrl, config.deployKey, 'mutation', 'checkObservations:record', {
         repoSlug: input.repoSlug,
         prNumber: input.prNumber,
         headSha: input.headSha,
@@ -291,6 +294,7 @@ export function createConvexClient(config: ConvexRuntimeConfig): ConvexClient {
     getPullRequest: async (repoSlug, prNumber) =>
       await callConvexFunction<ConvexPullRequestRecord | null>(
         baseUrl,
+        config.deployKey,
         'query',
         'pullRequests:getByRepoAndNumber',
         {
@@ -301,6 +305,7 @@ export function createConvexClient(config: ConvexRuntimeConfig): ConvexClient {
     listManualEventsSince: async (input) =>
       await callConvexFunction<ConvexManualEventRecord[]>(
         baseUrl,
+        config.deployKey,
         'query',
         'githubEvents:listManualSince',
         {
@@ -310,6 +315,7 @@ export function createConvexClient(config: ConvexRuntimeConfig): ConvexClient {
     claimManualEvent: async (eventId) =>
       await callConvexFunction<ConvexManualClaimResult>(
         baseUrl,
+        config.deployKey,
         'mutation',
         'githubEvents:claimManual',
         {
@@ -319,6 +325,7 @@ export function createConvexClient(config: ConvexRuntimeConfig): ConvexClient {
     markManualEventProcessed: async (eventId) =>
       await callConvexFunction<ConvexManualProcessedResult>(
         baseUrl,
+        config.deployKey,
         'mutation',
         'githubEvents:markManualProcessed',
         {
@@ -326,7 +333,7 @@ export function createConvexClient(config: ConvexRuntimeConfig): ConvexClient {
         },
       ),
     upsertPullRequest: async (pr) =>
-      await callConvexFunction(baseUrl, 'mutation', 'pullRequests:upsertDiscovered', {
+      await callConvexFunction(baseUrl, config.deployKey, 'mutation', 'pullRequests:upsertDiscovered', {
         repoSlug: `${pr.repository.owner}/${pr.repository.name}`,
         prNumber: pr.number,
         workflowId: formatPrWorkflowId(pr),
@@ -334,7 +341,7 @@ export function createConvexClient(config: ConvexRuntimeConfig): ConvexClient {
         headSha: pr.headSha,
       }),
     syncPullRequestStatus: async (pr, status) =>
-      await callConvexFunction(baseUrl, 'mutation', 'pullRequests:upsert', {
+      await callConvexFunction(baseUrl, config.deployKey, 'mutation', 'pullRequests:upsert', {
         repoSlug: `${pr.repository.owner}/${pr.repository.name}`,
         prNumber: pr.number,
         workflowId: status.workflowId,
@@ -348,7 +355,7 @@ export function createConvexClient(config: ConvexRuntimeConfig): ConvexClient {
           status.currentPhase === 'idle' ? new Date().toISOString() : null,
       }),
     upsertPrRun: async (input) =>
-      await callConvexFunction(baseUrl, 'mutation', 'prRuns:upsert', {
+      await callConvexFunction(baseUrl, config.deployKey, 'mutation', 'prRuns:upsert', {
         repoSlug: input.repoSlug,
         prNumber: input.prNumber,
         workflowId: input.workflowId,
@@ -364,6 +371,7 @@ export function createConvexClient(config: ConvexRuntimeConfig): ConvexClient {
     getLatestThreadDecisions: async (input) =>
       await callConvexFunction<ConvexThreadDecisionRecord[]>(
         baseUrl,
+        config.deployKey,
         'query',
         'threadDecisions:getLatestForThreads',
         {
@@ -373,7 +381,7 @@ export function createConvexClient(config: ConvexRuntimeConfig): ConvexClient {
         },
       ),
     insertThreadDecision: async (repoSlug, prNumber, decision) =>
-      await callConvexFunction(baseUrl, 'mutation', 'threadDecisions:insert', {
+      await callConvexFunction(baseUrl, config.deployKey, 'mutation', 'threadDecisions:insert', {
         repoSlug,
         prNumber,
         threadKey: decision.threadKey,
@@ -390,7 +398,7 @@ export function createConvexClient(config: ConvexRuntimeConfig): ConvexClient {
         createdAt: new Date().toISOString(),
       }),
     upsertArtifact: async (input) =>
-      await callConvexFunction(baseUrl, 'mutation', 'artifacts:upsert', {
+      await callConvexFunction(baseUrl, config.deployKey, 'mutation', 'artifacts:upsert', {
         repoSlug: input.repoSlug,
         prNumber: input.prNumber,
         artifactKind: input.artifactKind,
@@ -400,7 +408,7 @@ export function createConvexClient(config: ConvexRuntimeConfig): ConvexClient {
         createdAt: new Date().toISOString(),
       }),
     insertWorkflowError: async (input) =>
-      await callConvexFunction(baseUrl, 'mutation', 'workflowErrors:insert', {
+      await callConvexFunction(baseUrl, config.deployKey, 'mutation', 'workflowErrors:insert', {
         repoSlug: input.repoSlug,
         prNumber: input.prNumber,
         workflowId: input.workflowId,
@@ -412,12 +420,12 @@ export function createConvexClient(config: ConvexRuntimeConfig): ConvexClient {
         lastSeenAt: new Date().toISOString(),
       }),
     listReviewerRunsForPullRequest: async (input) =>
-      await callConvexFunction(baseUrl, 'query', 'reviewerRuns:listForPullRequest', {
+      await callConvexFunction(baseUrl, config.deployKey, 'query', 'reviewerRuns:listForPullRequest', {
         repoSlug: input.repoSlug,
         prNumber: input.prNumber,
       }),
     insertReviewerRun: async (input) =>
-      await callConvexFunction(baseUrl, 'mutation', 'reviewerRuns:insert', {
+      await callConvexFunction(baseUrl, config.deployKey, 'mutation', 'reviewerRuns:insert', {
         repoSlug: input.repoSlug,
         prNumber: input.prNumber,
         reviewerId: input.reviewerId,

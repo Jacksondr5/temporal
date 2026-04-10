@@ -56,6 +56,12 @@ export default defineSchema({
       'processedAt',
       'observedAt',
     ])
+    .index('by_kind_and_processed_at_and_claimed_at_and_observed_at', [
+      'kind',
+      'processedAt',
+      'claimedAt',
+      'observedAt',
+    ])
     .index('by_repo_slug_and_pr_number_and_kind_and_processed_at_and_observed_at', [
       'repoSlug',
       'prNumber',

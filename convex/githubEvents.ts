@@ -1,5 +1,16 @@
 import { v } from 'convex/values';
-import { mutation, query } from './_generated/server';
+import {
+  internalMutation,
+  internalQuery,
+  mutation,
+  query,
+} from './_generated/server';
+
+const STALE_MS = 5 * 60 * 1000;
+
+function staleClaimThreshold(nowMs: number): string {
+  return new Date(nowMs - STALE_MS).toISOString();
+}
 
 export const getByEventId = query({
   args: {
@@ -29,12 +40,15 @@ export const listForPullRequest = query({
   },
 });
 
-export const listManualSince = query({
+export const listManualSince = internalQuery({
   args: {
     limit: v.number(),
   },
   handler: async (ctx, args) => {
-    return await ctx.db
+    const nowMs = Date.now();
+    const staleThreshold = staleClaimThreshold(nowMs);
+
+    const unclaimed = await ctx.db
       .query('githubEvents')
       .withIndex('by_kind_and_claimed_at_and_processed_at_and_observed_at', (q) =>
         q
@@ -43,6 +57,23 @@ export const listManualSince = query({
           .eq('processedAt', null),
       )
       .take(args.limit);
+
+    if (unclaimed.length >= args.limit) {
+      return unclaimed;
+    }
+
+    const staleClaimed = await ctx.db
+      .query('githubEvents')
+      .withIndex('by_kind_and_processed_at_and_claimed_at_and_observed_at', (q) =>
+        q
+          .eq('kind', 'manual')
+          .eq('processedAt', null)
+          .gt('claimedAt', null)
+          .lt('claimedAt', staleThreshold),
+      )
+      .take(args.limit - unclaimed.length);
+
+    return [...unclaimed, ...staleClaimed];
   },
 });
 
@@ -151,7 +182,7 @@ export const enqueueManual = mutation({
   },
 });
 
-export const claimManual = mutation({
+export const claimManual = internalMutation({
   args: {
     eventId: v.string(),
   },
@@ -175,7 +206,9 @@ export const claimManual = mutation({
       };
     }
 
-    if (event.claimedAt !== null) {
+    const staleThreshold = staleClaimThreshold(Date.now());
+    const claimIsFresh = event.claimedAt !== null && event.claimedAt >= staleThreshold;
+    if (claimIsFresh) {
       return {
         claimed: false,
         alreadyProcessed: false,
@@ -193,7 +226,7 @@ export const claimManual = mutation({
   },
 });
 
-export const markManualProcessed = mutation({
+export const markManualProcessed = internalMutation({
   args: {
     eventId: v.string(),
   },
