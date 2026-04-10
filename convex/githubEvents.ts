@@ -132,14 +132,12 @@ export const enqueueManual = mutation({
 
     const [pendingManualEvent] = await ctx.db
       .query('githubEvents')
-      .withIndex(
-        'by_repo_slug_and_pr_number_and_kind_and_processed_at_and_observed_at',
-        (q) =>
-          q
-            .eq('repoSlug', args.repoSlug)
-            .eq('prNumber', args.prNumber)
-            .eq('kind', 'manual')
-            .eq('processedAt', null),
+      .withIndex('by_repo_slug_pr_number_kind_processed_at_observed_at', (q) =>
+        q
+          .eq('repoSlug', args.repoSlug)
+          .eq('prNumber', args.prNumber)
+          .eq('kind', 'manual')
+          .lte('processedAt', null),
       )
       .order('desc')
       .take(1);
@@ -195,7 +193,7 @@ export const claimManual = internalMutation({
       };
     }
 
-    if (event.processedAt !== null) {
+    if (event.processedAt != null) {
       return {
         claimed: false,
         alreadyProcessed: true,
@@ -203,7 +201,8 @@ export const claimManual = internalMutation({
     }
 
     const staleThreshold = staleClaimThreshold(Date.now());
-    const claimIsFresh = event.claimedAt !== null && event.claimedAt >= staleThreshold;
+    const claimIsFresh =
+      event.claimedAt != null && event.claimedAt >= staleThreshold;
     if (claimIsFresh) {
       return {
         claimed: false,
@@ -232,7 +231,7 @@ export const markManualProcessed = internalMutation({
       .withIndex('by_event_id', (q) => q.eq('eventId', args.eventId))
       .unique();
 
-    if (event === null || event.processedAt !== null) {
+    if (event === null || event.processedAt != null) {
       return {
         processed: false,
       };
