@@ -107,7 +107,6 @@ Primary settings:
 - `TEMPORAL_TASK_QUEUE`
 - `GITHUB_TOKEN`
 - `CONVEX_URL`
-- `CONVEX_DEPLOY_KEY`
 - `LINEAR_API_KEY`
 - `NEXT_PUBLIC_CONVEX_URL` (for the web app)
 
@@ -175,7 +174,6 @@ At minimum, the worker needs the runtime settings already used by `apps/orchestr
 - `TEMPORAL_TASK_QUEUE`
 - `GITHUB_TOKEN`
 - `CONVEX_URL`
-- `CONVEX_DEPLOY_KEY`
 
 If you want the worker to clone PR workspaces or load reviewer packs from the host, mount those directories and point the runtime at the in-container paths:
 

@@ -42,7 +42,6 @@ export interface GitHubRuntimeConfig {
 
 export interface ConvexRuntimeConfig {
   url: string;
-  deployKey: string;
 }
 
 export interface LinearRuntimeConfig {
@@ -174,7 +173,6 @@ const env = createEnv({
       z.string().url().default(DEFAULT_GITHUB_API_URL),
     ),
     CONVEX_URL: z.preprocess(trimString, z.string()),
-    CONVEX_DEPLOY_KEY: z.preprocess(trimString, z.string()),
     LINEAR_API_KEY: z.preprocess(trimString, z.string()),
     LINEAR_TEAM_ID: z.preprocess(trimString, z.string()),
     LINEAR_DEFAULT_PROJECT_ID: z.preprocess(trimString, z.string()),
@@ -220,7 +218,6 @@ export function loadRuntimeConfig(): RuntimeConfig {
     },
     convex: {
       url: env.CONVEX_URL,
-      deployKey: env.CONVEX_DEPLOY_KEY,
     },
     linear: {
       apiKey: env.LINEAR_API_KEY,
