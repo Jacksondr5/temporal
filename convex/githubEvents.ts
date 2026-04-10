@@ -58,10 +58,6 @@ export const listManualSince = internalQuery({
       )
       .take(args.limit);
 
-    if (unclaimed.length >= args.limit) {
-      return unclaimed;
-    }
-
     const staleClaimed = await ctx.db
       .query('githubEvents')
       .withIndex('by_kind_and_processed_at_and_claimed_at_and_observed_at', (q) =>
@@ -71,9 +67,9 @@ export const listManualSince = internalQuery({
           .gt('claimedAt', null)
           .lt('claimedAt', staleThreshold),
       )
-      .take(args.limit - unclaimed.length);
+      .take(args.limit);
 
-    return [...unclaimed, ...staleClaimed];
+    return [...unclaimed, ...staleClaimed].slice(0, args.limit);
   },
 });
 
