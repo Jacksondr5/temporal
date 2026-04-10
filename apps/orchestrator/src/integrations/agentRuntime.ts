@@ -12,6 +12,8 @@ import type {
   CodeRabbitAgentRunInput,
   FixChecksAgentExecution,
   FixChecksAgentRunInput,
+  MergeConflictAgentExecution,
+  MergeConflictAgentRunInput,
   SpecializedReviewerAgentRunInput,
   SpecializedReviewerExecution,
 } from '../domain/agentRuntime.js';
@@ -20,7 +22,9 @@ import {
   fixChecksBatchResultSchema,
   normalizeCodeRabbitOutcomes,
   normalizeFixCheckOutcomes,
+  normalizeMergeConflictResult,
   normalizeSpecializedReviewerResult,
+  mergeConflictResultSchema,
   specializedReviewerResultSchema,
 } from '../domain/agentRuntime.js';
 import type { GitHubCheckRun } from '../domain/github.js';
@@ -32,6 +36,9 @@ const execFileAsync = promisify(execFile);
 export interface AgentRuntimeClient {
   readonly defaultProvider: AgentProvider;
   readonly configured: boolean;
+  runMergeConflictResolution(
+    input: MergeConflictAgentRunInput,
+  ): Promise<MergeConflictAgentExecution>;
   runFixChecksBatch(input: FixChecksAgentRunInput): Promise<FixChecksAgentExecution>;
   runCodeRabbitBatch(input: CodeRabbitAgentRunInput): Promise<CodeRabbitAgentExecution>;
   runSpecializedReviewer(
@@ -92,6 +99,24 @@ async function resolveObservedPushedHead(input: {
     localHeadAfter: localHead,
     remoteHeadAfter: remoteHead,
   };
+}
+
+async function pushCurrentHead(input: {
+  workspacePath: string;
+  branchName: string;
+}): Promise<void> {
+  await runGit(['push', 'origin', `HEAD:${input.branchName}`], input.workspacePath);
+}
+
+async function listUnmergedPaths(workspacePath: string): Promise<string[]> {
+  const output = (
+    await runGit(['diff', '--name-only', '--diff-filter=U'], workspacePath)
+  ).stdout.trim();
+  return output.length === 0 ? [] : output.split('\n');
+}
+
+async function readPorcelainStatus(workspacePath: string): Promise<string> {
+  return (await runGit(['status', '--porcelain'], workspacePath)).stdout.trim();
 }
 
 function createCodexLogger(input: {
@@ -392,8 +417,67 @@ function summarizeHandledChecks(checks: GitHubCheckRun[]): string {
   return `Handled ${checks.length} failing check${checks.length === 1 ? '' : 's'}.`;
 }
 
+function summarizeMergeConflict(input: MergeConflictAgentRunInput): string {
+  return `Resolved merge conflicts with ${input.baseBranchName}.`;
+}
+
 function summarizeSpecializedReviewer(input: SpecializedReviewerAgentRunInput): string {
   return `Completed specialized reviewer ${input.reviewer.id}.`;
+}
+
+function buildMergeConflictPrompt(
+  input: MergeConflictAgentRunInput,
+  workspace: {
+    mergeOutput: string;
+    conflictedFiles: string[];
+  },
+): string {
+  const pr = input.snapshot.pr;
+
+  return `
+You are autonomously resolving merge conflicts on a GitHub pull request before any other review automation runs.
+
+Repository: ${pr.repository.owner}/${pr.repository.name}
+Pull Request: #${pr.number}
+Branch: ${pr.branchName}
+Head SHA: ${pr.headSha}
+Base branch: ${input.baseBranchName}
+Base SHA: ${input.baseSha}
+Title: ${input.snapshot.title}
+Body:
+${input.snapshot.body ?? '(none)'}
+
+Changed files:
+${input.snapshot.changedFiles.join('\n') || '(none)'}
+
+Conflicted files:
+${workspace.conflictedFiles.join('\n') || '(none)'}
+
+Local merge output:
+${workspace.mergeOutput || '(none)'}
+
+Requirements:
+- Resolve the merge conflicts.
+- Preserve the intent of both the PR branch and the base branch where possible.
+- Make the project valid after the merge.
+- Avoid broad or unrelated refactoring.
+- Inspect conflicted files before editing.
+- Run focused verification when practical.
+- Commit and push exactly once if you resolve the conflict.
+- Return didModifyCode=true if you changed repository code.
+- Return didCommitCode=true if you created and pushed a commit.
+- If you do not push a commit, explain why in whyNoCommit.
+- Return only truthful final IDs and summaries for work you actually performed.
+
+Return a structured result describing:
+- an overallSummary
+- an investigationSummary explaining what you inspected and learned
+- a finalAssessment explaining why your final state is correct
+- whyNoCommit if you did not push, otherwise null
+- commandsSummary listing the most important commands/tools you used
+- didModifyCode
+- didCommitCode
+`.trim();
 }
 
 function buildSpecializedReviewerPrompt(
@@ -555,6 +639,219 @@ export function createAgentRuntimeClient(options: {
   return {
     defaultProvider: options.ai.defaultProvider,
     configured: true,
+    runMergeConflictResolution: async (input) => {
+      const provider = input.provider ?? options.ai.defaultProvider;
+      if (provider !== 'codex') {
+        return {
+          status: 'skipped',
+          provider,
+          workspace: null,
+          logFilePath: null,
+          startingHeadSha: input.snapshot.pr.headSha,
+          localHeadAfter: null,
+          remoteHeadAfter: null,
+          summary: `Skipped merge conflict resolution because provider "${provider}" is not implemented yet.`,
+          blockedReason: `Provider "${provider}" is not implemented yet.`,
+          usage: null,
+          providerMetadata: null,
+          result: null,
+        };
+      }
+
+      const workspace = await options.workspaceManager.prepareMergeConflictWorkspace({
+        pr: input.snapshot.pr,
+        baseBranchName: input.baseBranchName,
+        baseSha: input.baseSha,
+      });
+
+      if (workspace.mergeAttemptStatus === 'clean_merge') {
+        const localHeadAfter = (
+          await runGit(['rev-parse', 'HEAD'], workspace.path)
+        ).stdout.trim();
+
+        if (localHeadAfter === input.snapshot.pr.headSha) {
+          return {
+            status: 'blocked',
+            provider: 'codex',
+            workspace,
+            logFilePath: null,
+            startingHeadSha: input.snapshot.pr.headSha,
+            localHeadAfter,
+            remoteHeadAfter: null,
+            summary: 'GitHub reported merge conflicts, but local merge produced no branch update.',
+            blockedReason:
+              'GitHub reported merge conflicts, but local merge produced no branch update.',
+            usage: null,
+            providerMetadata: null,
+            result: null,
+          };
+        }
+
+        await pushCurrentHead({
+          workspacePath: workspace.path,
+          branchName: input.snapshot.pr.branchName,
+        });
+        const observedGitState = await resolveObservedPushedHead({
+          workspacePath: workspace.path,
+          branchName: input.snapshot.pr.branchName,
+          startingHeadSha: input.snapshot.pr.headSha,
+        });
+        const observedCommitSha = observedGitState.detectedCommitSha;
+
+        if (observedCommitSha === null) {
+          throw new Error(
+            [
+              'Local merge completed but no pushed merge commit was observed.',
+              `startingHeadSha=${input.snapshot.pr.headSha}`,
+              `localHeadAfter=${observedGitState.localHeadAfter}`,
+              `remoteHeadAfter=${observedGitState.remoteHeadAfter}`,
+            ].join(' '),
+          );
+        }
+
+        return {
+          status: 'completed',
+          provider: 'codex',
+          workspace,
+          logFilePath: null,
+          startingHeadSha: input.snapshot.pr.headSha,
+          localHeadAfter: observedGitState.localHeadAfter,
+          remoteHeadAfter: observedGitState.remoteHeadAfter,
+          summary: summarizeMergeConflict(input),
+          blockedReason: null,
+          usage: null,
+          providerMetadata: null,
+          result: {
+            overallSummary: summarizeMergeConflict(input),
+            investigationSummary:
+              'The base branch merged cleanly in the prepared PR workspace.',
+            finalAssessment:
+              'A merge commit was pushed to the PR branch for a fresh reconciliation pass.',
+            whyNoCommit: null,
+            commandsSummary: [
+              `git merge --no-ff --no-edit origin/${input.baseBranchName}`,
+              `git push origin HEAD:${input.snapshot.pr.branchName}`,
+            ],
+            didModifyCode: true,
+            didCommitCode: true,
+            observedCommitSha,
+          },
+        };
+      }
+
+      if (workspace.conflictedFiles.length === 0) {
+        return {
+          status: 'blocked',
+          provider: 'codex',
+          workspace,
+          logFilePath: null,
+          startingHeadSha: input.snapshot.pr.headSha,
+          localHeadAfter: workspace.headSha,
+          remoteHeadAfter: null,
+          summary: 'Local merge failed but no conflicted files were detected.',
+          blockedReason: 'Local merge failed but no conflicted files were detected.',
+          usage: null,
+          providerMetadata: null,
+          result: null,
+        };
+      }
+
+      const { output: object, usage, providerMetadata } =
+        await runCodexStructuredObject<MergeConflictAgentExecution['result']>({
+          model: options.ai.codex.model,
+          allowNpx: options.ai.codex.allowNpx,
+          cwd: workspace.path,
+          env: buildAgentEnvironment(options.github, options.linear),
+          runLabel: 'merge-conflicts',
+          schema: mergeConflictResultSchema,
+          prompt: buildMergeConflictPrompt(input, workspace),
+        });
+
+      if (object === null) {
+        throw new Error('Merge-conflict agent returned no structured result.');
+      }
+
+      const normalizedResult = normalizeMergeConflictResult(object);
+      const unmergedPaths = await listUnmergedPaths(workspace.path);
+
+      if (!normalizedResult.didCommitCode) {
+        const blockedReason =
+          normalizedResult.whyNoCommit ??
+          (unmergedPaths.length > 0
+            ? `Unresolved merge conflicts remain in ${unmergedPaths.join(', ')}.`
+            : 'Merge-conflict agent did not push a resolution commit.');
+        const localHeadAfter = (
+          await runGit(['rev-parse', 'HEAD'], workspace.path)
+        ).stdout.trim();
+
+        return {
+          status: 'blocked',
+          provider: 'codex',
+          workspace,
+          logFilePath: null,
+          startingHeadSha: input.snapshot.pr.headSha,
+          localHeadAfter,
+          remoteHeadAfter: null,
+          summary: normalizedResult.overallSummary,
+          blockedReason,
+          usage,
+          providerMetadata,
+          result: {
+            ...normalizedResult,
+            observedCommitSha: null,
+          },
+        };
+      }
+
+      if (unmergedPaths.length > 0) {
+        throw new Error(
+          `Merge-conflict agent reported didCommitCode=true but unmerged paths remain: ${unmergedPaths.join(', ')}`,
+        );
+      }
+
+      const porcelainStatus = await readPorcelainStatus(workspace.path);
+      if (porcelainStatus.length > 0) {
+        throw new Error(
+          `Merge-conflict agent reported didCommitCode=true but the working tree is dirty: ${porcelainStatus}`,
+        );
+      }
+
+      const observedGitState = await resolveObservedPushedHead({
+        workspacePath: workspace.path,
+        branchName: input.snapshot.pr.branchName,
+        startingHeadSha: input.snapshot.pr.headSha,
+      });
+      const observedCommitSha = observedGitState.detectedCommitSha;
+
+      if (observedCommitSha === null) {
+        throw new Error(
+          [
+            'Merge-conflict agent reported didCommitCode=true but no pushed commit was observed.',
+            `startingHeadSha=${input.snapshot.pr.headSha}`,
+            `localHeadAfter=${observedGitState.localHeadAfter}`,
+            `remoteHeadAfter=${observedGitState.remoteHeadAfter}`,
+          ].join(' '),
+        );
+      }
+
+      return {
+        status: 'completed',
+        provider: 'codex',
+        workspace,
+        logFilePath: null,
+        startingHeadSha: input.snapshot.pr.headSha,
+        localHeadAfter: observedGitState.localHeadAfter,
+        remoteHeadAfter: observedGitState.remoteHeadAfter,
+        summary: normalizedResult.overallSummary || summarizeMergeConflict(input),
+        blockedReason: null,
+        usage,
+        providerMetadata,
+        result: {
+          ...normalizedResult,
+          observedCommitSha,
+        },
+      };
+    },
     runFixChecksBatch: async (input) => {
       const provider = input.provider ?? options.ai.defaultProvider;
       if (provider !== 'codex') {

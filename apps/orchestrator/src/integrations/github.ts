@@ -2,8 +2,10 @@ import type { GitHubRuntimeConfig } from '../config.js';
 import type {
   GitHubActor,
   GitHubCheckRun,
+  GitHubMergeabilityState,
   GitHubReviewSummary,
   GitHubReviewThread,
+  PullRequestBaseRef,
   PullRequestSnapshot,
   PullRequestRef,
   RepositoryRef,
@@ -25,6 +27,12 @@ interface GitHubApiPullRequest {
     ref: string;
     sha: string;
   };
+  base: {
+    ref: string;
+    sha: string;
+  };
+  mergeable: boolean | null;
+  mergeable_state?: string | null;
   user: {
     login: string;
   } | null;
@@ -87,6 +95,11 @@ interface GitHubApiCombinedStatusResponse {
   statuses: GitHubApiCommitStatus[];
 }
 
+interface GitHubApiIssueComment {
+  id: number;
+  html_url: string | null;
+}
+
 interface GitHubGraphQlReviewThreadCommentNode {
   databaseId: number | null;
   body: string;
@@ -144,7 +157,16 @@ export interface GitHubClient {
   listPullRequestFiles(pr: PullRequestRef): Promise<string[]>;
   listCheckRuns(pr: PullRequestRef): Promise<GitHubCheckRun[]>;
   listCommitStatuses(pr: PullRequestRef): Promise<GitHubCheckRun[]>;
+  fetchPullRequestMergeability(pr: PullRequestRef): Promise<{
+    base: PullRequestBaseRef;
+    mergeabilityState: GitHubMergeabilityState;
+  }>;
   fetchPullRequestSnapshot(pr: PullRequestRef): Promise<PullRequestSnapshot>;
+  postPullRequestComment(input: {
+    repository: RepositoryRef;
+    prNumber: number;
+    body: string;
+  }): Promise<{ commentId: number; htmlUrl: string | null }>;
 }
 
 function matchesAllowedAuthor(
@@ -170,6 +192,20 @@ function toActor(
   return user ? { login: user.login } : null;
 }
 
+function normalizeMergeabilityState(
+  pullRequest: GitHubApiPullRequest,
+): GitHubMergeabilityState {
+  if (pullRequest.mergeable === null) {
+    return 'unknown';
+  }
+
+  if (pullRequest.mergeable === true) {
+    return 'mergeable';
+  }
+
+  return pullRequest.mergeable_state === 'dirty' ? 'conflicting' : 'other';
+}
+
 async function requestGitHub<TResponse>(
   config: GitHubRuntimeConfig,
   path: string,
@@ -186,6 +222,31 @@ async function requestGitHub<TResponse>(
       Authorization: `Bearer ${config.token}`,
       'X-GitHub-Api-Version': '2022-11-28',
     },
+  });
+
+  if (!response.ok) {
+    throw new Error(`GitHub request failed for ${url.pathname}: ${response.status}`);
+  }
+
+  return (await response.json()) as TResponse;
+}
+
+async function postGitHub<TResponse>(
+  config: GitHubRuntimeConfig,
+  path: string,
+  body: unknown,
+): Promise<TResponse> {
+  const url = new URL(path, config.apiUrl.endsWith('/') ? config.apiUrl : `${config.apiUrl}/`);
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/vnd.github+json',
+      Authorization: `Bearer ${config.token}`,
+      'Content-Type': 'application/json',
+      'X-GitHub-Api-Version': '2022-11-28',
+    },
+    body: JSON.stringify(body),
   });
 
   if (!response.ok) {
@@ -448,6 +509,20 @@ export function createGitHubClient(config: GitHubRuntimeConfig): GitHubClient {
         appSlug: null,
       }));
     },
+    fetchPullRequestMergeability: async (pr) => {
+      const pullRequest = await requestGitHub<GitHubApiPullRequest>(
+        config,
+        `/repos/${pr.repository.owner}/${pr.repository.name}/pulls/${pr.number}`,
+      );
+
+      return {
+        base: {
+          branchName: pullRequest.base.ref,
+          sha: pullRequest.base.sha,
+        },
+        mergeabilityState: normalizeMergeabilityState(pullRequest),
+      };
+    },
     fetchPullRequestSnapshot: async (pr) => {
       const pullRequest = await requestGitHub<GitHubApiPullRequest>(
         config,
@@ -484,6 +559,11 @@ export function createGitHubClient(config: GitHubRuntimeConfig): GitHubClient {
 
       return {
         pr: currentPrRef,
+        base: {
+          branchName: pullRequest.base.ref,
+          sha: pullRequest.base.sha,
+        },
+        mergeabilityState: normalizeMergeabilityState(pullRequest),
         author: toActor(pullRequest.user),
         title: pullRequest.title,
         body: pullRequest.body,
@@ -491,6 +571,20 @@ export function createGitHubClient(config: GitHubRuntimeConfig): GitHubClient {
         checks: Array.from(checksByName.values()),
         reviewSummaries: reviews,
         unresolvedThreads,
+      };
+    },
+    postPullRequestComment: async (input) => {
+      const comment = await postGitHub<GitHubApiIssueComment>(
+        config,
+        `/repos/${input.repository.owner}/${input.repository.name}/issues/${input.prNumber}/comments`,
+        {
+          body: input.body,
+        },
+      );
+
+      return {
+        commentId: comment.id,
+        htmlUrl: comment.html_url,
       };
     },
   };
