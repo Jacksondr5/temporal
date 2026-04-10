@@ -18,11 +18,13 @@ export type PrWorkflowDirtyReason =
   | 'manual'
   | 'head_changed'
   | 'reviews_changed'
-  | 'checks_changed';
+  | 'checks_changed'
+  | 'mergeability_changed';
 
 export type PrWorkflowPhase =
   | 'idle'
   | 'refreshing'
+  | 'resolving_merge_conflicts'
   | 'fixing_checks'
   | 'handling_code_rabbit'
   | 'running_special_reviewers'
@@ -60,6 +62,11 @@ export interface PrReviewActionContext {
 }
 
 export type PrReviewNextAction =
+  | {
+      type: 'resolve_merge_conflicts';
+      baseBranchName: string;
+      baseSha: string;
+    }
   | {
       type: 'fix_checks';
       failingChecks: string[];
@@ -149,6 +156,8 @@ export function mapEventKindToDirtyReason(
       return 'reviews_changed';
     case 'pull_request_checks_changed':
       return 'checks_changed';
+    case 'pull_request_mergeability_changed':
+      return 'mergeability_changed';
     case 'manual':
       return 'manual';
   }
@@ -183,6 +192,8 @@ export function recordWorkflowSignal(
 
 export function mapActionToPhase(action: PrReviewNextAction): PrWorkflowPhase {
   switch (action.type) {
+    case 'resolve_merge_conflicts':
+      return 'resolving_merge_conflicts';
     case 'fix_checks':
       return 'fixing_checks';
     case 'handle_code_rabbit':
@@ -237,6 +248,17 @@ export function withWorkflowDecision(
 export function buildReconciliationResult(
   inputs: PrReviewDecisionInputs,
 ): PrReviewReconciliationResult {
+  if (inputs.snapshot.mergeabilityState === 'conflicting') {
+    return {
+      action: {
+        type: 'resolve_merge_conflicts',
+        baseBranchName: inputs.snapshot.base.branchName,
+        baseSha: inputs.snapshot.base.sha,
+      },
+      snapshotHeadSha: inputs.snapshot.pr.headSha,
+    };
+  }
+
   const failingFixableChecks = inputs.checkClassifications
     .filter((check) => check.classification === 'fixable_blocking')
     .map((check) => check.name);

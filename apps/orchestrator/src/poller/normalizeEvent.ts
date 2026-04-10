@@ -1,6 +1,7 @@
 import type {
   GitHubCheckRun,
   GitHubCheckState,
+  GitHubMergeabilityState,
   GitHubPrEvent,
   GitHubReviewSummary,
   GitHubReviewThread,
@@ -70,5 +71,25 @@ export function normalizeCheckEvent(
     checkName: checkRun.name,
     checkState: input.currentState,
     previousCheckState: input.previousState,
+  };
+}
+
+export function normalizeMergeabilityEvent(
+  pullRequest: DiscoveredPullRequest,
+  input: {
+    observedAt: string;
+    baseSha: string;
+    mergeabilityState: GitHubMergeabilityState;
+  },
+): GitHubPrEvent {
+  return {
+    id: `mergeability:${pullRequest.repoSlug}:${pullRequest.pr.number}:${pullRequest.pr.headSha}:${input.baseSha}:${input.mergeabilityState}`,
+    kind: 'pull_request_mergeability_changed',
+    pr: pullRequest.pr,
+    observedAt: input.observedAt,
+    actor: pullRequest.author,
+    headSha: pullRequest.pr.headSha,
+    baseSha: input.baseSha,
+    mergeabilityState: input.mergeabilityState,
   };
 }

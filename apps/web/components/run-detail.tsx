@@ -9,6 +9,7 @@ import {
   type SuccessRunDetails,
   type ReviewerSuccessDetails,
   type FailedRunDetails,
+  type BlockedRunDetails,
   type NoopRunDetails,
   type CheckOutcome,
   type ThreadOutcome,
@@ -16,6 +17,7 @@ import {
   type HandoffItem,
   type TokenUsage,
   type ReviewerPack,
+  type MergeConflictDetails,
 } from "../lib/run-details";
 import { PhaseBadge, RunStatusBadge, DispositionBadge } from "./status-badge";
 import { TimeAgo } from "./time-ago";
@@ -257,7 +259,8 @@ function ExpandableRunCard({ run }: { run: PrRun }) {
   const hasRichDetails =
     details.kind === "success" ||
     details.kind === "reviewer_success" ||
-    details.kind === "failed";
+    details.kind === "failed" ||
+    details.kind === "blocked";
 
   const usage =
     (details.kind === "success" || details.kind === "reviewer_success") &&
@@ -337,6 +340,7 @@ function ExpandableRunCard({ run }: { run: PrRun }) {
             <ReviewerSuccessDetail details={details} />
           )}
           {details.kind === "failed" && <FailedDetail details={details} />}
+          {details.kind === "blocked" && <BlockedDetail details={details} />}
           {details.kind === "legacy" && (
             <p className="text-xs text-muted-foreground italic">
               {details.summary}
@@ -459,6 +463,7 @@ function ReviewerRunCard({ run }: { run: ReviewerRun }) {
           )}
           {details.kind === "success" && <SuccessDetail details={details} />}
           {details.kind === "failed" && <FailedDetail details={details} />}
+          {details.kind === "blocked" && <BlockedDetail details={details} />}
           {details.kind === "unknown" &&
             Object.keys(details.raw).length > 0 && (
               <RawJsonToggle
@@ -469,7 +474,8 @@ function ReviewerRunCard({ run }: { run: ReviewerRun }) {
 
           {(details.kind === "reviewer_success" ||
             details.kind === "success" ||
-            details.kind === "failed") &&
+            details.kind === "failed" ||
+            details.kind === "blocked") &&
             run.detailsJson && <RawJsonToggle json={run.detailsJson} />}
         </div>
       )}
@@ -562,6 +568,10 @@ function SuccessDetail({ details }: { details: SuccessRunDetails }) {
         <UsageUnavailable />
       )}
 
+      {details.mergeConflict && (
+        <MergeConflictInfo details={details.mergeConflict} />
+      )}
+
       {result.investigationSummary && (
         <DetailSection title="Investigation">
           <p className="text-xs text-foreground/70 leading-relaxed whitespace-pre-wrap">
@@ -623,6 +633,41 @@ function SuccessDetail({ details }: { details: SuccessRunDetails }) {
         </div>
       )}
     </div>
+  );
+}
+
+function MergeConflictInfo({ details }: { details: MergeConflictDetails }) {
+  return (
+    <DetailSection title="Merge Conflict">
+      <div className="space-y-2 text-[11px] text-muted-foreground">
+        <div className="flex flex-wrap gap-x-4 gap-y-1 font-mono">
+          {details.baseBranchName && (
+            <KV label="base" value={details.baseBranchName} />
+          )}
+          {details.baseSha && (
+            <KV label="base SHA" value={details.baseSha.slice(0, 8)} />
+          )}
+          <KV label="conflicts" value={String(details.conflictedFiles.length)} />
+        </div>
+        {details.conflictedFiles.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {details.conflictedFiles.map((file) => (
+              <code
+                key={file}
+                className="rounded bg-muted/30 px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground"
+              >
+                {file}
+              </code>
+            ))}
+          </div>
+        )}
+        {details.mergeOutput && (
+          <pre className="max-h-28 overflow-auto rounded-md bg-muted/20 p-2 text-[10px] whitespace-pre-wrap">
+            {details.mergeOutput}
+          </pre>
+        )}
+      </div>
+    </DetailSection>
   );
 }
 
@@ -864,6 +909,40 @@ function UsageUnavailable() {
   );
 }
 
+function BlockedDetail({ details }: { details: BlockedRunDetails }) {
+  return (
+    <div className="space-y-3">
+      <div className="flex items-start gap-2 rounded-md border border-amber-500/20 bg-amber-500/5 p-3">
+        <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
+        <div className="space-y-1 min-w-0">
+          <p className="text-xs font-medium text-amber-400">Blocked</p>
+          <p className="text-xs text-foreground/70">{details.blockedReason}</p>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] font-mono text-muted-foreground">
+        {details.provider && <KV label="provider" value={details.provider} />}
+        {details.startingHeadSha && (
+          <KV label="started on" value={details.startingHeadSha.slice(0, 8)} />
+        )}
+        {details.localHeadAfter && (
+          <KV label="local" value={details.localHeadAfter.slice(0, 8)} />
+        )}
+        {details.remoteHeadAfter && (
+          <KV label="remote" value={details.remoteHeadAfter.slice(0, 8)} />
+        )}
+        {details.workspacePath && (
+          <KV label="workspace" value={details.workspacePath} />
+        )}
+      </div>
+
+      {details.mergeConflict && (
+        <MergeConflictInfo details={details.mergeConflict} />
+      )}
+    </div>
+  );
+}
+
 // ── Failed detail ───────────────────────────────────────────────────────────
 
 function FailedDetail({ details }: { details: FailedRunDetails }) {
@@ -882,6 +961,17 @@ function FailedDetail({ details }: { details: FailedRunDetails }) {
       {details.startingHeadSha && (
         <div className="text-[11px] font-mono text-muted-foreground">
           Starting SHA: {details.startingHeadSha.slice(0, 8)}
+        </div>
+      )}
+
+      {(details.baseBranchName || details.baseSha) && (
+        <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] font-mono text-muted-foreground">
+          {details.baseBranchName && (
+            <KV label="base" value={details.baseBranchName} />
+          )}
+          {details.baseSha && (
+            <KV label="base SHA" value={details.baseSha.slice(0, 8)} />
+          )}
         </div>
       )}
 

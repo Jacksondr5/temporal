@@ -38,6 +38,16 @@ const phaseConfig: Record<string, { label: string; cls: string; dot: string }> =
       cls: "bg-sky-500/10 text-sky-400 ring-sky-500/20",
       dot: "bg-sky-400 animate-status-pulse",
     },
+    resolving_merge_conflicts: {
+      label: "Merge Conflicts",
+      cls: "bg-amber-500/10 text-amber-400 ring-amber-500/20",
+      dot: "bg-amber-400 animate-status-pulse",
+    },
+    resolve_merge_conflicts: {
+      label: "Merge Conflicts",
+      cls: "bg-amber-500/10 text-amber-400 ring-amber-500/20",
+      dot: "bg-amber-400 animate-status-pulse",
+    },
     fixing_checks: {
       label: "Fixing Checks",
       cls: "bg-amber-500/10 text-amber-400 ring-amber-500/20",
@@ -138,6 +148,10 @@ const runStatusConfig: Record<
   failed: {
     cls: "bg-rose-500/10 text-rose-400 ring-rose-500/20",
     dot: "bg-rose-400",
+  },
+  blocked: {
+    cls: "bg-rose-500/15 text-rose-400 ring-rose-500/25",
+    dot: "bg-rose-400 animate-status-pulse",
   },
   skipped: {
     cls: "bg-zinc-500/10 text-zinc-500 ring-zinc-500/20",

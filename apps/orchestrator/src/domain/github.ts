@@ -14,6 +14,11 @@ export interface PullRequestRef {
   headSha: string;
 }
 
+export interface PullRequestBaseRef {
+  branchName: string;
+  sha: string;
+}
+
 export interface GitHubActor {
   login: string;
 }
@@ -31,6 +36,12 @@ export type GitHubCheckState =
   | 'failing'
   | 'passing'
   | 'pending'
+  | 'other';
+
+export type GitHubMergeabilityState =
+  | 'mergeable'
+  | 'conflicting'
+  | 'unknown'
   | 'other';
 
 export interface GitHubReviewSummary {
@@ -60,6 +71,8 @@ export interface GitHubReviewThread {
 
 export interface PullRequestSnapshot {
   pr: PullRequestRef;
+  base: PullRequestBaseRef;
+  mergeabilityState: GitHubMergeabilityState;
   author: GitHubActor | null;
   title: string;
   body: string | null;
@@ -74,7 +87,8 @@ export type GitHubPrEventKind =
   | 'pull_request_synchronized'
   | 'pull_request_review_submitted'
   | 'pull_request_review_comment'
-  | 'pull_request_checks_changed';
+  | 'pull_request_checks_changed'
+  | 'pull_request_mergeability_changed';
 
 export interface GitHubPrEvent {
   id: string;
@@ -88,4 +102,6 @@ export interface GitHubPrEvent {
   checkName?: string;
   checkState?: GitHubCheckState;
   previousCheckState?: GitHubCheckState | null;
+  mergeabilityState?: GitHubMergeabilityState;
+  baseSha?: string;
 }

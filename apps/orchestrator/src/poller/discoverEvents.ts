@@ -9,6 +9,7 @@ import type { DiscoveredPullRequest } from './discoverPullRequests.js';
 import {
   normalizeCheckEvent,
   normalizeHeadEvent,
+  normalizeMergeabilityEvent,
   normalizeReviewCommentEvent,
   normalizeReviewEvent,
 } from './normalizeEvent.js';
@@ -18,11 +19,12 @@ export async function discoverEventsForPullRequest(
   convex: ConvexClient,
   pullRequest: DiscoveredPullRequest,
 ): Promise<GitHubPrEvent[]> {
-  const [reviews, threads, checkRuns, commitStatuses] = await Promise.all([
+  const [reviews, threads, checkRuns, commitStatuses, mergeability] = await Promise.all([
     github.listPullRequestReviews(pullRequest.pr),
     github.listPullRequestReviewThreads(pullRequest.pr),
     github.listCheckRuns(pullRequest.pr),
     github.listCommitStatuses(pullRequest.pr),
+    github.fetchPullRequestMergeability(pullRequest.pr),
   ]);
 
   const checksByName = new Map(checkRuns.map((check) => [check.name, check]));
@@ -33,6 +35,40 @@ export async function discoverEventsForPullRequest(
   }
 
   const events: GitHubPrEvent[] = [normalizeHeadEvent(pullRequest)];
+  const mergeabilityObservedAt = new Date().toISOString();
+  const mergeabilityCursorKey = [
+    'mergeability',
+    pullRequest.pr.number,
+    pullRequest.pr.headSha,
+    mergeability.base.sha,
+  ].join(':');
+  const previousMergeabilityRecord = (await convex.getPollCursor(
+    pullRequest.repoSlug,
+    mergeabilityCursorKey,
+  )) as { cursorValue?: string | null } | null;
+  const previousMergeabilityState =
+    previousMergeabilityRecord?.cursorValue ?? null;
+
+  await convex.setPollCursor({
+    repoSlug: pullRequest.repoSlug,
+    source: 'github_mergeability',
+    cursorKey: mergeabilityCursorKey,
+    cursorValue: mergeability.mergeabilityState,
+    lastObservedAt: mergeabilityObservedAt,
+  });
+
+  if (
+    previousMergeabilityState !== mergeability.mergeabilityState &&
+    mergeability.mergeabilityState === 'conflicting'
+  ) {
+    events.push(
+      normalizeMergeabilityEvent(pullRequest, {
+        observedAt: mergeabilityObservedAt,
+        baseSha: mergeability.base.sha,
+        mergeabilityState: mergeability.mergeabilityState,
+      }),
+    );
+  }
 
   for (const review of reviews) {
     events.push(normalizeReviewEvent(pullRequest, review));
