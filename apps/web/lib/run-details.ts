@@ -302,11 +302,13 @@ export function parseRunDetails(detailsJson: string): RunDetails {
     };
   }
 
+  const mergeConflict = parseMergeConflictDetails(raw);
+
   if (
     typeof raw.blockedReason === "string" &&
     raw.blockedReason.length > 0 &&
-    !raw.result &&
-    !raw.errorType
+    !raw.errorType &&
+    mergeConflict
   ) {
     return {
       kind: "blocked",
@@ -316,7 +318,7 @@ export function parseRunDetails(detailsJson: string): RunDetails {
       localHeadAfter: (raw.localHeadAfter as string) ?? null,
       remoteHeadAfter: (raw.remoteHeadAfter as string) ?? null,
       blockedReason: raw.blockedReason,
-      mergeConflict: parseMergeConflictDetails(raw),
+      mergeConflict,
     };
   }
 

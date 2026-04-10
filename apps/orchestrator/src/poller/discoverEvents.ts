@@ -49,14 +49,6 @@ export async function discoverEventsForPullRequest(
   const previousMergeabilityState =
     previousMergeabilityRecord?.cursorValue ?? null;
 
-  await convex.setPollCursor({
-    repoSlug: pullRequest.repoSlug,
-    source: 'github_mergeability',
-    cursorKey: mergeabilityCursorKey,
-    cursorValue: mergeability.mergeabilityState,
-    lastObservedAt: mergeabilityObservedAt,
-  });
-
   if (
     previousMergeabilityState !== mergeability.mergeabilityState &&
     mergeability.mergeabilityState === 'conflicting'
@@ -108,6 +100,14 @@ export async function discoverEventsForPullRequest(
       }),
     );
   }
+
+  await convex.setPollCursor({
+    repoSlug: pullRequest.repoSlug,
+    source: 'github_mergeability',
+    cursorKey: mergeabilityCursorKey,
+    cursorValue: mergeability.mergeabilityState,
+    lastObservedAt: mergeabilityObservedAt,
+  });
 
   return events.sort((left, right) => left.observedAt.localeCompare(right.observedAt));
 }
