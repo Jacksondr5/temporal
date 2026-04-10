@@ -229,23 +229,23 @@ function parseReviewerPack(
 function parseMergeConflictDetails(
   raw: Record<string, unknown>,
 ): MergeConflictDetails | null {
-  const hasMergeConflictFields =
-    typeof raw.baseBranchName === "string" ||
-    typeof raw.baseSha === "string" ||
-    Array.isArray(raw.conflictedFiles) ||
-    typeof raw.mergeOutput === "string";
+  const hasConflictSignal =
+    Array.isArray(raw.conflictedFiles) || typeof raw.mergeOutput === "string";
 
-  if (!hasMergeConflictFields) {
+  if (!hasConflictSignal) {
     return null;
   }
 
   return {
-    baseBranchName: (raw.baseBranchName as string) ?? null,
-    baseSha: (raw.baseSha as string) ?? null,
+    baseBranchName:
+      typeof raw.baseBranchName === "string" ? raw.baseBranchName : null,
+    baseSha: typeof raw.baseSha === "string" ? raw.baseSha : null,
     conflictedFiles: Array.isArray(raw.conflictedFiles)
-      ? (raw.conflictedFiles as string[])
+      ? raw.conflictedFiles.filter(
+          (file): file is string => typeof file === "string",
+        )
       : [],
-    mergeOutput: (raw.mergeOutput as string) ?? null,
+    mergeOutput: typeof raw.mergeOutput === "string" ? raw.mergeOutput : null,
   };
 }
 
