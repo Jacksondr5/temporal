@@ -23,6 +23,11 @@ export const upsert = mutation({
     workflowId: v.string(),
     branchName: v.string(),
     headSha: v.string(),
+    lifecycleState: v.union(
+      v.literal('open'),
+      v.literal('closed'),
+      v.literal('merged'),
+    ),
     statusSummary: v.union(v.string(), v.null()),
     currentPhase: v.string(),
     dirty: v.boolean(),
@@ -53,6 +58,11 @@ export const upsertDiscovered = mutation({
     workflowId: v.string(),
     branchName: v.string(),
     headSha: v.string(),
+    lifecycleState: v.union(
+      v.literal('open'),
+      v.literal('closed'),
+      v.literal('merged'),
+    ),
   },
   handler: async (ctx, args) => {
     const existing = await ctx.db
@@ -67,6 +77,7 @@ export const upsertDiscovered = mutation({
         workflowId: args.workflowId,
         branchName: args.branchName,
         headSha: args.headSha,
+        lifecycleState: args.lifecycleState,
       });
       return existing._id;
     }
@@ -79,5 +90,22 @@ export const upsertDiscovered = mutation({
       blockedReason: null,
       lastReconciledAt: null,
     });
+  },
+});
+
+export const listTrackedNonTerminalByRepo = query({
+  args: {
+    repoSlug: v.string(),
+    limit: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const prs = await ctx.db
+      .query('pullRequests')
+      .withIndex('by_repo_slug_and_pr_number', (q) =>
+        q.eq('repoSlug', args.repoSlug),
+      )
+      .take(Math.min(args.limit, 200));
+
+    return prs.filter((pr) => (pr.lifecycleState ?? 'open') === 'open');
   },
 });

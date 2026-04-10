@@ -4,6 +4,7 @@ import type {
   GitHubPrEvent,
   GitHubReviewSummary,
   GitHubReviewThread,
+  PullRequestRef,
 } from '../domain/github.js';
 import type { DiscoveredPullRequest } from './discoverPullRequests.js';
 
@@ -70,5 +71,30 @@ export function normalizeCheckEvent(
     checkName: checkRun.name,
     checkState: input.currentState,
     previousCheckState: input.previousState,
+  };
+}
+
+export function normalizeTerminalEvent(input: {
+  repoSlug: string;
+  pr: PullRequestRef;
+  author: GitHubPrEvent['actor'];
+  observedAt: string;
+}): GitHubPrEvent {
+  if (input.pr.lifecycleState === 'open') {
+    throw new Error(
+      'Cannot normalize a terminal event for an open pull request.',
+    );
+  }
+
+  return {
+    id: `terminal:${input.repoSlug}:${input.pr.number}:${input.pr.lifecycleState}:${input.observedAt}`,
+    kind:
+      input.pr.lifecycleState === 'merged'
+        ? 'pull_request_merged'
+        : 'pull_request_closed',
+    pr: input.pr,
+    observedAt: input.observedAt,
+    actor: input.author,
+    headSha: input.pr.headSha,
   };
 }

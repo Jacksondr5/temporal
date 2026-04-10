@@ -8,6 +8,7 @@ import { createWorkspaceManager } from '../integrations/workspace.js';
 import { discoverEventsForPullRequest } from './discoverEvents.js';
 import { discoverPullRequests } from './discoverPullRequests.js';
 import { discoverAllowedRepositories } from './discoverRepos.js';
+import { normalizeTerminalEvent } from './normalizeEvent.js';
 
 export interface PollerRunSummary {
   repositories: number;
@@ -55,6 +56,9 @@ export async function runPoller(): Promise<PollerRunSummary> {
       repository,
       config.poller.allowedAuthor,
     );
+    const openPullRequestNumbers = new Set(
+      pullRequests.map((pullRequest) => pullRequest.pr.number),
+    );
 
     for (const pullRequest of pullRequests) {
       await convex.upsertPullRequest(pullRequest.pr);
@@ -83,6 +87,53 @@ export async function runPoller(): Promise<PollerRunSummary> {
         );
         signaledWorkflowCount += 1;
       }
+    }
+
+    const trackedPullRequests = await convex.listTrackedNonTerminalPullRequests(
+      {
+        repoSlug,
+        limit: 200,
+      },
+    );
+
+    for (const trackedPullRequest of trackedPullRequests) {
+      if (openPullRequestNumbers.has(trackedPullRequest.number)) {
+        continue;
+      }
+
+      const currentPullRequest = await github.getPullRequest(
+        repository,
+        trackedPullRequest.number,
+      );
+
+      await convex.upsertPullRequest(currentPullRequest.pr);
+
+      if (currentPullRequest.pr.lifecycleState === 'open') {
+        continue;
+      }
+
+      const event = normalizeTerminalEvent({
+        repoSlug,
+        pr: currentPullRequest.pr,
+        author: currentPullRequest.author,
+        observedAt: currentPullRequest.updatedAt,
+      });
+      const recordResult = await convex.recordGitHubEvent(event);
+      if (!recordResult.inserted) {
+        continue;
+      }
+
+      await signalPullRequestActivity(
+        {
+          pr: currentPullRequest.pr,
+          triggeredBy: 'poller',
+        },
+        {
+          event,
+        },
+      );
+      signaledWorkflowCount += 1;
+      discoveredEventCount += 1;
     }
 
     await convex.setPollCursor({

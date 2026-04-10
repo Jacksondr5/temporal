@@ -15,6 +15,7 @@ async function run(): Promise<void> {
       number: 1,
       branchName: 'example-branch',
       headSha: 'foundation-scaffold',
+      lifecycleState: 'open',
     },
     triggeredBy: 'manual-smoke-test',
     maxReconciliationPasses: 1,

@@ -2,6 +2,7 @@ import type { ConvexRuntimeConfig } from '../config.js';
 import type {
   GitHubCheckState,
   GitHubPrEvent,
+  PullRequestLifecycleState,
   PullRequestRef,
 } from '../domain/github.js';
 import type {
@@ -57,6 +58,15 @@ interface ConvexReviewerRunRecord {
   createdAt: string;
 }
 
+interface ConvexPullRequestRecord {
+  repoSlug: string;
+  prNumber: number;
+  workflowId: string;
+  branchName: string;
+  headSha: string;
+  lifecycleState?: PullRequestLifecycleState;
+}
+
 export interface ConvexClient {
   readonly url: string;
   ensureRepoWithPolicy(owner: string, name: string): Promise<unknown>;
@@ -90,6 +100,10 @@ export interface ConvexClient {
     currentState: GitHubCheckState;
   }>;
   upsertPullRequest(pr: PullRequestRef): Promise<unknown>;
+  listTrackedNonTerminalPullRequests(input: {
+    repoSlug: string;
+    limit: number;
+  }): Promise<PullRequestRef[]>;
   syncPullRequestStatus(
     pr: PullRequestRef,
     status: PrReviewWorkflowStatusRecord,
@@ -251,7 +265,24 @@ export function createConvexClient(config: ConvexRuntimeConfig): ConvexClient {
         workflowId: formatPrWorkflowId(pr),
         branchName: pr.branchName,
         headSha: pr.headSha,
+        lifecycleState: pr.lifecycleState,
       }),
+    listTrackedNonTerminalPullRequests: async (input) => {
+      const records = await callConvexFunction<ConvexPullRequestRecord[]>(
+        baseUrl,
+        'query',
+        'pullRequests:listTrackedNonTerminalByRepo',
+        input,
+      );
+
+      return records.map((record) => ({
+        repository: parseRepositorySlug(record.repoSlug),
+        number: record.prNumber,
+        branchName: record.branchName,
+        headSha: record.headSha,
+        lifecycleState: record.lifecycleState ?? 'open',
+      }));
+    },
     syncPullRequestStatus: async (pr, status) =>
       await callConvexFunction(baseUrl, 'mutation', 'pullRequests:upsert', {
         repoSlug: `${pr.repository.owner}/${pr.repository.name}`,
@@ -259,6 +290,7 @@ export function createConvexClient(config: ConvexRuntimeConfig): ConvexClient {
         workflowId: status.workflowId,
         branchName: status.branchName,
         headSha: status.headSha,
+        lifecycleState: status.lifecycleState,
         statusSummary: status.statusSummary,
         currentPhase: status.currentPhase,
         dirty: status.dirty,

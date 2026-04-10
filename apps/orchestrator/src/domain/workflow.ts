@@ -16,6 +16,8 @@ const WORKFLOW_EVENT_HISTORY_LIMIT = 200;
 
 export type PrWorkflowDirtyReason =
   | 'manual'
+  | 'pr_closed'
+  | 'pr_merged'
   | 'head_changed'
   | 'reviews_changed'
   | 'checks_changed';
@@ -47,6 +49,7 @@ export interface PrReviewWorkflowStatusRecord {
   workflowId: string;
   branchName: string;
   headSha: string;
+  lifecycleState: GitHubPrEvent['pr']['lifecycleState'];
   currentPhase: PrWorkflowPhase;
   dirty: boolean;
   statusSummary: string | null;
@@ -144,6 +147,10 @@ export function mapEventKindToDirtyReason(
   switch (event.kind) {
     case 'pull_request_synchronized':
       return 'head_changed';
+    case 'pull_request_closed':
+      return 'pr_closed';
+    case 'pull_request_merged':
+      return 'pr_merged';
     case 'pull_request_review_submitted':
     case 'pull_request_review_comment':
       return 'reviews_changed';
@@ -237,6 +244,19 @@ export function withWorkflowDecision(
 export function buildReconciliationResult(
   inputs: PrReviewDecisionInputs,
 ): PrReviewReconciliationResult {
+  if (inputs.snapshot.pr.lifecycleState !== 'open') {
+    return {
+      action: {
+        type: 'noop',
+        reason:
+          inputs.snapshot.pr.lifecycleState === 'merged'
+            ? 'Pull request was merged.'
+            : 'Pull request was closed.',
+      },
+      snapshotHeadSha: inputs.snapshot.pr.headSha,
+    };
+  }
+
   const failingFixableChecks = inputs.checkClassifications
     .filter((check) => check.classification === 'fixable_blocking')
     .map((check) => check.name);
@@ -329,6 +349,7 @@ export function toWorkflowStatusRecord(
     workflowId: formatPrWorkflowId(state.pr),
     branchName: state.pr.branchName,
     headSha: state.latestKnownHeadSha,
+    lifecycleState: state.pr.lifecycleState,
     currentPhase: state.phase,
     dirty: state.dirty,
     statusSummary: latestActionSummary,

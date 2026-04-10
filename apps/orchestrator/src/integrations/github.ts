@@ -4,6 +4,7 @@ import type {
   GitHubCheckRun,
   GitHubReviewSummary,
   GitHubReviewThread,
+  PullRequestLifecycleState,
   PullRequestSnapshot,
   PullRequestRef,
   RepositoryRef,
@@ -29,6 +30,8 @@ interface GitHubApiPullRequest {
     login: string;
   } | null;
   updated_at: string;
+  state: string;
+  merged_at: string | null;
 }
 
 interface GitHubApiPullRequestFile {
@@ -139,6 +142,10 @@ export interface GitHubClient {
     repository: RepositoryRef,
     allowedAuthor: string | null,
   ): Promise<GitHubPullRequestListItem[]>;
+  getPullRequest(
+    repository: RepositoryRef,
+    prNumber: number,
+  ): Promise<GitHubPullRequestListItem>;
   listPullRequestReviews(pr: PullRequestRef): Promise<GitHubReviewSummary[]>;
   listPullRequestReviewThreads(pr: PullRequestRef): Promise<GitHubReviewThread[]>;
   listPullRequestFiles(pr: PullRequestRef): Promise<string[]>;
@@ -168,6 +175,35 @@ function toActor(
   } | null,
 ): GitHubActor | null {
   return user ? { login: user.login } : null;
+}
+
+function toLifecycleState(
+  pullRequest: GitHubApiPullRequest,
+): PullRequestLifecycleState {
+  if (pullRequest.state === 'open') {
+    return 'open';
+  }
+
+  return pullRequest.merged_at ? 'merged' : 'closed';
+}
+
+function toPullRequestListItem(
+  repository: RepositoryRef,
+  pull: GitHubApiPullRequest,
+): GitHubPullRequestListItem {
+  return {
+    pr: {
+      repository,
+      number: pull.number,
+      branchName: pull.head.ref,
+      headSha: pull.head.sha,
+      lifecycleState: toLifecycleState(pull),
+    },
+    title: pull.title,
+    body: pull.body,
+    author: toActor(pull.user),
+    updatedAt: pull.updated_at,
+  };
 }
 
 async function requestGitHub<TResponse>(
@@ -289,19 +325,15 @@ export function createGitHubClient(config: GitHubRuntimeConfig): GitHubClient {
         ].join(' | '),
       );
 
-      return matchingPulls
-        .map((pull) => ({
-          pr: {
-            repository,
-            number: pull.number,
-            branchName: pull.head.ref,
-            headSha: pull.head.sha,
-          },
-          title: pull.title,
-          body: pull.body,
-          author: toActor(pull.user),
-          updatedAt: pull.updated_at,
-        }));
+      return matchingPulls.map((pull) => toPullRequestListItem(repository, pull));
+    },
+    getPullRequest: async (repository, prNumber) => {
+      const pullRequest = await requestGitHub<GitHubApiPullRequest>(
+        config,
+        `/repos/${repository.owner}/${repository.name}/pulls/${prNumber}`,
+      );
+
+      return toPullRequestListItem(repository, pullRequest);
     },
     listPullRequestReviews: async (pr) => {
       const reviews = await requestGitHub<GitHubApiReview[]>(
@@ -459,6 +491,7 @@ export function createGitHubClient(config: GitHubRuntimeConfig): GitHubClient {
         number: pullRequest.number,
         branchName: pullRequest.head.ref,
         headSha: pullRequest.head.sha,
+        lifecycleState: toLifecycleState(pullRequest),
       };
 
       const client = createGitHubClient(config);

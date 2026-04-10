@@ -194,20 +194,30 @@ export async function prReviewOrchestratorWorkflow(
     });
     state = withFetchedSnapshot(state, snapshot);
 
-    const policy = await loadRepoPolicy(snapshot.pr.repository);
-    const [checkClassifications, codeRabbitItems, specializedReviewers] =
-      await Promise.all([
-        classifyChecks(snapshot, policy),
-        selectCodeRabbitThreads(snapshot),
-        selectSpecializedReviewers(snapshot, policy),
-      ]);
+    const reconciliation =
+      snapshot.pr.lifecycleState === 'open'
+        ? await (async () => {
+            const policy = await loadRepoPolicy(snapshot.pr.repository);
+            const [checkClassifications, codeRabbitItems, specializedReviewers] =
+              await Promise.all([
+                classifyChecks(snapshot, policy),
+                selectCodeRabbitThreads(snapshot),
+                selectSpecializedReviewers(snapshot, policy),
+              ]);
 
-    const reconciliation = buildReconciliationResult({
-      snapshot,
-      checkClassifications,
-      codeRabbitItems,
-      specializedReviewers,
-    });
+            return buildReconciliationResult({
+              snapshot,
+              checkClassifications,
+              codeRabbitItems,
+              specializedReviewers,
+            });
+          })()
+        : buildReconciliationResult({
+            snapshot,
+            checkClassifications: [],
+            codeRabbitItems: [],
+            specializedReviewers: [],
+          });
     state = applyReconciliationActionPhase(state, reconciliation);
 
     if (reconciliation.action.type === 'fix_checks') {
@@ -676,7 +686,19 @@ export async function prReviewOrchestratorWorkflow(
       baselineProcessedEventCount,
     );
 
+    if (state.pr.lifecycleState !== 'open') {
+      state = {
+        ...state,
+        dirty: false,
+        dirtyReasons: [],
+      };
+    }
+
     await recordWorkflowState(input, toWorkflowStatusRecord(state));
+
+    if (state.pr.lifecycleState !== 'open') {
+      return state;
+    }
 
     if (
       input.maxReconciliationPasses !== undefined &&

@@ -7,11 +7,14 @@ export function formatRepositoryName(repository: RepositoryRef): string {
   return `${repository.owner}/${repository.name}`;
 }
 
+export type PullRequestLifecycleState = 'open' | 'closed' | 'merged';
+
 export interface PullRequestRef {
   repository: RepositoryRef;
   number: number;
   branchName: string;
   headSha: string;
+  lifecycleState: PullRequestLifecycleState;
 }
 
 export interface GitHubActor {
@@ -71,6 +74,8 @@ export interface PullRequestSnapshot {
 
 export type GitHubPrEventKind =
   | 'manual'
+  | 'pull_request_closed'
+  | 'pull_request_merged'
   | 'pull_request_synchronized'
   | 'pull_request_review_submitted'
   | 'pull_request_review_comment'
