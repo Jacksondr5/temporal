@@ -10,7 +10,7 @@
 
 ---
 
-### Task 1: Extend Convex event storage for manual request delivery
+## Task 1: Extend Convex event storage for manual request delivery
 
 **Files:**
 - Modify: `convex/schema.ts`
@@ -29,7 +29,7 @@ Implement a public mutation to create a manual event for a PR and internal/publi
 
 Update the UI detail query to include the newest manual event so the page can reflect queued or processed state.
 
-### Task 2: Drain pending manual events in the orchestrator
+## Task 2: Drain pending manual events in the orchestrator
 
 **Files:**
 - Modify: `apps/orchestrator/src/integrations/convex.ts`
@@ -47,7 +47,7 @@ At the start of each poller run, fetch pending manual events, signal the target 
 
 Include manually drained events in poller summary counts so logs show how many workflow signals were triggered.
 
-### Task 3: Add the PR detail action
+## Task 3: Add the PR detail action
 
 **Files:**
 - Modify: `apps/web/app/pr/[repoSlug]/[prNumber]/page.tsx`
@@ -61,7 +61,7 @@ Use Convex `useMutation` from the PR detail page to enqueue a manual event with 
 
 Disable or relabel the button while the mutation is in flight and show the latest manual request status from the detail query.
 
-### Task 4: Validate the path
+## Task 4: Validate the path
 
 **Files:**
 - No code changes required

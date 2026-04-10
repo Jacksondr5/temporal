@@ -43,7 +43,6 @@ async function drainManualEvents(
 
   while (true) {
     const manualEvents = await convex.listManualEventsSince({
-      afterEventId: cursorValue,
       limit: MANUAL_EVENT_BATCH_SIZE,
     });
 
@@ -52,6 +51,14 @@ async function drainManualEvents(
     }
 
     for (const event of manualEvents) {
+      const claimResult = await convex.claimManualEvent(event.eventId);
+      if (!claimResult.claimed) {
+        if (claimResult.alreadyProcessed) {
+          cursorValue = event.eventId;
+        }
+        continue;
+      }
+
       const pullRequest = await convex.getPullRequest(event.repoSlug, event.prNumber);
       if (pullRequest === null) {
         throw new Error(
@@ -93,6 +100,8 @@ async function drainManualEvents(
       cursorValue = event.eventId;
       processedEvents += 1;
       signals += 1;
+
+      await convex.markManualEventProcessed(event.eventId);
 
       await convex.setPollCursor({
         repoSlug: MANUAL_EVENT_CURSOR_REPO,

@@ -45,9 +45,24 @@ export default defineSchema({
     reviewId: v.union(v.number(), v.null()),
     commentId: v.union(v.number(), v.null()),
     checkName: v.union(v.string(), v.null()),
+    claimedAt: v.union(v.string(), v.null()),
+    processedAt: v.union(v.string(), v.null()),
   })
     .index('by_event_id', ['eventId'])
     .index('by_kind_and_event_id', ['kind', 'eventId'])
+    .index('by_kind_and_claimed_at_and_processed_at_and_observed_at', [
+      'kind',
+      'claimedAt',
+      'processedAt',
+      'observedAt',
+    ])
+    .index('by_repo_slug_and_pr_number_and_kind_and_processed_at_and_observed_at', [
+      'repoSlug',
+      'prNumber',
+      'kind',
+      'processedAt',
+      'observedAt',
+    ])
     .index('by_repo_slug_and_pr_number_and_observed_at', [
       'repoSlug',
       'prNumber',

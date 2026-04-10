@@ -83,6 +83,15 @@ interface ConvexManualEventRecord {
   checkName: string | null;
 }
 
+interface ConvexManualClaimResult {
+  claimed: boolean;
+  alreadyProcessed: boolean;
+}
+
+interface ConvexManualProcessedResult {
+  processed: boolean;
+}
+
 export interface ConvexClient {
   readonly url: string;
   ensureRepoWithPolicy(owner: string, name: string): Promise<unknown>;
@@ -120,9 +129,10 @@ export interface ConvexClient {
     prNumber: number,
   ): Promise<ConvexPullRequestRecord | null>;
   listManualEventsSince(input: {
-    afterEventId: string | null;
     limit: number;
   }): Promise<ConvexManualEventRecord[]>;
+  claimManualEvent(eventId: string): Promise<ConvexManualClaimResult>;
+  markManualEventProcessed(eventId: string): Promise<ConvexManualProcessedResult>;
   upsertPullRequest(pr: PullRequestRef): Promise<unknown>;
   syncPullRequestStatus(
     pr: PullRequestRef,
@@ -294,8 +304,25 @@ export function createConvexClient(config: ConvexRuntimeConfig): ConvexClient {
         'query',
         'githubEvents:listManualSince',
         {
-          afterEventId: input.afterEventId,
           limit: input.limit,
+        },
+      ),
+    claimManualEvent: async (eventId) =>
+      await callConvexFunction<ConvexManualClaimResult>(
+        baseUrl,
+        'mutation',
+        'githubEvents:claimManual',
+        {
+          eventId,
+        },
+      ),
+    markManualEventProcessed: async (eventId) =>
+      await callConvexFunction<ConvexManualProcessedResult>(
+        baseUrl,
+        'mutation',
+        'githubEvents:markManualProcessed',
+        {
+          eventId,
         },
       ),
     upsertPullRequest: async (pr) =>

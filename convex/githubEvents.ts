@@ -31,23 +31,18 @@ export const listForPullRequest = query({
 
 export const listManualSince = query({
   args: {
-    afterEventId: v.union(v.string(), v.null()),
     limit: v.number(),
   },
   handler: async (ctx, args) => {
-    const afterEventId = args.afterEventId;
-    const manualEventsQuery =
-      afterEventId === null
-        ? ctx.db
-            .query('githubEvents')
-            .withIndex('by_kind_and_event_id', (q) => q.eq('kind', 'manual'))
-        : ctx.db
-            .query('githubEvents')
-            .withIndex('by_kind_and_event_id', (q) =>
-              q.eq('kind', 'manual').gt('eventId', afterEventId),
-            );
-
-    return await manualEventsQuery.take(args.limit);
+    return await ctx.db
+      .query('githubEvents')
+      .withIndex('by_kind_and_claimed_at_and_processed_at_and_observed_at', (q) =>
+        q
+          .eq('kind', 'manual')
+          .eq('claimedAt', null)
+          .eq('processedAt', null),
+      )
+      .take(args.limit);
   },
 });
 
@@ -77,7 +72,11 @@ export const record = mutation({
       };
     }
 
-    const eventDocumentId = await ctx.db.insert('githubEvents', args);
+    const eventDocumentId = await ctx.db.insert('githubEvents', {
+      ...args,
+      claimedAt: null,
+      processedAt: null,
+    });
     return {
       eventDocumentId,
       inserted: true,
@@ -104,6 +103,28 @@ export const enqueueManual = mutation({
       );
     }
 
+    const [pendingManualEvent] = await ctx.db
+      .query('githubEvents')
+      .withIndex(
+        'by_repo_slug_and_pr_number_and_kind_and_processed_at_and_observed_at',
+        (q) =>
+          q
+            .eq('repoSlug', args.repoSlug)
+            .eq('prNumber', args.prNumber)
+            .eq('kind', 'manual')
+            .eq('processedAt', null),
+      )
+      .order('desc')
+      .take(1);
+
+    if (pendingManualEvent) {
+      return {
+        eventDocumentId: pendingManualEvent._id,
+        eventId: pendingManualEvent.eventId,
+        observedAt: pendingManualEvent.observedAt,
+      };
+    }
+
     const observedAt = new Date().toISOString();
     const eventId = `manual:${observedAt}:${Math.random().toString(36).slice(2, 10)}`;
 
@@ -118,12 +139,82 @@ export const enqueueManual = mutation({
       reviewId: null,
       commentId: null,
       checkName: null,
+      claimedAt: null,
+      processedAt: null,
     });
 
     return {
       eventDocumentId,
       eventId,
       observedAt,
+    };
+  },
+});
+
+export const claimManual = mutation({
+  args: {
+    eventId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const event = await ctx.db
+      .query('githubEvents')
+      .withIndex('by_event_id', (q) => q.eq('eventId', args.eventId))
+      .unique();
+
+    if (event === null) {
+      return {
+        claimed: false,
+        alreadyProcessed: false,
+      };
+    }
+
+    if (event.processedAt !== null) {
+      return {
+        claimed: false,
+        alreadyProcessed: true,
+      };
+    }
+
+    if (event.claimedAt !== null) {
+      return {
+        claimed: false,
+        alreadyProcessed: false,
+      };
+    }
+
+    await ctx.db.patch(event._id, {
+      claimedAt: new Date().toISOString(),
+    });
+
+    return {
+      claimed: true,
+      alreadyProcessed: false,
+    };
+  },
+});
+
+export const markManualProcessed = mutation({
+  args: {
+    eventId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const event = await ctx.db
+      .query('githubEvents')
+      .withIndex('by_event_id', (q) => q.eq('eventId', args.eventId))
+      .unique();
+
+    if (event === null || event.processedAt !== null) {
+      return {
+        processed: false,
+      };
+    }
+
+    await ctx.db.patch(event._id, {
+      processedAt: new Date().toISOString(),
+    });
+
+    return {
+      processed: true,
     };
   },
 });
