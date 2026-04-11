@@ -23,10 +23,8 @@ export const upsert = mutation({
     workflowId: v.string(),
     branchName: v.string(),
     headSha: v.string(),
-    lifecycleState: v.union(
-      v.literal('open'),
-      v.literal('closed'),
-      v.literal('merged'),
+    lifecycleState: v.optional(
+      v.union(v.literal('open'), v.literal('closed'), v.literal('merged')),
     ),
     statusSummary: v.union(v.string(), v.null()),
     currentPhase: v.string(),
@@ -35,6 +33,7 @@ export const upsert = mutation({
     lastReconciledAt: v.union(v.string(), v.null()),
   },
   handler: async (ctx, args) => {
+    const lifecycleState = args.lifecycleState ?? 'open';
     const existing = await ctx.db
       .query('pullRequests')
       .withIndex('by_repo_slug_and_pr_number', (q) =>
@@ -45,12 +44,16 @@ export const upsert = mutation({
     if (existing) {
       await ctx.db.patch(existing._id, {
         ...args,
+        lifecycleState,
         lastReconciledAt: args.lastReconciledAt ?? existing.lastReconciledAt,
       });
       return existing._id;
     }
 
-    return await ctx.db.insert('pullRequests', args);
+    return await ctx.db.insert('pullRequests', {
+      ...args,
+      lifecycleState,
+    });
   },
 });
 
