@@ -40,9 +40,15 @@ export const listForPullRequest = query({
 
 export const listManualSince = query({
   args: {
-    limit: v.number(),
+    limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    const rawLimit = args.limit ?? 50;
+    if (!Number.isInteger(rawLimit) || rawLimit < 1) {
+      throw new Error('limit must be a positive integer');
+    }
+    const limit = Math.min(rawLimit, 100);
+
     const nowMs = Date.now();
     const staleThreshold = staleClaimThreshold(nowMs);
 
@@ -54,7 +60,7 @@ export const listManualSince = query({
           .eq('claimedAt', null)
           .eq('processedAt', null),
       )
-      .take(args.limit);
+      .take(limit);
 
     const staleClaimed = await ctx.db
       .query('githubEvents')
@@ -65,9 +71,9 @@ export const listManualSince = query({
           .gt('claimedAt', null)
           .lt('claimedAt', staleThreshold),
       )
-      .take(args.limit);
+      .take(limit);
 
-    return [...unclaimed, ...staleClaimed].slice(0, args.limit);
+    return [...unclaimed, ...staleClaimed].slice(0, limit);
   },
 });
 
@@ -196,6 +202,12 @@ export const claimManual = mutation({
         alreadyProcessed: false,
       };
     }
+    if (event.kind !== 'manual') {
+      return {
+        claimed: false,
+        alreadyProcessed: false,
+      };
+    }
 
     if (event.processedAt != null) {
       return {
@@ -236,6 +248,11 @@ export const markManualProcessed = mutation({
       .unique();
 
     if (event === null || event.processedAt != null) {
+      return {
+        processed: false,
+      };
+    }
+    if (event.kind !== 'manual') {
       return {
         processed: false,
       };
