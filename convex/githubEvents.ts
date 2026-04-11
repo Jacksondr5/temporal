@@ -1,7 +1,5 @@
 import { v } from 'convex/values';
 import {
-  internalMutation,
-  internalQuery,
   mutation,
   query,
 } from './_generated/server';
@@ -40,7 +38,7 @@ export const listForPullRequest = query({
   },
 });
 
-export const listManualSince = internalQuery({
+export const listManualSince = query({
   args: {
     limit: v.number(),
   },
@@ -176,7 +174,7 @@ export const enqueueManual = mutation({
   },
 });
 
-export const claimManual = internalMutation({
+export const claimManual = mutation({
   args: {
     eventId: v.string(),
   },
@@ -221,7 +219,7 @@ export const claimManual = internalMutation({
   },
 });
 
-export const markManualProcessed = internalMutation({
+export const markManualProcessed = mutation({
   args: {
     eventId: v.string(),
   },
