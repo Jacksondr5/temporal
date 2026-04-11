@@ -3,17 +3,22 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import type {
   AiRuntimeConfig,
+  CodexRuntimeConfig,
   GitHubRuntimeConfig,
+  GitIdentityRuntimeConfig,
   LinearRuntimeConfig,
 } from '../config.js';
 import type {
   AgentProvider,
+  CodeRabbitBatchAgentOutput,
   CodeRabbitAgentExecution,
   CodeRabbitAgentRunInput,
+  FixChecksBatchAgentOutput,
   FixChecksAgentExecution,
   FixChecksAgentRunInput,
   MergeConflictAgentExecution,
   MergeConflictAgentRunInput,
+  SpecializedReviewerAgentOutput,
   SpecializedReviewerAgentRunInput,
   SpecializedReviewerExecution,
 } from '../domain/agentRuntime.js';
@@ -52,11 +57,12 @@ type CheckCategory = 'ci' | 'playwright' | 'vercel_build' | 'unknown';
 async function runGit(
   args: string[],
   cwd: string,
+  env: NodeJS.ProcessEnv = process.env,
 ): Promise<{ stdout: string; stderr: string }> {
   return await execFileAsync('git', args, {
     cwd,
     maxBuffer: 1024 * 1024 * 10,
-    env: process.env,
+    env,
   });
 }
 
@@ -64,18 +70,23 @@ async function resolveObservedPushedHead(input: {
   workspacePath: string;
   branchName: string;
   startingHeadSha: string;
+  env?: NodeJS.ProcessEnv;
 }): Promise<{
   detectedCommitSha: string | null;
   localHeadAfter: string;
   remoteHeadAfter: string;
 }> {
-  await runGit(['fetch', 'origin', input.branchName, '--prune'], input.workspacePath);
+  await runGit(
+    ['fetch', 'origin', input.branchName, '--prune'],
+    input.workspacePath,
+    input.env,
+  );
 
   const localHead = (
-    await runGit(['rev-parse', 'HEAD'], input.workspacePath)
+    await runGit(['rev-parse', 'HEAD'], input.workspacePath, input.env)
   ).stdout.trim();
   const remoteHead = (
-    await runGit(['rev-parse', `origin/${input.branchName}`], input.workspacePath)
+    await runGit(['rev-parse', `origin/${input.branchName}`], input.workspacePath, input.env)
   ).stdout.trim();
 
   if (remoteHead !== input.startingHeadSha) {
@@ -104,8 +115,9 @@ async function resolveObservedPushedHead(input: {
 async function pushCurrentHead(input: {
   workspacePath: string;
   branchName: string;
+  env?: NodeJS.ProcessEnv;
 }): Promise<void> {
-  await runGit(['push', 'origin', `HEAD:${input.branchName}`], input.workspacePath);
+  await runGit(['push', 'origin', `HEAD:${input.branchName}`], input.workspacePath, input.env);
 }
 
 async function listUnmergedPaths(workspacePath: string): Promise<string[]> {
@@ -391,7 +403,9 @@ Return a structured result describing:
 
 function buildAgentEnvironment(
   github: GitHubRuntimeConfig,
+  gitIdentity: GitIdentityRuntimeConfig,
   linear: LinearRuntimeConfig,
+  codex: CodexRuntimeConfig,
 ): Record<string, string> {
   const env: Record<string, string> = {};
 
@@ -402,9 +416,21 @@ function buildAgentEnvironment(
   }
 
   env.GITHUB_TOKEN = github.token;
+  env.GH_TOKEN = github.token;
   env.LINEAR_API_KEY = linear.apiKey;
   env.LINEAR_TEAM_ID = linear.teamId;
   env.LINEAR_DEFAULT_PROJECT_ID = linear.defaultProjectId;
+
+  if (gitIdentity.userName !== null && gitIdentity.userEmail !== null) {
+    env.GIT_AUTHOR_NAME = gitIdentity.userName;
+    env.GIT_AUTHOR_EMAIL = gitIdentity.userEmail;
+    env.GIT_COMMITTER_NAME = gitIdentity.userName;
+    env.GIT_COMMITTER_EMAIL = gitIdentity.userEmail;
+  }
+
+  if (codex.homeDir !== null) {
+    env.HOME = codex.homeDir;
+  }
 
   return env;
 }
@@ -633,6 +659,7 @@ async function runCodexStructuredObject<T>({
 export function createAgentRuntimeClient(options: {
   ai: AiRuntimeConfig;
   github: GitHubRuntimeConfig;
+  gitIdentity: GitIdentityRuntimeConfig;
   linear: LinearRuntimeConfig;
   workspaceManager: WorkspaceManager;
 }): AgentRuntimeClient {
@@ -663,10 +690,16 @@ export function createAgentRuntimeClient(options: {
         baseBranchName: input.baseBranchName,
         baseSha: input.baseSha,
       });
+      const agentEnv = buildAgentEnvironment(
+        options.github,
+        options.gitIdentity,
+        options.linear,
+        options.ai.codex,
+      );
 
       if (workspace.mergeAttemptStatus === 'clean_merge') {
         const localHeadAfter = (
-          await runGit(['rev-parse', 'HEAD'], workspace.path)
+          await runGit(['rev-parse', 'HEAD'], workspace.path, agentEnv)
         ).stdout.trim();
 
         if (localHeadAfter === input.snapshot.pr.headSha) {
@@ -690,11 +723,13 @@ export function createAgentRuntimeClient(options: {
         await pushCurrentHead({
           workspacePath: workspace.path,
           branchName: input.snapshot.pr.branchName,
+          env: agentEnv,
         });
         const observedGitState = await resolveObservedPushedHead({
           workspacePath: workspace.path,
           branchName: input.snapshot.pr.branchName,
           startingHeadSha: input.snapshot.pr.headSha,
+          env: agentEnv,
         });
         const observedCommitSha = observedGitState.detectedCommitSha;
 
@@ -761,7 +796,7 @@ export function createAgentRuntimeClient(options: {
           model: options.ai.codex.model,
           allowNpx: options.ai.codex.allowNpx,
           cwd: workspace.path,
-          env: buildAgentEnvironment(options.github, options.linear),
+          env: agentEnv,
           runLabel: 'merge-conflicts',
           schema: mergeConflictResultSchema,
           prompt: buildMergeConflictPrompt(input, workspace),
@@ -781,7 +816,7 @@ export function createAgentRuntimeClient(options: {
             ? `Unresolved merge conflicts remain in ${unmergedPaths.join(', ')}.`
             : 'Merge-conflict agent did not push a resolution commit.');
         const localHeadAfter = (
-          await runGit(['rev-parse', 'HEAD'], workspace.path)
+          await runGit(['rev-parse', 'HEAD'], workspace.path, agentEnv)
         ).stdout.trim();
 
         return {
@@ -820,6 +855,7 @@ export function createAgentRuntimeClient(options: {
         workspacePath: workspace.path,
         branchName: input.snapshot.pr.branchName,
         startingHeadSha: input.snapshot.pr.headSha,
+        env: agentEnv,
       });
       const observedCommitSha = observedGitState.detectedCommitSha;
 
@@ -874,16 +910,22 @@ export function createAgentRuntimeClient(options: {
       const workspace = await options.workspaceManager.preparePullRequestWorkspace(
         input.snapshot.pr,
       );
+      const agentEnv = buildAgentEnvironment(
+        options.github,
+        options.gitIdentity,
+        options.linear,
+        options.ai.codex,
+      );
       const { output: object, usage, providerMetadata } =
-        await runCodexStructuredObject<FixChecksAgentExecution['result']>({
-        model: options.ai.codex.model,
-        allowNpx: options.ai.codex.allowNpx,
-        cwd: workspace.path,
-        env: buildAgentEnvironment(options.github, options.linear),
-        runLabel: 'fix-checks',
-        schema: fixChecksBatchResultSchema,
-        prompt: buildFixChecksPrompt(input),
-      });
+        await runCodexStructuredObject<FixChecksBatchAgentOutput>({
+          model: options.ai.codex.model,
+          allowNpx: options.ai.codex.allowNpx,
+          cwd: workspace.path,
+          env: agentEnv,
+          runLabel: 'fix-checks',
+          schema: fixChecksBatchResultSchema,
+          prompt: buildFixChecksPrompt(input),
+        });
 
       if (object === null) {
         throw new Error('Fix-check agent returned no structured result.');
@@ -891,10 +933,11 @@ export function createAgentRuntimeClient(options: {
 
       normalizeFixCheckOutcomes(input.checks, object);
       const observedGitState = await resolveObservedPushedHead({
-          workspacePath: workspace.path,
-          branchName: input.snapshot.pr.branchName,
-          startingHeadSha: input.snapshot.pr.headSha,
-        });
+        workspacePath: workspace.path,
+        branchName: input.snapshot.pr.branchName,
+        startingHeadSha: input.snapshot.pr.headSha,
+        env: agentEnv,
+      });
       const observedCommitSha = observedGitState.detectedCommitSha;
       if (object.didCommitCode && observedCommitSha === null) {
         throw new Error(
@@ -953,16 +996,22 @@ export function createAgentRuntimeClient(options: {
       const workspace = await options.workspaceManager.preparePullRequestWorkspace(
         input.snapshot.pr,
       );
+      const agentEnv = buildAgentEnvironment(
+        options.github,
+        options.gitIdentity,
+        options.linear,
+        options.ai.codex,
+      );
       const { output: object, usage, providerMetadata } =
-        await runCodexStructuredObject<CodeRabbitAgentExecution['result']>({
-        model: options.ai.codex.model,
-        allowNpx: options.ai.codex.allowNpx,
-        cwd: workspace.path,
-        env: buildAgentEnvironment(options.github, options.linear),
-        runLabel: 'code-rabbit',
-        schema: codeRabbitBatchResultSchema,
-        prompt: buildCodeRabbitPrompt(input),
-      });
+        await runCodexStructuredObject<CodeRabbitBatchAgentOutput>({
+          model: options.ai.codex.model,
+          allowNpx: options.ai.codex.allowNpx,
+          cwd: workspace.path,
+          env: agentEnv,
+          runLabel: 'code-rabbit',
+          schema: codeRabbitBatchResultSchema,
+          prompt: buildCodeRabbitPrompt(input),
+        });
 
       if (object === null) {
         throw new Error('Code Rabbit agent returned no structured result.');
@@ -970,10 +1019,11 @@ export function createAgentRuntimeClient(options: {
 
       const normalizedOutcomes = normalizeCodeRabbitOutcomes(input.items, object);
       const observedGitState = await resolveObservedPushedHead({
-          workspacePath: workspace.path,
-          branchName: input.snapshot.pr.branchName,
-          startingHeadSha: input.snapshot.pr.headSha,
-        });
+        workspacePath: workspace.path,
+        branchName: input.snapshot.pr.branchName,
+        startingHeadSha: input.snapshot.pr.headSha,
+        env: agentEnv,
+      });
       const observedCommitSha = observedGitState.detectedCommitSha;
       const fixCount = normalizedOutcomes.filter(
         (outcome) => outcome.disposition === 'fix',
@@ -1047,12 +1097,18 @@ export function createAgentRuntimeClient(options: {
       const workspace = await options.workspaceManager.preparePullRequestWorkspace(
         input.snapshot.pr,
       );
+      const agentEnv = buildAgentEnvironment(
+        options.github,
+        options.gitIdentity,
+        options.linear,
+        options.ai.codex,
+      );
       const { output: object, usage, providerMetadata } =
-        await runCodexStructuredObject<SpecializedReviewerExecution['result']>({
+        await runCodexStructuredObject<SpecializedReviewerAgentOutput>({
           model: options.ai.codex.model,
           allowNpx: options.ai.codex.allowNpx,
           cwd: workspace.path,
-          env: buildAgentEnvironment(options.github, options.linear),
+          env: agentEnv,
           runLabel: `specialized-${input.reviewer.id}`,
           schema: specializedReviewerResultSchema,
           prompt: buildSpecializedReviewerPrompt(input),
@@ -1067,6 +1123,7 @@ export function createAgentRuntimeClient(options: {
         workspacePath: workspace.path,
         branchName: input.snapshot.pr.branchName,
         startingHeadSha: input.snapshot.pr.headSha,
+        env: agentEnv,
       });
       const observedCommitSha = observedGitState.detectedCommitSha;
 

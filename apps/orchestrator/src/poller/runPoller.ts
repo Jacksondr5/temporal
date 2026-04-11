@@ -130,10 +130,12 @@ export async function runPoller(): Promise<PollerRunSummary> {
   const workspaceManager = createWorkspaceManager({
     workspaceRoot: config.workspaceRoot,
     github: config.github,
+    gitIdentity: config.gitIdentity,
   });
   const agentRuntime = createAgentRuntimeClient({
     ai: config.ai,
     github: config.github,
+    gitIdentity: config.gitIdentity,
     linear: config.linear,
     workspaceManager,
   });

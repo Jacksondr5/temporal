@@ -35,7 +35,16 @@ FROM node:22-bookworm-slim AS runtime
 ENV NODE_ENV=production
 
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends git gh \
+  && apt-get install -y --no-install-recommends ca-certificates curl git \
+  && install -m 0755 -d /etc/apt/keyrings \
+  && curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+    -o /etc/apt/keyrings/githubcli-archive-keyring.gpg \
+  && chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg \
+  && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
+    > /etc/apt/sources.list.d/github-cli.list \
+  && apt-get update \
+  && apt-get install -y --no-install-recommends gh \
+  && gh auth setup-git --hostname github.com --force \
   && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -45,11 +54,5 @@ COPY apps/orchestrator/package.json ./apps/orchestrator/package.json
 COPY --from=prod-deps /app/node_modules ./node_modules
 COPY --from=prod-deps /app/apps/orchestrator/node_modules ./apps/orchestrator/node_modules
 COPY --from=build /app/apps/orchestrator/lib ./apps/orchestrator/lib
-
-RUN groupadd --system appgroup \
-  && useradd --system --gid appgroup --create-home --home-dir /home/appuser appuser \
-  && chown -R appuser:appgroup /app
-
-USER appuser
 
 CMD ["node", "apps/orchestrator/lib/worker.js"]
