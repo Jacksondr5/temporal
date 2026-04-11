@@ -18,6 +18,23 @@ export interface PreparedPullRequestWorkspace {
   reusedExistingClone: boolean;
 }
 
+export interface PreparedMergeConflictWorkspace extends PreparedPullRequestWorkspace {
+  baseBranchName: string;
+  baseSha: string;
+  mergeAttemptStatus: 'clean_merge' | 'conflicted';
+  mergeOutput: string;
+  conflictedFiles: string[];
+}
+
+export type AgentExecutionStatus = 'completed' | 'skipped' | 'blocked';
+
+export interface MergeConflictAgentRunInput {
+  snapshot: PullRequestSnapshot;
+  baseBranchName: string;
+  baseSha: string;
+  provider?: AgentProvider;
+}
+
 export interface CodeRabbitAgentRunInput {
   snapshot: PullRequestSnapshot;
   items: CodeRabbitReviewItem[];
@@ -65,6 +82,34 @@ export const codeRabbitThreadOutcomeSchema = z.object({
   githubCommentId: z.string().nullable(),
   linearIssueId: z.string().nullable(),
 });
+
+export const mergeConflictResultSchema = z.object({
+  overallSummary: z.string().min(1),
+  investigationSummary: z.string().min(1),
+  finalAssessment: z.string().min(1),
+  whyNoCommit: z.string().nullable(),
+  commandsSummary: z.array(z.string()),
+  didModifyCode: z.boolean(),
+  didCommitCode: z.boolean(),
+  observedCommitSha: z.string().nullable().optional(),
+});
+
+export type MergeConflictAgentResult = z.infer<typeof mergeConflictResultSchema>;
+
+export interface MergeConflictAgentExecution {
+  status: AgentExecutionStatus;
+  provider: AgentProvider;
+  workspace: PreparedMergeConflictWorkspace | null;
+  logFilePath: string | null;
+  startingHeadSha: string | null;
+  localHeadAfter: string | null;
+  remoteHeadAfter: string | null;
+  summary: string;
+  blockedReason: string | null;
+  usage: LanguageModelUsage | null;
+  providerMetadata: ProviderMetadata | null;
+  result: MergeConflictAgentResult | null;
+}
 
 export const codeRabbitBatchResultSchema = z.object({
   overallSummary: z.string().min(1),
@@ -238,6 +283,24 @@ export function normalizeCodeRabbitOutcomes(
   }
 
   return result.outcomes;
+}
+
+export function normalizeMergeConflictResult(
+  result: MergeConflictAgentResult,
+): MergeConflictAgentResult {
+  if (result.didCommitCode && !result.didModifyCode) {
+    throw new Error(
+      'Merge-conflict agent reported didCommitCode=true while didModifyCode=false.',
+    );
+  }
+
+  if (!result.didCommitCode && result.whyNoCommit === null) {
+    throw new Error(
+      'Merge-conflict agent must explain why no commit was created when didCommitCode=false.',
+    );
+  }
+
+  return result;
 }
 
 export function normalizeFixCheckOutcomes(

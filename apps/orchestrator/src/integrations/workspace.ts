@@ -1,13 +1,16 @@
+import { execFile } from 'node:child_process';
 import { mkdir, rm, stat } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
-import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import type {
   GitHubRuntimeConfig,
   GitIdentityRuntimeConfig,
 } from '../config.js';
+import type {
+  PreparedMergeConflictWorkspace,
+  PreparedPullRequestWorkspace,
+} from '../domain/agentRuntime.js';
 import type { PullRequestRef } from '../domain/github.js';
-import type { PreparedPullRequestWorkspace } from '../domain/agentRuntime.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -15,6 +18,11 @@ export interface WorkspaceManager {
   preparePullRequestWorkspace(
     pr: PullRequestRef,
   ): Promise<PreparedPullRequestWorkspace>;
+  prepareMergeConflictWorkspace(input: {
+    pr: PullRequestRef;
+    baseBranchName: string;
+    baseSha: string;
+  }): Promise<PreparedMergeConflictWorkspace>;
   removePullRequestWorkspace(pr: PullRequestRef): Promise<void>;
 }
 
@@ -58,10 +66,13 @@ function createGitEnv(githubToken?: string): NodeJS.ProcessEnv {
   return env;
 }
 
-async function runGit(args: string[], options?: {
-  cwd?: string;
-  githubToken?: string;
-}): Promise<{ stdout: string; stderr: string }> {
+async function runGit(
+  args: string[],
+  options?: {
+    cwd?: string;
+    githubToken?: string;
+  },
+): Promise<{ stdout: string; stderr: string }> {
   return await execFileAsync('git', args, {
     cwd: options?.cwd,
     maxBuffer: 1024 * 1024 * 10,
@@ -94,6 +105,90 @@ async function configureGitIdentity(
   });
 }
 
+async function listConflictedFiles(workspacePath: string): Promise<string[]> {
+  const output = (
+    await runGit(['diff', '--name-only', '--diff-filter=U'], {
+      cwd: workspacePath,
+    })
+  ).stdout.trim();
+  return output.length === 0 ? [] : output.split('\n');
+}
+
+function getGitErrorOutput(error: unknown): string {
+  if (error !== null && typeof error === 'object') {
+    const processError = error as { stdout?: unknown; stderr?: unknown };
+    const output = [
+      typeof processError.stdout === 'string' ? processError.stdout : '',
+      typeof processError.stderr === 'string' ? processError.stderr : '',
+    ]
+      .filter(Boolean)
+      .join('\n');
+
+    if (output.length > 0) {
+      return output;
+    }
+  }
+
+  return error instanceof Error ? error.message : 'git merge failed';
+}
+
+async function preparePullRequestWorkspace(input: {
+  workspaceRoot: string;
+  github: GitHubRuntimeConfig;
+  gitIdentity: GitIdentityRuntimeConfig;
+  pr: PullRequestRef;
+}): Promise<PreparedPullRequestWorkspace> {
+  const workspacePath = getWorkspacePath(input.workspaceRoot, input.pr);
+  const remoteUrl = formatRepositoryUrl(input.pr);
+  const exists = await pathExists(workspacePath);
+
+  if (!exists) {
+    await cloneWorkspace(workspacePath, remoteUrl, input.github.token);
+  }
+
+  await runGit(['remote', 'set-url', 'origin', remoteUrl], {
+    cwd: workspacePath,
+  });
+  await configureGitIdentity(workspacePath, input.gitIdentity);
+  await runGit(['fetch', 'origin', input.pr.branchName, '--prune'], {
+    cwd: workspacePath,
+    githubToken: input.github.token,
+  });
+  await runGit(
+    ['checkout', '-B', input.pr.branchName, `origin/${input.pr.branchName}`],
+    {
+      cwd: workspacePath,
+    },
+  );
+  await runGit(['reset', '--hard', `origin/${input.pr.branchName}`], {
+    cwd: workspacePath,
+  });
+  await runGit(['clean', '-fd'], { cwd: workspacePath });
+
+  const head = (
+    await runGit(['rev-parse', 'HEAD'], { cwd: workspacePath })
+  ).stdout.trim();
+  if (head !== input.pr.headSha) {
+    console.warn(
+      [
+        'Prepared workspace head did not match expected SHA',
+        `repo=${input.pr.repository.owner}/${input.pr.repository.name}`,
+        `pr=${input.pr.number}`,
+        `expected=${input.pr.headSha}`,
+        `actual=${head}`,
+      ].join(' | '),
+    );
+  }
+
+  return {
+    path: workspacePath,
+    repoSlug: `${input.pr.repository.owner}/${input.pr.repository.name}`,
+    branchName: input.pr.branchName,
+    headSha: head,
+    reusedExistingClone: exists,
+  };
+}
+
 export function createWorkspaceManager(options: {
   workspaceRoot: string;
   github: GitHubRuntimeConfig;
@@ -101,53 +196,51 @@ export function createWorkspaceManager(options: {
 }): WorkspaceManager {
   return {
     preparePullRequestWorkspace: async (pr) => {
-      const workspacePath = getWorkspacePath(options.workspaceRoot, pr);
-      const remoteUrl = formatRepositoryUrl(pr);
-      const exists = await pathExists(workspacePath);
-
-      if (!exists) {
-        await cloneWorkspace(workspacePath, remoteUrl, options.github.token);
-      }
-
-      await runGit(['remote', 'set-url', 'origin', remoteUrl], {
-        cwd: workspacePath,
+      return await preparePullRequestWorkspace({
+        workspaceRoot: options.workspaceRoot,
+        github: options.github,
+        gitIdentity: options.gitIdentity,
+        pr,
       });
-      await configureGitIdentity(workspacePath, options.gitIdentity);
-      await runGit(['fetch', 'origin', pr.branchName, '--prune'], {
-        cwd: workspacePath,
+    },
+    prepareMergeConflictWorkspace: async (input) => {
+      const workspace = await preparePullRequestWorkspace({
+        workspaceRoot: options.workspaceRoot,
+        github: options.github,
+        gitIdentity: options.gitIdentity,
+        pr: input.pr,
+      });
+
+      await runGit(['fetch', 'origin', input.baseBranchName, '--prune'], {
+        cwd: workspace.path,
         githubToken: options.github.token,
       });
-      await runGit(
-        ['checkout', '-B', pr.branchName, `origin/${pr.branchName}`],
-        { cwd: workspacePath },
-      );
-      await runGit(['reset', '--hard', `origin/${pr.branchName}`], {
-        cwd: workspacePath,
-      });
-      await runGit(['clean', '-fd'], { cwd: workspacePath });
 
-      const head = (
-        await runGit(['rev-parse', 'HEAD'], { cwd: workspacePath })
-      ).stdout.trim();
-      if (head !== pr.headSha) {
-        console.warn(
-          [
-            'Prepared workspace head did not match expected SHA',
-            `repo=${pr.repository.owner}/${pr.repository.name}`,
-            `pr=${pr.number}`,
-            `expected=${pr.headSha}`,
-            `actual=${head}`,
-          ].join(' | '),
+      try {
+        const result = await runGit(
+          ['merge', '--no-ff', '--no-edit', `origin/${input.baseBranchName}`],
+          {
+            cwd: workspace.path,
+          },
         );
+        return {
+          ...workspace,
+          baseBranchName: input.baseBranchName,
+          baseSha: input.baseSha,
+          mergeAttemptStatus: 'clean_merge',
+          mergeOutput: [result.stdout, result.stderr].filter(Boolean).join('\n'),
+          conflictedFiles: [],
+        };
+      } catch (error) {
+        return {
+          ...workspace,
+          baseBranchName: input.baseBranchName,
+          baseSha: input.baseSha,
+          mergeAttemptStatus: 'conflicted',
+          mergeOutput: getGitErrorOutput(error),
+          conflictedFiles: await listConflictedFiles(workspace.path),
+        };
       }
-
-      return {
-        path: workspacePath,
-        repoSlug: `${pr.repository.owner}/${pr.repository.name}`,
-        branchName: pr.branchName,
-        headSha: head,
-        reusedExistingClone: exists,
-      };
     },
     removePullRequestWorkspace: async (pr) => {
       await rm(getWorkspacePath(options.workspaceRoot, pr), {

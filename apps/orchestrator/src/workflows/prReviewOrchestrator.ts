@@ -3,6 +3,7 @@ import type * as activities from '../activities.js';
 import type {
   CodeRabbitAgentExecution,
   FixChecksAgentExecution,
+  MergeConflictAgentExecution,
   SpecializedReviewerExecution,
 } from '../domain/agentRuntime.js';
 import type { PullRequestSnapshot } from '../domain/github.js';
@@ -47,11 +48,13 @@ const {
   listReviewerRunsForPullRequest,
   loadReviewerPackDefinition,
   insertReviewerRun,
+  postPullRequestComment,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: '1 minute',
 });
 
 const {
+  runMergeConflictAgent,
   runFixChecksAgent,
   persistFixChecksExecution,
   runCodeRabbitAgent,
@@ -68,6 +71,29 @@ const {
 
 function toRunDetailsJson(details: Record<string, unknown>): string {
   return JSON.stringify(details);
+}
+
+function toMergeConflictRunDetails(
+  execution: MergeConflictAgentExecution,
+): string {
+  return toRunDetailsJson({
+    provider: execution.provider,
+    status: execution.status,
+    usage: execution.usage,
+    providerMetadata: execution.providerMetadata,
+    logFilePath: execution.logFilePath,
+    workspacePath: execution.workspace?.path ?? null,
+    reusedExistingClone: execution.workspace?.reusedExistingClone ?? null,
+    startingHeadSha: execution.startingHeadSha,
+    localHeadAfter: execution.localHeadAfter,
+    remoteHeadAfter: execution.remoteHeadAfter,
+    baseBranchName: execution.workspace?.baseBranchName ?? null,
+    baseSha: execution.workspace?.baseSha ?? null,
+    conflictedFiles: execution.workspace?.conflictedFiles ?? [],
+    mergeOutput: execution.workspace?.mergeOutput ?? null,
+    blockedReason: execution.blockedReason,
+    result: execution.result,
+  });
 }
 
 function toFixChecksRunDetails(
@@ -161,6 +187,20 @@ function parseReviewerHandoffItems(
   }
 }
 
+function buildMergeConflictBlockedComment(blockedReason: string): string {
+  return [
+    'Automation is blocked because this PR has merge conflicts that could not be resolved safely.',
+    '',
+    `Reason: ${blockedReason}`,
+    '',
+    'The remaining review automation will wait until the conflict is resolved.',
+  ].join('\n');
+}
+
+function toErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback;
+}
+
 export async function prReviewOrchestratorWorkflow(
   input: PrReviewWorkflowInput,
 ): Promise<PrReviewWorkflowState> {
@@ -209,6 +249,151 @@ export async function prReviewOrchestratorWorkflow(
       specializedReviewers,
     });
     state = applyReconciliationActionPhase(state, reconciliation);
+
+    if (reconciliation.action.type === 'resolve_merge_conflicts') {
+      const { baseBranchName, baseSha } = reconciliation.action;
+      const workflowId = formatPrWorkflowId(snapshot.pr);
+      const runKey = formatPrRunKey({
+        workflowId,
+        passNumber: state.reconciliationCount + 1,
+        phase: 'resolve_merge_conflicts',
+        targetHeadSha: snapshot.pr.headSha,
+      });
+      const repoSlug = `${snapshot.pr.repository.owner}/${snapshot.pr.repository.name}`;
+      await recordPrRun({
+        repoSlug,
+        prNumber: snapshot.pr.number,
+        workflowId,
+        runKey,
+        phase: 'resolve_merge_conflicts',
+        status: 'running',
+        targetHeadSha: snapshot.pr.headSha,
+        summary: `Resolving merge conflicts with ${baseBranchName}.`,
+        detailsJson: toRunDetailsJson({
+          startingHeadSha: snapshot.pr.headSha,
+          baseBranchName,
+          baseSha,
+          mergeabilityState: snapshot.mergeabilityState,
+        }),
+      });
+
+      try {
+        const execution = await runMergeConflictAgent({
+          snapshot,
+          baseBranchName,
+          baseSha,
+        });
+
+        if (execution.status === 'completed' && execution.result?.observedCommitSha) {
+          state = markWorkflowDirtyForHead(state, execution.result.observedCommitSha);
+        }
+
+        state = {
+          ...state,
+          blockedReason: execution.blockedReason ?? state.blockedReason,
+        };
+
+        await recordPrRun({
+          repoSlug,
+          prNumber: snapshot.pr.number,
+          workflowId,
+          runKey,
+          phase: 'resolve_merge_conflicts',
+          status:
+            execution.status === 'completed'
+              ? 'completed'
+              : execution.status === 'blocked'
+                ? 'blocked'
+                : 'skipped',
+          targetHeadSha: snapshot.pr.headSha,
+          summary: execution.summary,
+          detailsJson: toMergeConflictRunDetails(execution),
+        });
+
+        if (execution.blockedReason) {
+          try {
+            await postPullRequestComment({
+              repository: snapshot.pr.repository,
+              prNumber: snapshot.pr.number,
+              body: buildMergeConflictBlockedComment(execution.blockedReason),
+            });
+          } catch (commentError) {
+            await recordWorkflowError({
+              repoSlug,
+              prNumber: snapshot.pr.number,
+              workflowId,
+              errorType: 'post_merge_conflict_block_comment_failed',
+              errorMessage: toErrorMessage(
+                commentError,
+                'Unknown merge conflict block comment failure.',
+              ),
+              phase: 'resolving_merge_conflicts',
+              retryable: true,
+              blocked: true,
+            });
+          }
+        }
+      } catch (error) {
+        const message = toErrorMessage(
+          error,
+          'Unknown merge conflict resolution failure.',
+        );
+        await recordWorkflowError({
+          repoSlug,
+          prNumber: snapshot.pr.number,
+          workflowId,
+          errorType: 'run_merge_conflict_agent_failed',
+          errorMessage: message,
+          phase: 'resolving_merge_conflicts',
+          retryable: false,
+          blocked: true,
+        });
+        await recordPrRun({
+          repoSlug,
+          prNumber: snapshot.pr.number,
+          workflowId,
+          runKey,
+          phase: 'resolve_merge_conflicts',
+          status: 'failed',
+          targetHeadSha: snapshot.pr.headSha,
+          summary: message,
+          detailsJson: toRunDetailsJson({
+            errorType: 'run_merge_conflict_agent_failed',
+            errorMessage: message,
+            startingHeadSha: snapshot.pr.headSha,
+            baseBranchName,
+            baseSha,
+          }),
+        });
+
+        state = {
+          ...state,
+          blockedReason: message,
+        };
+
+        try {
+          await postPullRequestComment({
+            repository: snapshot.pr.repository,
+            prNumber: snapshot.pr.number,
+            body: buildMergeConflictBlockedComment(message),
+          });
+        } catch (commentError) {
+          await recordWorkflowError({
+            repoSlug,
+            prNumber: snapshot.pr.number,
+            workflowId,
+            errorType: 'post_merge_conflict_block_comment_failed',
+            errorMessage: toErrorMessage(
+              commentError,
+              'Unknown merge conflict block comment failure.',
+            ),
+            phase: 'resolving_merge_conflicts',
+            retryable: true,
+            blocked: true,
+          });
+        }
+      }
+    }
 
     if (reconciliation.action.type === 'fix_checks') {
       const { failingChecks } = reconciliation.action;
