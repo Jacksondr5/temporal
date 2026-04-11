@@ -19,14 +19,6 @@ export const listPullRequests = query({
 
     return Promise.all(
       prs.map(async (pr) => {
-        const errors = await ctx.db
-          .query("workflowErrors")
-          .withIndex("by_repo_slug_and_pr_number", (q) =>
-            q.eq("repoSlug", pr.repoSlug).eq("prNumber", pr.prNumber),
-          )
-          .order("desc")
-          .take(1);
-
         const latestRun = await ctx.db
           .query("prRuns")
           .withIndex("by_repo_slug_and_pr_number_and_started_at", (q) =>
@@ -37,7 +29,8 @@ export const listPullRequests = query({
 
         return {
           ...pr,
-          hasBlockingError: errors.some((e) => e.blocked),
+          lifecycleState: pr.lifecycleState ?? "open",
+          hasBlockingError: pr.blockedReason !== null,
           latestRunStatus: latestRun[0]?.status ?? null,
           latestRunPhase: latestRun[0]?.phase ?? null,
         };
@@ -133,7 +126,10 @@ export const getPullRequestDetail = query({
     );
 
     return {
-      pr,
+      pr: {
+        ...pr,
+        lifecycleState: pr.lifecycleState ?? "open",
+      },
       threads: threadsWithDecisions,
       runs,
       reviewerRuns,

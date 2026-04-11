@@ -8,6 +8,7 @@ import {
   PhaseBadge,
   DirtyBadge,
   DispositionBadge,
+  LifecycleBadge,
 } from "../../../../components/status-badge";
 import { TimeAgo } from "../../../../components/time-ago";
 import { RunTimeline, ReviewerRunList } from "../../../../components/run-detail";
@@ -26,6 +27,8 @@ import {
   RotateCw,
 } from "lucide-react";
 import { Button } from "../../../../components/ui/button";
+
+const MANUAL_EVENT_CLAIM_STALE_MS = 5 * 60 * 1000;
 
 export default function PullRequestDetailPage({
   params,
@@ -78,15 +81,30 @@ export default function PullRequestDetailPage({
 
   const { pr, threads, runs, reviewerRuns, artifacts, errors, events } = detail;
   const latestManualEvent = events.find((event) => event.kind === "manual") ?? null;
-  const latestRunStartedAt = runs[0]?.startedAt ?? null;
-  const manualRequestPending =
-    latestManualEvent !== null &&
-    (latestRunStartedAt === null ||
-      new Date(latestRunStartedAt).getTime() <
-        new Date(latestManualEvent.observedAt).getTime());
-  const manualRequestLabel = manualRequestPending
-    ? "Re-evaluate queued"
-    : "Re-evaluate now";
+  const isTerminal = pr.lifecycleState !== "open";
+  const nowMs = Date.now();
+  const manualClaimIsFresh =
+    latestManualEvent?.claimedAt != null &&
+    nowMs - new Date(latestManualEvent.claimedAt).getTime() < MANUAL_EVENT_CLAIM_STALE_MS;
+  const manualRequestState =
+    latestManualEvent === null
+      ? null
+      : latestManualEvent.processedAt != null
+        ? "picked_up"
+        : manualClaimIsFresh
+          ? "dispatching"
+          : "queued";
+  const manualRequestPending = manualRequestState === "queued" || manualRequestState === "dispatching";
+  const manualRequestLabel =
+    manualRequestState === "dispatching" || manualRequestState === "queued"
+      ? "Re-evaluate queued"
+      : "Re-evaluate now";
+  const manualRequestStatusTime =
+    manualRequestState === "picked_up"
+      ? latestManualEvent?.processedAt ?? latestManualEvent?.observedAt ?? null
+      : manualRequestState === "dispatching"
+        ? latestManualEvent?.claimedAt ?? latestManualEvent?.observedAt ?? null
+        : latestManualEvent?.observedAt ?? null;
 
   async function handleManualReevaluate(): Promise<void> {
     if (isSubmittingManualRequest) {
@@ -146,16 +164,21 @@ export default function PullRequestDetailPage({
             type="button"
             variant={manualRequestPending ? "secondary" : "outline"}
             size="sm"
-            disabled={isSubmittingManualRequest || manualRequestPending}
+            disabled={isSubmittingManualRequest || manualRequestPending || isTerminal}
             onClick={handleManualReevaluate}
           >
             <RotateCw
               className={isSubmittingManualRequest ? "animate-spin" : undefined}
             />
-            {isSubmittingManualRequest ? "Queueing..." : manualRequestLabel}
+            {isSubmittingManualRequest
+              ? "Queueing..."
+              : isTerminal
+                ? `PR ${pr.lifecycleState}`
+                : manualRequestLabel}
           </Button>
         </div>
         <div className="mt-1.5 flex items-center gap-3 text-xs text-muted-foreground font-mono">
+          <LifecycleBadge lifecycleState={pr.lifecycleState} />
           <span>
             branch:{" "}
             <span className="text-foreground/80">{pr.branchName}</span>
@@ -174,8 +197,12 @@ export default function PullRequestDetailPage({
               <span>
                 Manual request:{" "}
                 <span className="text-foreground/80">
-                  {manualRequestPending ? "queued" : "picked up"}{" "}
-                  <TimeAgo date={latestManualEvent.observedAt} />
+                  {manualRequestState === "picked_up"
+                    ? "picked up"
+                    : manualRequestState === "dispatching"
+                      ? "dispatching"
+                      : "queued"}{" "}
+                  <TimeAgo date={manualRequestStatusTime} />
                 </span>
               </span>
             )}
@@ -193,6 +220,7 @@ export default function PullRequestDetailPage({
             <Zap className="h-3.5 w-3.5" />
             Phase:
           </div>
+          <LifecycleBadge lifecycleState={pr.lifecycleState} />
           <PhaseBadge phase={pr.currentPhase} />
           <DirtyBadge dirty={pr.dirty} />
           {pr.blockedReason && (

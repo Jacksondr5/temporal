@@ -30,18 +30,6 @@ function sanitizePathSegment(value: string): string {
   return value.replace(/[^A-Za-z0-9._-]/g, '_');
 }
 
-function resolveGitHostFromApiUrl(apiUrl: string): string {
-  try {
-    return new URL(apiUrl).host;
-  } catch {
-    return 'github.com';
-  }
-}
-
-function formatRepositoryUrl(pr: PullRequestRef, gitHost: string): string {
-  return `https://${gitHost}/${pr.repository.owner}/${pr.repository.name}.git`;
-}
-
 function getWorkspacePath(workspaceRoot: string, pr: PullRequestRef): string {
   return join(
     workspaceRoot,
@@ -88,13 +76,42 @@ async function runGit(
   });
 }
 
+async function runGh(
+  args: string[],
+  options?: {
+    cwd?: string;
+    githubToken?: string;
+  },
+): Promise<{ stdout: string; stderr: string }> {
+  return await execFileAsync('gh', args, {
+    cwd: options?.cwd,
+    maxBuffer: 1024 * 1024 * 10,
+    env: createGitEnv(options?.githubToken),
+  });
+}
+
 async function cloneWorkspace(
   path: string,
-  remoteUrl: string,
+  repository: PullRequestRef['repository'],
+  branchName: string,
   githubToken: string,
 ): Promise<void> {
   await mkdir(dirname(path), { recursive: true });
-  await runGit(['clone', remoteUrl, path], { githubToken });
+  await runGh(
+    [
+      'repo',
+      'clone',
+      `${repository.owner}/${repository.name}`,
+      path,
+      '--',
+      '--branch',
+      branchName,
+      '--single-branch',
+    ],
+    {
+      githubToken,
+    },
+  );
 }
 
 async function configureGitIdentity(
@@ -184,33 +201,26 @@ async function preparePullRequestWorkspace(input: {
   pr: PullRequestRef;
 }): Promise<PreparedPullRequestWorkspace> {
   const workspacePath = getWorkspacePath(input.workspaceRoot, input.pr);
-  const remoteUrl = formatRepositoryUrl(
-    input.pr,
-    resolveGitHostFromApiUrl(input.github.apiUrl),
-  );
   const exists = await pathExists(workspacePath);
 
   if (!exists) {
-    await cloneWorkspace(workspacePath, remoteUrl, input.github.token);
+    await cloneWorkspace(
+      workspacePath,
+      input.pr.repository,
+      input.pr.branchName,
+      input.github.token,
+    );
+    await configureGitIdentity(workspacePath, input.gitIdentity);
+  } else {
+    await runGit(['fetch', 'origin', input.pr.branchName, '--prune'], {
+      cwd: workspacePath,
+      githubToken: input.github.token,
+    });
+    await runGit(['reset', '--hard', `origin/${input.pr.branchName}`], {
+      cwd: workspacePath,
+    });
   }
 
-  await runGit(['remote', 'set-url', 'origin', remoteUrl], {
-    cwd: workspacePath,
-  });
-  await configureGitIdentity(workspacePath, input.gitIdentity);
-  await runGit(['fetch', 'origin', input.pr.branchName, '--prune'], {
-    cwd: workspacePath,
-    githubToken: input.github.token,
-  });
-  await runGit(
-    ['checkout', '-B', input.pr.branchName, `origin/${input.pr.branchName}`],
-    {
-      cwd: workspacePath,
-    },
-  );
-  await runGit(['reset', '--hard', `origin/${input.pr.branchName}`], {
-    cwd: workspacePath,
-  });
   await runGit(['clean', '-fd'], { cwd: workspacePath });
 
   const head = (

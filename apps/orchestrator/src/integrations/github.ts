@@ -6,6 +6,7 @@ import type {
   GitHubReviewSummary,
   GitHubReviewThread,
   PullRequestBaseRef,
+  PullRequestLifecycleState,
   PullRequestSnapshot,
   PullRequestRef,
   RepositoryRef,
@@ -37,6 +38,9 @@ interface GitHubApiPullRequest {
     login: string;
   } | null;
   updated_at: string;
+  state: 'open' | 'closed';
+  merged: boolean;
+  merged_at: string | null;
 }
 
 interface GitHubApiPullRequestFile {
@@ -161,6 +165,10 @@ export interface GitHubClient {
     base: PullRequestBaseRef;
     mergeabilityState: GitHubMergeabilityState;
   }>;
+  fetchPullRequestLifecycle(pr: PullRequestRef): Promise<{
+    pr: PullRequestRef;
+    lifecycleState: PullRequestLifecycleState;
+  }>;
   fetchPullRequestSnapshot(pr: PullRequestRef): Promise<PullRequestSnapshot>;
   postPullRequestComment(input: {
     repository: RepositoryRef;
@@ -204,6 +212,16 @@ function normalizeMergeabilityState(
   }
 
   return pullRequest.mergeable_state === 'dirty' ? 'conflicting' : 'other';
+}
+
+function normalizePullRequestLifecycleState(
+  pullRequest: GitHubApiPullRequest,
+): PullRequestLifecycleState {
+  if (pullRequest.state === 'open') {
+    return 'open';
+  }
+
+  return pullRequest.merged ? 'merged' : 'closed';
 }
 
 async function requestGitHub<TResponse>(
@@ -571,6 +589,22 @@ export function createGitHubClient(config: GitHubRuntimeConfig): GitHubClient {
         checks: Array.from(checksByName.values()),
         reviewSummaries: reviews,
         unresolvedThreads,
+      };
+    },
+    fetchPullRequestLifecycle: async (pr) => {
+      const pullRequest = await requestGitHub<GitHubApiPullRequest>(
+        config,
+        `/repos/${pr.repository.owner}/${pr.repository.name}/pulls/${pr.number}`,
+      );
+
+      return {
+        pr: {
+          repository: pr.repository,
+          number: pullRequest.number,
+          branchName: pullRequest.head.ref,
+          headSha: pullRequest.head.sha,
+        },
+        lifecycleState: normalizePullRequestLifecycleState(pullRequest),
       };
     },
     postPullRequestComment: async (input) => {

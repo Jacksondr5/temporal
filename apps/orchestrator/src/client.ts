@@ -6,7 +6,8 @@ import {
   type PrReviewWorkflowSignal,
   type PrReviewWorkflowInput,
 } from './domain/workflow.js';
-import { prActivityObservedSignal } from './workflows/signals.js';
+import type { PullRequestLifecycleState, PullRequestRef } from './domain/github.js';
+import { prActivityObservedSignal, prWorkflowShutdownSignal } from './workflows/signals.js';
 
 export async function createTemporalClient(): Promise<Client> {
   const config = loadTemporalRuntimeConfig();
@@ -33,6 +34,30 @@ export async function signalPullRequestActivity(
     });
 
     return handle.workflowId;
+  } finally {
+    await connection.close();
+  }
+}
+
+export async function signalPullRequestTerminalState(input: {
+  pr: PullRequestRef;
+  lifecycleState: PullRequestLifecycleState;
+  observedAt: string;
+  headSha: string;
+}): Promise<string> {
+  const config = loadTemporalRuntimeConfig();
+  const connection = await Connection.connect(config.connectionOptions);
+  const client = new Client({ connection, namespace: config.namespace });
+
+  try {
+    const workflowId = formatPrWorkflowId(input.pr);
+    const handle = client.workflow.getHandle(workflowId);
+    await handle.signal(prWorkflowShutdownSignal, {
+      lifecycleState: input.lifecycleState,
+      observedAt: input.observedAt,
+      headSha: input.headSha,
+    });
+    return workflowId;
   } finally {
     await connection.close();
   }

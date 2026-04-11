@@ -6,13 +6,17 @@ import type {
   MergeConflictAgentExecution,
   SpecializedReviewerExecution,
 } from '../domain/agentRuntime.js';
-import type { PullRequestSnapshot } from '../domain/github.js';
+import type {
+  PullRequestLifecycleState,
+  PullRequestSnapshot,
+} from '../domain/github.js';
 import { fileMatchesGlobs } from '../domain/glob.js';
 import type { SpecializedReviewerDefinition } from '../domain/policy.js';
 import type {
   PrReviewWorkflowInput,
   PrReviewWorkflowSignal,
   PrReviewWorkflowState,
+  PrReviewWorkflowTerminalSignal,
 } from '../domain/workflow.js';
 import type { SpecializedReviewerHandoffItem } from '../domain/review.js';
 import {
@@ -49,6 +53,7 @@ const {
   loadReviewerPackDefinition,
   insertReviewerRun,
   postPullRequestComment,
+  removePullRequestWorkspace,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: '1 minute',
 });
@@ -201,24 +206,104 @@ function toErrorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback;
 }
 
+function buildTerminalSummary(lifecycleState: PullRequestLifecycleState): string {
+  return lifecycleState === 'merged'
+    ? 'PR merged. Workflow concluded and workspace deleted.'
+    : 'PR closed. Workflow concluded and workspace deleted.';
+}
+
+function buildTerminalSkipSummary(
+  lifecycleState: PullRequestLifecycleState,
+): string {
+  return `Skipped because the PR is ${lifecycleState}.`;
+}
+
+function createTerminalCleanupState(
+  state: PrReviewWorkflowState,
+  terminalSignal: PrReviewWorkflowTerminalSignal,
+): PrReviewWorkflowState {
+  return {
+    ...state,
+    lifecycleState: terminalSignal.lifecycleState,
+    phase: 'terminal_cleanup',
+    dirty: false,
+    blockedReason: null,
+    dirtyReasons: [],
+    latestKnownHeadSha: terminalSignal.headSha,
+    latestReconciliation: {
+      action: {
+        type: 'noop',
+        reason: buildTerminalSummary(terminalSignal.lifecycleState),
+      },
+      snapshotHeadSha: terminalSignal.headSha,
+    },
+  };
+}
+
 export async function prReviewOrchestratorWorkflow(
   input: PrReviewWorkflowInput,
 ): Promise<PrReviewWorkflowState> {
   let state = await initializePrReviewWorkflow(input);
-  let shutdownRequested = false;
+  let terminalSignal: PrReviewWorkflowTerminalSignal | null = null;
 
   setHandler(prActivityObservedSignal, (signal: PrReviewWorkflowSignal) => {
     state = recordWorkflowSignal(state, signal);
   });
-  setHandler(prWorkflowShutdownSignal, () => {
-    shutdownRequested = true;
+  setHandler(prWorkflowShutdownSignal, (signal: PrReviewWorkflowTerminalSignal) => {
+    terminalSignal = signal;
+    state = {
+      ...state,
+      latestKnownHeadSha: signal.headSha,
+    };
   });
   setHandler(prWorkflowStateQuery, () => state);
 
-  while (true) {
-    await condition(() => state.dirty || shutdownRequested);
+  const getTerminalSignal = (): PrReviewWorkflowTerminalSignal | null =>
+    terminalSignal;
 
-    if (shutdownRequested && !state.dirty) {
+  const performTerminalCleanup = async (): Promise<PrReviewWorkflowState> => {
+    if (terminalSignal === null) {
+      return state;
+    }
+
+    const workflowId = formatPrWorkflowId(state.pr);
+    const repoSlug = `${state.pr.repository.owner}/${state.pr.repository.name}`;
+    state = createTerminalCleanupState(state, terminalSignal);
+
+    await recordWorkflowState(input, toWorkflowStatusRecord(state));
+    await removePullRequestWorkspace({
+      ...state.pr,
+      headSha: state.latestKnownHeadSha,
+    });
+    await recordPrRun({
+      repoSlug,
+      prNumber: state.pr.number,
+      workflowId,
+      runKey: formatPrRunKey({
+        workflowId,
+        passNumber: state.reconciliationCount + 1,
+        phase: 'terminal_cleanup',
+        targetHeadSha: state.latestKnownHeadSha,
+      }),
+      phase: 'terminal_cleanup',
+      status: 'completed',
+      targetHeadSha: state.latestKnownHeadSha,
+      summary: buildTerminalSummary(state.lifecycleState),
+      detailsJson: toRunDetailsJson({
+        lifecycleState: state.lifecycleState,
+        cleanupObservedAt: terminalSignal.observedAt,
+        workspaceDeleted: true,
+      }),
+    });
+
+    return state;
+  };
+
+  while (true) {
+    await condition(() => state.dirty || terminalSignal !== null);
+
+    if (terminalSignal !== null) {
+      state = await performTerminalCleanup();
       return state;
     }
 
@@ -250,6 +335,11 @@ export async function prReviewOrchestratorWorkflow(
     });
     state = applyReconciliationActionPhase(state, reconciliation);
 
+    if (terminalSignal !== null) {
+      state = await performTerminalCleanup();
+      return state;
+    }
+
     if (reconciliation.action.type === 'resolve_merge_conflicts') {
       const { baseBranchName, baseSha } = reconciliation.action;
       const workflowId = formatPrWorkflowId(snapshot.pr);
@@ -276,6 +366,26 @@ export async function prReviewOrchestratorWorkflow(
           mergeabilityState: snapshot.mergeabilityState,
         }),
       });
+
+      const receivedTerminalSignal = getTerminalSignal();
+      if (receivedTerminalSignal !== null) {
+        await recordPrRun({
+          repoSlug,
+          prNumber: snapshot.pr.number,
+          workflowId,
+          runKey,
+          phase: 'resolve_merge_conflicts',
+          status: 'skipped',
+          targetHeadSha: snapshot.pr.headSha,
+          summary: buildTerminalSkipSummary(receivedTerminalSignal.lifecycleState),
+          detailsJson: toRunDetailsJson({
+            lifecycleState: receivedTerminalSignal.lifecycleState,
+            skippedBeforeStart: true,
+          }),
+        });
+        state = await performTerminalCleanup();
+        return state;
+      }
 
       try {
         const execution = await runMergeConflictAgent({
@@ -423,6 +533,27 @@ export async function prReviewOrchestratorWorkflow(
         }),
       });
 
+      const receivedTerminalSignal = getTerminalSignal();
+      if (receivedTerminalSignal !== null) {
+        await recordPrRun({
+          repoSlug,
+          prNumber: snapshot.pr.number,
+          workflowId,
+          runKey,
+          phase: 'fix_checks',
+          status: 'skipped',
+          targetHeadSha: snapshot.pr.headSha,
+          summary: buildTerminalSkipSummary(receivedTerminalSignal.lifecycleState),
+          detailsJson: toRunDetailsJson({
+            lifecycleState: receivedTerminalSignal.lifecycleState,
+            skippedBeforeStart: true,
+            checkNames: targetChecks.map((check) => check.name),
+          }),
+        });
+        state = await performTerminalCleanup();
+        return state;
+      }
+
       try {
         const execution = await runFixChecksAgent({
           snapshot,
@@ -536,6 +667,27 @@ export async function prReviewOrchestratorWorkflow(
         }),
       });
 
+      const receivedTerminalSignal = getTerminalSignal();
+      if (receivedTerminalSignal !== null) {
+        await recordPrRun({
+          repoSlug,
+          prNumber: snapshot.pr.number,
+          workflowId,
+          runKey,
+          phase: 'handle_code_rabbit',
+          status: 'skipped',
+          targetHeadSha: snapshot.pr.headSha,
+          summary: buildTerminalSkipSummary(receivedTerminalSignal.lifecycleState),
+          detailsJson: toRunDetailsJson({
+            lifecycleState: receivedTerminalSignal.lifecycleState,
+            skippedBeforeStart: true,
+            threadKeys: reconciliation.action.items.map((item) => item.threadKey),
+          }),
+        });
+        state = await performTerminalCleanup();
+        return state;
+      }
+
       try {
         const execution = await runCodeRabbitAgent({
           snapshot,
@@ -633,6 +785,10 @@ export async function prReviewOrchestratorWorkflow(
       const workflowId = formatPrWorkflowId(snapshot.pr);
       const repoSlug = `${snapshot.pr.repository.owner}/${snapshot.pr.repository.name}`;
       const existingReviewerRuns = await listReviewerRunsForPullRequest(snapshot.pr);
+      if (terminalSignal !== null) {
+        state = await performTerminalCleanup();
+        return state;
+      }
       const currentPassReviewerSummaries: Array<{
         reviewerId: string;
         summary: string;
@@ -663,6 +819,10 @@ export async function prReviewOrchestratorWorkflow(
           targetHeadSha: snapshot.pr.headSha,
         })}:${reviewer.id}`;
         const reviewerPack = await loadReviewerPackDefinition(reviewer.id);
+        if (terminalSignal !== null) {
+          state = await performTerminalCleanup();
+          return state;
+        }
         const priorReviewerSummaries = [
           ...existingReviewerRuns
             .filter((run) => run.status === 'completed')
@@ -696,6 +856,27 @@ export async function prReviewOrchestratorWorkflow(
             laterReviewers,
           }),
         });
+
+        const receivedTerminalSignal = getTerminalSignal();
+        if (receivedTerminalSignal !== null) {
+          await recordPrRun({
+            repoSlug,
+            prNumber: snapshot.pr.number,
+            workflowId,
+            runKey,
+            phase: 'run_specialized_reviewers',
+            status: 'skipped',
+            targetHeadSha: snapshot.pr.headSha,
+            summary: buildTerminalSkipSummary(receivedTerminalSignal.lifecycleState),
+            detailsJson: toRunDetailsJson({
+              lifecycleState: receivedTerminalSignal.lifecycleState,
+              reviewerId: reviewer.id,
+              skippedBeforeStart: true,
+            }),
+          });
+          state = await performTerminalCleanup();
+          return state;
+        }
 
         try {
           const execution = await runSpecializedReviewerAgent({

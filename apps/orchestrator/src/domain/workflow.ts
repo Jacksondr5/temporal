@@ -1,4 +1,8 @@
-import type { GitHubPrEvent, PullRequestSnapshot } from './github.js';
+import type {
+  GitHubPrEvent,
+  PullRequestLifecycleState,
+  PullRequestSnapshot,
+} from './github.js';
 import type { CodeRabbitAgentExecution } from './agentRuntime.js';
 import type {
   CheckClassificationResult,
@@ -28,6 +32,7 @@ export type PrWorkflowPhase =
   | 'fixing_checks'
   | 'handling_code_rabbit'
   | 'running_special_reviewers'
+  | 'terminal_cleanup'
   | 'recording_results';
 
 export interface PrReviewWorkflowInput {
@@ -40,15 +45,26 @@ export interface PrReviewWorkflowSignal {
   event: GitHubPrEvent;
 }
 
+export interface PrReviewWorkflowTerminalSignal {
+  lifecycleState: PullRequestLifecycleState;
+  observedAt: string;
+  headSha: string;
+}
+
 export interface PrReviewWorkflowArtifact {
-  kind: 'commit' | 'github_reply' | 'linear_issue';
+  kind: 'commit' | 'github_comment' | 'linear_issue';
   id: string;
+}
+
+export function isGitHubCommentArtifactKind(kind: string): boolean {
+  return kind === 'github_comment' || kind === 'github_reply';
 }
 
 export interface PrReviewWorkflowStatusRecord {
   workflowId: string;
   branchName: string;
   headSha: string;
+  lifecycleState: PullRequestLifecycleState;
   currentPhase: PrWorkflowPhase;
   dirty: boolean;
   statusSummary: string | null;
@@ -98,6 +114,7 @@ export interface PrReviewDecisionInputs {
 
 export interface PrReviewWorkflowState {
   pr: GitHubPrEvent['pr'];
+  lifecycleState: PullRequestLifecycleState;
   phase: PrWorkflowPhase;
   dirty: boolean;
   blockedReason: string | null;
@@ -130,6 +147,7 @@ export function createInitialWorkflowState(
 ): PrReviewWorkflowState {
   return {
     pr: input.pr,
+    lifecycleState: 'open',
     phase: 'idle',
     dirty: false,
     blockedReason: null,
@@ -351,6 +369,7 @@ export function toWorkflowStatusRecord(
     workflowId: formatPrWorkflowId(state.pr),
     branchName: state.pr.branchName,
     headSha: state.latestKnownHeadSha,
+    lifecycleState: state.lifecycleState,
     currentPhase: state.phase,
     dirty: state.dirty,
     statusSummary: latestActionSummary,

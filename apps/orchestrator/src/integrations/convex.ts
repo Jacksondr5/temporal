@@ -2,6 +2,7 @@ import type { ConvexRuntimeConfig } from '../config.js';
 import type {
   GitHubCheckState,
   GitHubPrEvent,
+  PullRequestLifecycleState,
   PullRequestRef,
 } from '../domain/github.js';
 import type {
@@ -10,7 +11,10 @@ import type {
 } from '../domain/policy.js';
 import type { ReviewDecisionRecord } from '../domain/review.js';
 import type { PrReviewWorkflowStatusRecord } from '../domain/workflow.js';
-import { formatPrWorkflowId } from '../domain/workflow.js';
+import {
+  formatPrWorkflowId,
+  isGitHubCommentArtifactKind,
+} from '../domain/workflow.js';
 import { parseRepositorySlug } from '../domain/policy.js';
 
 interface ConvexFunctionSuccess<TValue> {
@@ -63,6 +67,7 @@ interface ConvexPullRequestRecord {
   workflowId: string;
   branchName: string;
   headSha: string;
+  lifecycleState?: PullRequestLifecycleState;
   statusSummary: string | null;
   currentPhase: string;
   dirty: boolean;
@@ -134,6 +139,7 @@ export interface ConvexClient {
   claimManualEvent(eventId: string): Promise<ConvexManualClaimResult>;
   markManualEventProcessed(eventId: string): Promise<ConvexManualProcessedResult>;
   upsertPullRequest(pr: PullRequestRef): Promise<unknown>;
+  listTrackedOpenPullRequests(repoSlug: string): Promise<ConvexPullRequestRecord[]>;
   syncPullRequestStatus(
     pr: PullRequestRef,
     status: PrReviewWorkflowStatusRecord,
@@ -333,6 +339,15 @@ export function createConvexClient(config: ConvexRuntimeConfig): ConvexClient {
         branchName: pr.branchName,
         headSha: pr.headSha,
       }),
+    listTrackedOpenPullRequests: async (repoSlug) =>
+      await callConvexFunction<ConvexPullRequestRecord[]>(
+        baseUrl,
+        'query',
+        'pullRequests:listTrackedOpenByRepo',
+        {
+          repoSlug,
+        },
+      ),
     syncPullRequestStatus: async (pr, status) =>
       await callConvexFunction(baseUrl, 'mutation', 'pullRequests:upsert', {
         repoSlug: `${pr.repository.owner}/${pr.repository.name}`,
@@ -340,6 +355,7 @@ export function createConvexClient(config: ConvexRuntimeConfig): ConvexClient {
         workflowId: status.workflowId,
         branchName: status.branchName,
         headSha: status.headSha,
+        lifecycleState: status.lifecycleState,
         statusSummary: status.statusSummary,
         currentPhase: status.currentPhase,
         dirty: status.dirty,
@@ -385,8 +401,9 @@ export function createConvexClient(config: ConvexRuntimeConfig): ConvexClient {
           decision.artifacts.find((artifact) => artifact.kind === 'linear_issue')?.id ??
           null,
         githubCommentId:
-          decision.artifacts.find((artifact) => artifact.kind === 'github_comment')
-            ?.id ?? null,
+          decision.artifacts.find((artifact) =>
+            isGitHubCommentArtifactKind(artifact.kind),
+          )?.id ?? null,
         createdAt: new Date().toISOString(),
       }),
     upsertArtifact: async (input) =>

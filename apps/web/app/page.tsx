@@ -3,7 +3,11 @@
 import { useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
 import Link from "next/link";
-import { PhaseBadge, DirtyBadge } from "../components/status-badge";
+import {
+  PhaseBadge,
+  DirtyBadge,
+  LifecycleBadge,
+} from "../components/status-badge";
 import { TimeAgo } from "../components/time-ago";
 import { AlertCircle, ChevronRight, GitPullRequest } from "lucide-react";
 
@@ -19,7 +23,7 @@ export default function PullRequestListPage() {
             Pull Requests
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Active PRs tracked by the review orchestrator
+            Tracked PRs handled by the review orchestrator
           </p>
         </div>
         {pullRequests && (
@@ -32,11 +36,11 @@ export default function PullRequestListPage() {
       {/* PR table */}
       <div className="rounded-lg border border-border/60 bg-card/50 overflow-hidden">
         {/* Table header */}
-        <div className="grid grid-cols-[1fr_60px_1fr_140px_1.3fr_100px_32px] gap-4 px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border/60 bg-card/80">
+        <div className="grid grid-cols-[1fr_60px_1fr_180px_1.3fr_100px_32px] gap-4 px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border/60 bg-card/80">
           <span>Repository</span>
           <span>PR</span>
           <span>Branch</span>
-          <span>Phase</span>
+          <span>State</span>
           <span>Status</span>
           <span>Reconciled</span>
           <span />
@@ -48,7 +52,7 @@ export default function PullRequestListPage() {
             {Array.from({ length: 5 }).map((_, i) => (
               <div
                 key={i}
-                className="grid grid-cols-[1fr_60px_1fr_140px_1.3fr_100px_32px] gap-4 px-4 py-3.5"
+                className="grid grid-cols-[1fr_60px_1fr_180px_1.3fr_100px_32px] gap-4 px-4 py-3.5"
               >
                 <div className="h-4 w-40 rounded animate-shimmer" />
                 <div className="h-4 w-8 rounded animate-shimmer" />
@@ -80,7 +84,7 @@ export default function PullRequestListPage() {
               <Link
                 key={pr._id}
                 href={`/pr/${encodeURIComponent(pr.repoSlug)}/${pr.prNumber}`}
-                className="grid grid-cols-[1fr_60px_1fr_140px_1.3fr_100px_32px] gap-4 px-4 py-3 items-center group hover:bg-primary/[0.03] transition-colors"
+                className="grid grid-cols-[1fr_60px_1fr_180px_1.3fr_100px_32px] gap-4 px-4 py-3 items-center group hover:bg-primary/[0.03] transition-colors"
               >
                 <span className="text-sm font-medium text-foreground truncate">
                   {pr.repoSlug}
@@ -95,6 +99,7 @@ export default function PullRequestListPage() {
                 </code>
 
                 <div className="flex items-center gap-1.5">
+                  <LifecycleBadge lifecycleState={pr.lifecycleState} />
                   <PhaseBadge phase={pr.currentPhase} />
                   <DirtyBadge dirty={pr.dirty} />
                 </div>

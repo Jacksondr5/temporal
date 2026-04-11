@@ -68,11 +68,48 @@ const phaseConfig: Record<string, { label: string; cls: string; dot: string }> =
       cls: "bg-emerald-500/10 text-emerald-400 ring-emerald-500/20",
       dot: "bg-emerald-400 animate-status-pulse",
     },
+    terminal_cleanup: {
+      label: "Terminal Cleanup",
+      cls: "bg-zinc-500/10 text-zinc-300 ring-zinc-500/20",
+      dot: "bg-zinc-300 animate-status-pulse",
+    },
   };
 
 export function PhaseBadge({ phase }: { phase: string }) {
   const cfg = phaseConfig[phase] ?? {
     label: phase,
+    cls: "bg-zinc-500/10 text-zinc-400 ring-zinc-500/20",
+    dot: "bg-zinc-500",
+  };
+  return (
+    <StatusPill className={cfg.cls} dot={cfg.dot}>
+      {cfg.label}
+    </StatusPill>
+  );
+}
+
+const lifecycleConfig: Record<string, { label: string; cls: string; dot: string }> = {
+  open: {
+    label: "Open",
+    cls: "bg-emerald-500/10 text-emerald-400 ring-emerald-500/20",
+    dot: "bg-emerald-400",
+  },
+  closed: {
+    label: "Closed",
+    cls: "bg-zinc-500/10 text-zinc-400 ring-zinc-500/20",
+    dot: "bg-zinc-500",
+  },
+  merged: {
+    label: "Merged",
+    cls: "bg-sky-500/10 text-sky-400 ring-sky-500/20",
+    dot: "bg-sky-400",
+  },
+};
+
+export function LifecycleBadge({ lifecycleState }: { lifecycleState?: string }) {
+  const effectiveState = lifecycleState ?? "open";
+  const cfg = lifecycleConfig[effectiveState] ?? {
+    label: effectiveState,
     cls: "bg-zinc-500/10 text-zinc-400 ring-zinc-500/20",
     dot: "bg-zinc-500",
   };
