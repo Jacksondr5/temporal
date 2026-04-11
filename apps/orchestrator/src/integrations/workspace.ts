@@ -30,8 +30,16 @@ function sanitizePathSegment(value: string): string {
   return value.replace(/[^A-Za-z0-9._-]/g, '_');
 }
 
-function formatRepositoryUrl(pr: PullRequestRef): string {
-  return `https://github.com/${pr.repository.owner}/${pr.repository.name}.git`;
+function resolveGitHostFromApiUrl(apiUrl: string): string {
+  try {
+    return new URL(apiUrl).host;
+  } catch {
+    return 'github.com';
+  }
+}
+
+function formatRepositoryUrl(pr: PullRequestRef, gitHost: string): string {
+  return `https://${gitHost}/${pr.repository.owner}/${pr.repository.name}.git`;
 }
 
 function getWorkspacePath(workspaceRoot: string, pr: PullRequestRef): string {
@@ -93,16 +101,37 @@ async function configureGitIdentity(
   workspacePath: string,
   gitIdentity: GitIdentityRuntimeConfig,
 ): Promise<void> {
-  if (gitIdentity.userName === null || gitIdentity.userEmail === null) {
-    return;
+  if (gitIdentity.userName !== null) {
+    await runGit(['config', 'user.name', gitIdentity.userName], {
+      cwd: workspacePath,
+    });
+  } else {
+    try {
+      await runGit(['config', '--unset', 'user.name'], {
+        cwd: workspacePath,
+      });
+    } catch (error) {
+      if (!isGitConfigMissingError(error)) {
+        throw error;
+      }
+    }
   }
 
-  await runGit(['config', 'user.name', gitIdentity.userName], {
-    cwd: workspacePath,
-  });
-  await runGit(['config', 'user.email', gitIdentity.userEmail], {
-    cwd: workspacePath,
-  });
+  if (gitIdentity.userEmail !== null) {
+    await runGit(['config', 'user.email', gitIdentity.userEmail], {
+      cwd: workspacePath,
+    });
+  } else {
+    try {
+      await runGit(['config', '--unset', 'user.email'], {
+        cwd: workspacePath,
+      });
+    } catch (error) {
+      if (!isGitConfigMissingError(error)) {
+        throw error;
+      }
+    }
+  }
 }
 
 async function listConflictedFiles(workspacePath: string): Promise<string[]> {
@@ -132,6 +161,22 @@ function getGitErrorOutput(error: unknown): string {
   return error instanceof Error ? error.message : 'git merge failed';
 }
 
+function isGitConfigMissingError(error: unknown): boolean {
+  if (error === null || typeof error !== 'object') {
+    return false;
+  }
+
+  const processError = error as { stdout?: unknown; stderr?: unknown };
+  const output = [
+    typeof processError.stdout === 'string' ? processError.stdout : '',
+    typeof processError.stderr === 'string' ? processError.stderr : '',
+  ]
+    .join('\n')
+    .toLowerCase();
+
+  return output.includes('no such section or key');
+}
+
 async function preparePullRequestWorkspace(input: {
   workspaceRoot: string;
   github: GitHubRuntimeConfig;
@@ -139,7 +184,10 @@ async function preparePullRequestWorkspace(input: {
   pr: PullRequestRef;
 }): Promise<PreparedPullRequestWorkspace> {
   const workspacePath = getWorkspacePath(input.workspaceRoot, input.pr);
-  const remoteUrl = formatRepositoryUrl(input.pr);
+  const remoteUrl = formatRepositoryUrl(
+    input.pr,
+    resolveGitHostFromApiUrl(input.github.apiUrl),
+  );
   const exists = await pathExists(workspacePath);
 
   if (!exists) {

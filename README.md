@@ -110,6 +110,7 @@ Primary settings:
 - `CONVEX_URL`
 - `CODEX_HOME_DIR` (when using Codex CLI OAuth auth)
 - `LINEAR_API_KEY`
+- `LINEAR_TEAM_ID` and `LINEAR_DEFAULT_PROJECT_ID` (required by Orchestrator startup env validation)
 - `NEXT_PUBLIC_CONVEX_URL` (for the web app)
 
 ## Docker Worker Image
@@ -177,6 +178,11 @@ At minimum, the worker needs the runtime settings already used by `apps/orchestr
 - `GITHUB_TOKEN`
 - `GIT_USER_NAME` and `GIT_USER_EMAIL`
 - `CONVEX_URL`
+- `LINEAR_API_KEY`
+- `LINEAR_TEAM_ID`
+- `LINEAR_DEFAULT_PROJECT_ID`
+
+`LINEAR_TEAM_ID` and `LINEAR_DEFAULT_PROJECT_ID` must be present in `orchestrator.env` or startup will fail env validation.
 
 If you want the worker to clone PR workspaces or load reviewer packs from the host, mount those directories and point the runtime at the in-container paths:
 
