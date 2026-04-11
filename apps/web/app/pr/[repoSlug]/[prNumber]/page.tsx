@@ -78,15 +78,26 @@ export default function PullRequestDetailPage({
 
   const { pr, threads, runs, reviewerRuns, artifacts, errors, events } = detail;
   const latestManualEvent = events.find((event) => event.kind === "manual") ?? null;
-  const latestRunStartedAt = runs[0]?.startedAt ?? null;
+  const manualRequestState =
+    latestManualEvent === null
+      ? null
+      : latestManualEvent.processedAt != null
+        ? "picked_up"
+        : latestManualEvent.claimedAt != null
+          ? "dispatching"
+          : "queued";
   const manualRequestPending =
-    latestManualEvent !== null &&
-    (latestRunStartedAt === null ||
-      new Date(latestRunStartedAt).getTime() <
-        new Date(latestManualEvent.observedAt).getTime());
-  const manualRequestLabel = manualRequestPending
-    ? "Re-evaluate queued"
-    : "Re-evaluate now";
+    latestManualEvent !== null && latestManualEvent.processedAt == null;
+  const manualRequestLabel =
+    manualRequestState === "dispatching" || manualRequestState === "queued"
+      ? "Re-evaluate queued"
+      : "Re-evaluate now";
+  const manualRequestStatusTime =
+    manualRequestState === "picked_up"
+      ? latestManualEvent?.processedAt ?? latestManualEvent?.observedAt ?? null
+      : manualRequestState === "dispatching"
+        ? latestManualEvent?.claimedAt ?? latestManualEvent?.observedAt ?? null
+        : latestManualEvent?.observedAt ?? null;
 
   async function handleManualReevaluate(): Promise<void> {
     if (isSubmittingManualRequest) {
@@ -174,8 +185,12 @@ export default function PullRequestDetailPage({
               <span>
                 Manual request:{" "}
                 <span className="text-foreground/80">
-                  {manualRequestPending ? "queued" : "picked up"}{" "}
-                  <TimeAgo date={latestManualEvent.observedAt} />
+                  {manualRequestState === "picked_up"
+                    ? "picked up"
+                    : manualRequestState === "dispatching"
+                      ? "dispatching"
+                      : "queued"}{" "}
+                  <TimeAgo date={manualRequestStatusTime} />
                 </span>
               </span>
             )}

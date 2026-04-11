@@ -38,7 +38,10 @@ export const upsert = mutation({
       .unique();
 
     if (existing) {
-      await ctx.db.patch(existing._id, args);
+      await ctx.db.patch(existing._id, {
+        ...args,
+        lastReconciledAt: args.lastReconciledAt ?? existing.lastReconciledAt,
+      });
       return existing._id;
     }
 

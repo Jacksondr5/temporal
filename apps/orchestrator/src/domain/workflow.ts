@@ -41,7 +41,7 @@ export interface PrReviewWorkflowSignal {
 }
 
 export interface PrReviewWorkflowArtifact {
-  kind: 'commit' | 'github_reply' | 'linear_issue';
+  kind: 'commit' | 'github_comment' | 'linear_issue';
   id: string;
 }
 
