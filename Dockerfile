@@ -55,12 +55,4 @@ COPY --from=prod-deps /app/node_modules ./node_modules
 COPY --from=prod-deps /app/apps/orchestrator/node_modules ./apps/orchestrator/node_modules
 COPY --from=build /app/apps/orchestrator/lib ./apps/orchestrator/lib
 
-RUN groupadd --system appgroup \
-  && useradd --system --gid appgroup --create-home --home-dir /home/appuser appuser \
-  && chown -R appuser:appgroup /app
-
-USER appuser
-
-RUN gh auth setup-git --hostname github.com --force
-
 CMD ["node", "apps/orchestrator/lib/worker.js"]
