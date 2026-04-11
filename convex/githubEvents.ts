@@ -130,6 +130,12 @@ export const enqueueManual = mutation({
       );
     }
 
+    if ((pullRequest.lifecycleState ?? 'open') !== 'open') {
+      throw new Error(
+        `Pull request ${args.repoSlug}#${args.prNumber} is already ${(pullRequest.lifecycleState ?? 'open')}.`,
+      );
+    }
+
     const [pendingManualEvent] = await ctx.db
       .query('githubEvents')
       .withIndex('by_repo_slug_pr_number_kind_processed_at_observed_at', (q) =>

@@ -19,3 +19,4 @@ export * from './loadReviewerPack.js';
 export * from './insertReviewerRun.js';
 export * from './runSpecializedReviewerAgent.js';
 export * from './persistSpecializedReviewerExecution.js';
+export * from './removePullRequestWorkspace.js';

@@ -1,11 +1,12 @@
-import { signalPullRequestActivity } from '../client.js';
-import { formatPrWorkflowId } from '../domain/workflow.js';
+import { WorkflowNotFoundError } from '@temporalio/client';
+import {
+  signalPullRequestActivity,
+  signalPullRequestTerminalState,
+} from '../client.js';
 import { loadRuntimeConfig } from '../config.js';
 import { parseRepositorySlug } from '../domain/policy.js';
-import { createAgentRuntimeClient } from '../integrations/agentRuntime.js';
 import { createConvexClient } from '../integrations/convex.js';
 import { createGitHubClient } from '../integrations/github.js';
-import { createWorkspaceManager } from '../integrations/workspace.js';
 import { discoverEventsForPullRequest } from './discoverEvents.js';
 import { discoverPullRequests } from './discoverPullRequests.js';
 import { discoverAllowedRepositories } from './discoverRepos.js';
@@ -19,6 +20,14 @@ export interface PollerRunSummary {
 const MANUAL_EVENT_CURSOR_REPO = '__manual__';
 const MANUAL_EVENT_CURSOR_KEY = 'last_manual_event_id';
 const MANUAL_EVENT_BATCH_SIZE = 100;
+
+function buildTerminalSignalFallbackSummary(
+  lifecycleState: 'closed' | 'merged',
+): string {
+  return lifecycleState === 'merged'
+    ? 'PR merged. Terminal state recorded without a live workflow.'
+    : 'PR closed. Terminal state recorded without a live workflow.';
+}
 
 async function drainManualEvents(
   convex: ReturnType<typeof createConvexClient>,
@@ -127,18 +136,6 @@ export async function runPoller(): Promise<PollerRunSummary> {
   const config = loadRuntimeConfig();
   const github = createGitHubClient(config.github);
   const convex = createConvexClient(config.convex);
-  const workspaceManager = createWorkspaceManager({
-    workspaceRoot: config.workspaceRoot,
-    github: config.github,
-    gitIdentity: config.gitIdentity,
-  });
-  const agentRuntime = createAgentRuntimeClient({
-    ai: config.ai,
-    github: config.github,
-    gitIdentity: config.gitIdentity,
-    linear: config.linear,
-    workspaceManager,
-  });
 
   console.info(
     [
@@ -162,11 +159,13 @@ export async function runPoller(): Promise<PollerRunSummary> {
     // immediately visible in the operator UI, even before any PRs appear.
     await convex.ensureRepoWithPolicy(repository.owner, repository.name);
 
+    const trackedOpenPullRequests = await convex.listTrackedOpenPullRequests(repoSlug);
     const pullRequests = await discoverPullRequests(
       github,
       repository,
       config.poller.allowedAuthor,
     );
+    const openPrNumbers = new Set(pullRequests.map((pullRequest) => pullRequest.pr.number));
 
     for (const pullRequest of pullRequests) {
       await convex.upsertPullRequest(pullRequest.pr);
@@ -194,6 +193,87 @@ export async function runPoller(): Promise<PollerRunSummary> {
           },
         );
         signaledWorkflowCount += 1;
+      }
+    }
+
+    for (const trackedPullRequest of trackedOpenPullRequests) {
+      if (openPrNumbers.has(trackedPullRequest.prNumber)) {
+        continue;
+      }
+
+      const lifecycle = await github.fetchPullRequestLifecycle({
+        repository: parseRepositorySlug(repoSlug),
+        number: trackedPullRequest.prNumber,
+        branchName: trackedPullRequest.branchName,
+        headSha: trackedPullRequest.headSha,
+      });
+
+      if (lifecycle.lifecycleState === 'open') {
+        continue;
+      }
+
+      console.info(
+        [
+          'GitHub PR terminal detection',
+          `repo=${repoSlug}`,
+          `pr=${trackedPullRequest.prNumber}`,
+          `lifecycle=${lifecycle.lifecycleState}`,
+        ].join(' | '),
+      );
+
+      try {
+        await signalPullRequestTerminalState({
+          pr: lifecycle.pr,
+          lifecycleState: lifecycle.lifecycleState,
+          observedAt: new Date().toISOString(),
+          headSha: lifecycle.pr.headSha,
+        });
+        signaledWorkflowCount += 1;
+      } catch (error) {
+        if (!(error instanceof WorkflowNotFoundError)) {
+          throw error;
+        }
+
+        const workflowId = trackedPullRequest.workflowId;
+        const summary = buildTerminalSignalFallbackSummary(
+          lifecycle.lifecycleState,
+        );
+        const errorMessage =
+          `Terminal cleanup signal skipped because workflow ${workflowId} was not found. ` +
+          'Convex lifecycle state was updated directly, and workspace cleanup did not run.';
+
+        console.warn(
+          [
+            'GitHub PR terminal detection fallback',
+            `repo=${repoSlug}`,
+            `pr=${trackedPullRequest.prNumber}`,
+            `workflowId=${workflowId}`,
+            `lifecycle=${lifecycle.lifecycleState}`,
+            'reason=workflow_not_found',
+          ].join(' | '),
+        );
+
+        await convex.insertWorkflowError({
+          repoSlug,
+          prNumber: trackedPullRequest.prNumber,
+          workflowId,
+          errorType: 'terminal_signal_workflow_not_found',
+          errorMessage,
+          phase: 'terminal_cleanup',
+          retryable: false,
+          blocked: false,
+        });
+
+        await convex.syncPullRequestStatus(lifecycle.pr, {
+          workflowId,
+          branchName: lifecycle.pr.branchName,
+          headSha: lifecycle.pr.headSha,
+          lifecycleState: lifecycle.lifecycleState,
+          currentPhase: 'terminal_cleanup',
+          dirty: false,
+          statusSummary: summary,
+          blockedReason: null,
+        });
       }
     }
 

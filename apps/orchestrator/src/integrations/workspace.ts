@@ -91,10 +91,13 @@ async function runGit(
 async function cloneWorkspace(
   path: string,
   remoteUrl: string,
+  branchName: string,
   githubToken: string,
 ): Promise<void> {
   await mkdir(dirname(path), { recursive: true });
-  await runGit(['clone', remoteUrl, path], { githubToken });
+  await runGit(['clone', '--branch', branchName, '--single-branch', remoteUrl, path], {
+    githubToken,
+  });
 }
 
 async function configureGitIdentity(
@@ -191,26 +194,23 @@ async function preparePullRequestWorkspace(input: {
   const exists = await pathExists(workspacePath);
 
   if (!exists) {
-    await cloneWorkspace(workspacePath, remoteUrl, input.github.token);
+    await cloneWorkspace(
+      workspacePath,
+      remoteUrl,
+      input.pr.branchName,
+      input.github.token,
+    );
+    await configureGitIdentity(workspacePath, input.gitIdentity);
+  } else {
+    await runGit(['fetch', 'origin', input.pr.branchName, '--prune'], {
+      cwd: workspacePath,
+      githubToken: input.github.token,
+    });
+    await runGit(['reset', '--hard', `origin/${input.pr.branchName}`], {
+      cwd: workspacePath,
+    });
   }
 
-  await runGit(['remote', 'set-url', 'origin', remoteUrl], {
-    cwd: workspacePath,
-  });
-  await configureGitIdentity(workspacePath, input.gitIdentity);
-  await runGit(['fetch', 'origin', input.pr.branchName, '--prune'], {
-    cwd: workspacePath,
-    githubToken: input.github.token,
-  });
-  await runGit(
-    ['checkout', '-B', input.pr.branchName, `origin/${input.pr.branchName}`],
-    {
-      cwd: workspacePath,
-    },
-  );
-  await runGit(['reset', '--hard', `origin/${input.pr.branchName}`], {
-    cwd: workspacePath,
-  });
   await runGit(['clean', '-fd'], { cwd: workspacePath });
 
   const head = (

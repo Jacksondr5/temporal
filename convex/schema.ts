@@ -97,6 +97,9 @@ export default defineSchema({
     workflowId: v.string(),
     branchName: v.string(),
     headSha: v.string(),
+    lifecycleState: v.optional(
+      v.union(v.literal('open'), v.literal('closed'), v.literal('merged')),
+    ),
     statusSummary: v.union(v.string(), v.null()),
     currentPhase: v.string(),
     dirty: v.boolean(),

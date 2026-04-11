@@ -23,6 +23,11 @@ export const upsert = mutation({
     workflowId: v.string(),
     branchName: v.string(),
     headSha: v.string(),
+    lifecycleState: v.union(
+      v.literal('open'),
+      v.literal('closed'),
+      v.literal('merged'),
+    ),
     statusSummary: v.union(v.string(), v.null()),
     currentPhase: v.string(),
     dirty: v.boolean(),
@@ -70,17 +75,33 @@ export const upsertDiscovered = mutation({
         workflowId: args.workflowId,
         branchName: args.branchName,
         headSha: args.headSha,
+        lifecycleState: 'open',
       });
       return existing._id;
     }
 
     return await ctx.db.insert('pullRequests', {
       ...args,
+      lifecycleState: 'open',
       statusSummary: null,
       currentPhase: 'idle',
       dirty: false,
       blockedReason: null,
       lastReconciledAt: null,
     });
+  },
+});
+
+export const listTrackedOpenByRepo = query({
+  args: {
+    repoSlug: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const tracked = await ctx.db
+      .query('pullRequests')
+      .withIndex('by_repo_slug_and_pr_number', (q) => q.eq('repoSlug', args.repoSlug))
+      .take(200);
+
+    return tracked.filter((pullRequest) => (pullRequest.lifecycleState ?? 'open') === 'open');
   },
 });

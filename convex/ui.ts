@@ -29,6 +29,7 @@ export const listPullRequests = query({
 
         return {
           ...pr,
+          lifecycleState: pr.lifecycleState ?? "open",
           hasBlockingError: pr.blockedReason !== null,
           latestRunStatus: latestRun[0]?.status ?? null,
           latestRunPhase: latestRun[0]?.phase ?? null,
@@ -125,7 +126,10 @@ export const getPullRequestDetail = query({
     );
 
     return {
-      pr,
+      pr: {
+        ...pr,
+        lifecycleState: pr.lifecycleState ?? "open",
+      },
       threads: threadsWithDecisions,
       runs,
       reviewerRuns,

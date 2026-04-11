@@ -2,6 +2,7 @@ import type { ConvexRuntimeConfig } from '../config.js';
 import type {
   GitHubCheckState,
   GitHubPrEvent,
+  PullRequestLifecycleState,
   PullRequestRef,
 } from '../domain/github.js';
 import type {
@@ -63,6 +64,7 @@ interface ConvexPullRequestRecord {
   workflowId: string;
   branchName: string;
   headSha: string;
+  lifecycleState?: PullRequestLifecycleState;
   statusSummary: string | null;
   currentPhase: string;
   dirty: boolean;
@@ -134,6 +136,7 @@ export interface ConvexClient {
   claimManualEvent(eventId: string): Promise<ConvexManualClaimResult>;
   markManualEventProcessed(eventId: string): Promise<ConvexManualProcessedResult>;
   upsertPullRequest(pr: PullRequestRef): Promise<unknown>;
+  listTrackedOpenPullRequests(repoSlug: string): Promise<ConvexPullRequestRecord[]>;
   syncPullRequestStatus(
     pr: PullRequestRef,
     status: PrReviewWorkflowStatusRecord,
@@ -333,6 +336,15 @@ export function createConvexClient(config: ConvexRuntimeConfig): ConvexClient {
         branchName: pr.branchName,
         headSha: pr.headSha,
       }),
+    listTrackedOpenPullRequests: async (repoSlug) =>
+      await callConvexFunction<ConvexPullRequestRecord[]>(
+        baseUrl,
+        'query',
+        'pullRequests:listTrackedOpenByRepo',
+        {
+          repoSlug,
+        },
+      ),
     syncPullRequestStatus: async (pr, status) =>
       await callConvexFunction(baseUrl, 'mutation', 'pullRequests:upsert', {
         repoSlug: `${pr.repository.owner}/${pr.repository.name}`,
@@ -340,6 +352,7 @@ export function createConvexClient(config: ConvexRuntimeConfig): ConvexClient {
         workflowId: status.workflowId,
         branchName: status.branchName,
         headSha: status.headSha,
+        lifecycleState: status.lifecycleState,
         statusSummary: status.statusSummary,
         currentPhase: status.currentPhase,
         dirty: status.dirty,

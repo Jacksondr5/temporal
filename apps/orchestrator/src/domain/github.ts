@@ -3,6 +3,8 @@ export interface RepositoryRef {
   name: string;
 }
 
+export type PullRequestLifecycleState = 'open' | 'closed' | 'merged';
+
 export function formatRepositoryName(repository: RepositoryRef): string {
   return `${repository.owner}/${repository.name}`;
 }
