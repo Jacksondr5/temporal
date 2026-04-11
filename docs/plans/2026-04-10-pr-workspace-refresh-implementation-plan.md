@@ -10,7 +10,7 @@
 
 ---
 
-### Task 1: Document the approved behavior
+## Task 1: Document the approved behavior
 
 **Files:**
 - Create: `docs/plans/2026-04-10-pr-workspace-refresh-design.md`
@@ -24,7 +24,7 @@ Write the approved design in `docs/plans/2026-04-10-pr-workspace-refresh-design.
 
 Write this plan file so the workspace behavior change is documented before code edits.
 
-### Task 2: Simplify first-time clone setup
+## Task 2: Simplify first-time clone setup
 
 **Files:**
 - Modify: `apps/orchestrator/src/integrations/workspace.ts`
@@ -37,7 +37,7 @@ Update clone logic so the initial clone checks out the PR branch once instead of
 
 Move git identity configuration so it runs once for a newly created workspace and not on every reuse.
 
-### Task 3: Simplify workspace refresh for reused clones
+## Task 3: Simplify workspace refresh for reused clones
 
 **Files:**
 - Modify: `apps/orchestrator/src/integrations/workspace.ts`
@@ -50,7 +50,7 @@ Delete the recurring `remote set-url`, recurring git identity configuration, and
 
 For reused workspaces, fetch the PR branch, hard-reset to `origin/<branch>`, and clean untracked files so the workspace matches the latest remote branch state.
 
-### Task 4: Verify the orchestrator still builds
+## Task 4: Verify the orchestrator still builds
 
 **Files:**
 - Modify: `apps/orchestrator/src/integrations/workspace.ts`

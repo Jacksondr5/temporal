@@ -11,7 +11,10 @@ import type {
 } from '../domain/policy.js';
 import type { ReviewDecisionRecord } from '../domain/review.js';
 import type { PrReviewWorkflowStatusRecord } from '../domain/workflow.js';
-import { formatPrWorkflowId } from '../domain/workflow.js';
+import {
+  formatPrWorkflowId,
+  isGitHubCommentArtifactKind,
+} from '../domain/workflow.js';
 import { parseRepositorySlug } from '../domain/policy.js';
 
 interface ConvexFunctionSuccess<TValue> {
@@ -398,8 +401,9 @@ export function createConvexClient(config: ConvexRuntimeConfig): ConvexClient {
           decision.artifacts.find((artifact) => artifact.kind === 'linear_issue')?.id ??
           null,
         githubCommentId:
-          decision.artifacts.find((artifact) => artifact.kind === 'github_comment')
-            ?.id ?? null,
+          decision.artifacts.find((artifact) =>
+            isGitHubCommentArtifactKind(artifact.kind),
+          )?.id ?? null,
         createdAt: new Date().toISOString(),
       }),
     upsertArtifact: async (input) =>

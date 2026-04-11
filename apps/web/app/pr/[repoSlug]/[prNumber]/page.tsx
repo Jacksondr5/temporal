@@ -28,6 +28,8 @@ import {
 } from "lucide-react";
 import { Button } from "../../../../components/ui/button";
 
+const MANUAL_EVENT_CLAIM_STALE_MS = 5 * 60 * 1000;
+
 export default function PullRequestDetailPage({
   params,
 }: {
@@ -80,16 +82,19 @@ export default function PullRequestDetailPage({
   const { pr, threads, runs, reviewerRuns, artifacts, errors, events } = detail;
   const latestManualEvent = events.find((event) => event.kind === "manual") ?? null;
   const isTerminal = pr.lifecycleState !== "open";
+  const nowMs = Date.now();
+  const manualClaimIsFresh =
+    latestManualEvent?.claimedAt != null &&
+    nowMs - new Date(latestManualEvent.claimedAt).getTime() < MANUAL_EVENT_CLAIM_STALE_MS;
   const manualRequestState =
     latestManualEvent === null
       ? null
       : latestManualEvent.processedAt != null
         ? "picked_up"
-        : latestManualEvent.claimedAt != null
+        : manualClaimIsFresh
           ? "dispatching"
           : "queued";
-  const manualRequestPending =
-    latestManualEvent !== null && latestManualEvent.processedAt == null;
+  const manualRequestPending = manualRequestState === "queued" || manualRequestState === "dispatching";
   const manualRequestLabel =
     manualRequestState === "dispatching" || manualRequestState === "queued"
       ? "Re-evaluate queued"

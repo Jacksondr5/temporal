@@ -100,11 +100,11 @@ export const listTrackedOpenByRepo = query({
     repoSlug: v.string(),
   },
   handler: async (ctx, args) => {
-    const tracked = await ctx.db
+    return await ctx.db
       .query('pullRequests')
-      .withIndex('by_repo_slug_and_pr_number', (q) => q.eq('repoSlug', args.repoSlug))
+      .withIndex('by_repo_slug_and_lifecycle_state_and_pr_number', (q) =>
+        q.eq('repoSlug', args.repoSlug).eq('lifecycleState', 'open'),
+      )
       .take(200);
-
-    return tracked.filter((pullRequest) => (pullRequest.lifecycleState ?? 'open') === 'open');
   },
 });

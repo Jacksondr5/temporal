@@ -106,9 +106,10 @@ const lifecycleConfig: Record<string, { label: string; cls: string; dot: string 
   },
 };
 
-export function LifecycleBadge({ lifecycleState }: { lifecycleState: string }) {
-  const cfg = lifecycleConfig[lifecycleState] ?? {
-    label: lifecycleState,
+export function LifecycleBadge({ lifecycleState }: { lifecycleState?: string }) {
+  const effectiveState = lifecycleState ?? "open";
+  const cfg = lifecycleConfig[effectiveState] ?? {
+    label: effectiveState,
     cls: "bg-zinc-500/10 text-zinc-400 ring-zinc-500/20",
     dot: "bg-zinc-500",
   };

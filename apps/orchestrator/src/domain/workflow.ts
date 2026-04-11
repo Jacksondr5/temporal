@@ -56,6 +56,10 @@ export interface PrReviewWorkflowArtifact {
   id: string;
 }
 
+export function isGitHubCommentArtifactKind(kind: string): boolean {
+  return kind === 'github_comment' || kind === 'github_reply';
+}
+
 export interface PrReviewWorkflowStatusRecord {
   workflowId: string;
   branchName: string;

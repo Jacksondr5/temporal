@@ -10,7 +10,7 @@
 
 ---
 
-### Task 1: Document the approved design
+## Task 1: Document the approved design
 
 **Files:**
 - Create: `docs/plans/2026-04-10-terminal-pr-cleanup-design.md`
@@ -24,7 +24,7 @@ Write the terminal PR cleanup design in the design doc.
 
 Write this implementation plan to keep the behavior explicit before code changes.
 
-### Task 2: Add terminal lifecycle types and GitHub detection
+## Task 2: Add terminal lifecycle types and GitHub detection
 
 **Files:**
 - Modify: `apps/orchestrator/src/domain/github.ts`
@@ -43,7 +43,7 @@ Extend the GitHub client so the poller can resolve whether a tracked PR that dis
 
 Add a dedicated Temporal client helper to signal the workflow with terminal lifecycle state.
 
-### Task 3: Implement workflow-owned terminal cleanup
+## Task 3: Implement workflow-owned terminal cleanup
 
 **Files:**
 - Modify: `apps/orchestrator/src/domain/workflow.ts`
@@ -68,7 +68,7 @@ Expose workspace deletion as an activity and use it during terminal cleanup.
 
 Write a final workflow status and PR run entry before the workflow exits.
 
-### Task 4: Persist lifecycle state in Convex
+## Task 4: Persist lifecycle state in Convex
 
 **Files:**
 - Modify: `convex/schema.ts`
@@ -88,7 +88,7 @@ Expose the tracked PR records needed to detect terminal state.
 
 Reject enqueueing manual reevaluate events for closed or merged PRs.
 
-### Task 5: Update the poller and UI
+## Task 5: Update the poller and UI
 
 **Files:**
 - Modify: `apps/orchestrator/src/poller/runPoller.ts`
@@ -105,7 +105,7 @@ Compare tracked PRs against the GitHub open set and signal terminal state when n
 
 Show whether a tracked PR is open, closed, or merged while keeping terminal PRs visible in the list/detail views.
 
-### Task 6: Validate the full path
+## Task 6: Validate the full path
 
 **Files:**
 - No new files required

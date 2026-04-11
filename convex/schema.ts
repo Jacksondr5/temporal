@@ -107,6 +107,11 @@ export default defineSchema({
     lastReconciledAt: v.union(v.string(), v.null()),
   })
     .index('by_repo_slug_and_pr_number', ['repoSlug', 'prNumber'])
+    .index('by_repo_slug_and_lifecycle_state_and_pr_number', [
+      'repoSlug',
+      'lifecycleState',
+      'prNumber',
+    ])
     .index('by_workflow_id', ['workflowId']),
 
   prRuns: defineTable({
