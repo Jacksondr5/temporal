@@ -106,8 +106,9 @@ Primary settings:
 - `TEMPORAL_NAMESPACE`
 - `TEMPORAL_TASK_QUEUE`
 - `GITHUB_TOKEN`
+- `GIT_USER_NAME` and `GIT_USER_EMAIL` (for commits created by agents)
 - `CONVEX_URL`
-- `CONVEX_DEPLOY_KEY`
+- `CODEX_HOME_DIR` (when using Codex CLI OAuth auth)
 - `LINEAR_API_KEY`
 - `NEXT_PUBLIC_CONVEX_URL` (for the web app)
 
@@ -174,8 +175,8 @@ At minimum, the worker needs the runtime settings already used by `apps/orchestr
 - `TEMPORAL_NAMESPACE`
 - `TEMPORAL_TASK_QUEUE`
 - `GITHUB_TOKEN`
+- `GIT_USER_NAME` and `GIT_USER_EMAIL`
 - `CONVEX_URL`
-- `CONVEX_DEPLOY_KEY`
 
 If you want the worker to clone PR workspaces or load reviewer packs from the host, mount those directories and point the runtime at the in-container paths:
 
@@ -187,6 +188,17 @@ docker run --rm \
   -e REVIEWER_PACKS_REPO_PATH=/opt/reviewer-packs \
   -v /absolute/path/to/workspaces:/var/orchestrator/workspaces \
   -v /absolute/path/to/reviewer-packs:/opt/reviewer-packs \
+  your-dockerhub-user/pr-review-orchestrator:latest
+```
+
+If Codex CLI should use a mounted OAuth login, mount a Codex home directory and point `CODEX_HOME_DIR` at it. The Codex CLI expects auth under `$HOME/.codex/auth.json`, so the host `.codex` directory should be mounted as the `.codex` child of the configured home directory.
+
+```bash
+docker run --rm \
+  --name pr-review-worker \
+  --env-file /absolute/path/to/orchestrator.env \
+  -e CODEX_HOME_DIR=/var/orchestrator/codex-home \
+  -v /home/jacksondr5/.codex:/var/orchestrator/codex-home/.codex \
   your-dockerhub-user/pr-review-orchestrator:latest
 ```
 

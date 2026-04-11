@@ -13,11 +13,13 @@ export async function runCodeRabbitAgent(
   const workspaceManager = createWorkspaceManager({
     workspaceRoot: config.workspaceRoot,
     github: config.github,
+    gitIdentity: config.gitIdentity,
   });
 
   const runtime = createAgentRuntimeClient({
     ai: config.ai,
     github: config.github,
+    gitIdentity: config.gitIdentity,
     linear: config.linear,
     workspaceManager,
   });

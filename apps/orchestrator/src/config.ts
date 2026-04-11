@@ -40,9 +40,13 @@ export interface GitHubRuntimeConfig {
   apiUrl: string;
 }
 
+export interface GitIdentityRuntimeConfig {
+  userName: string | null;
+  userEmail: string | null;
+}
+
 export interface ConvexRuntimeConfig {
   url: string;
-  deployKey: string;
 }
 
 export interface LinearRuntimeConfig {
@@ -54,6 +58,7 @@ export interface LinearRuntimeConfig {
 export interface CodexRuntimeConfig {
   model: string;
   allowNpx: boolean;
+  homeDir: string | null;
 }
 
 export interface ClaudeCodeRuntimeConfig {
@@ -70,6 +75,7 @@ export interface RuntimeConfig {
   temporal: TemporalRuntimeConfig;
   poller: PollerRuntimeConfig;
   github: GitHubRuntimeConfig;
+  gitIdentity: GitIdentityRuntimeConfig;
   convex: ConvexRuntimeConfig;
   linear: LinearRuntimeConfig;
   ai: AiRuntimeConfig;
@@ -173,14 +179,16 @@ const env = createEnv({
       trimString,
       z.string().url().default(DEFAULT_GITHUB_API_URL),
     ),
+    GIT_USER_NAME: z.preprocess(trimString, z.string().optional()),
+    GIT_USER_EMAIL: z.preprocess(trimString, z.string().email().optional()),
     CONVEX_URL: z.preprocess(trimString, z.string()),
-    CONVEX_DEPLOY_KEY: z.preprocess(trimString, z.string()),
     LINEAR_API_KEY: z.preprocess(trimString, z.string()),
     LINEAR_TEAM_ID: z.preprocess(trimString, z.string()),
     LINEAR_DEFAULT_PROJECT_ID: z.preprocess(trimString, z.string()),
     AI_DEFAULT_PROVIDER: z.literal('codex').default('codex'),
     CODEX_MODEL: z.preprocess(trimString, z.string().default(DEFAULT_CODEX_MODEL)),
     CODEX_ALLOW_NPX: z.preprocess(parseBoolean, z.boolean().default(true)),
+    CODEX_HOME_DIR: z.preprocess(trimString, z.string().optional()),
     CLAUDE_CODE_MODEL: z.preprocess(
       trimString,
       z.string().default(DEFAULT_CLAUDE_CODE_MODEL),
@@ -207,6 +215,13 @@ export function loadTemporalRuntimeConfig(): TemporalRuntimeConfig {
 }
 
 export function loadRuntimeConfig(): RuntimeConfig {
+  if (
+    (env.GIT_USER_NAME === undefined && env.GIT_USER_EMAIL !== undefined) ||
+    (env.GIT_USER_NAME !== undefined && env.GIT_USER_EMAIL === undefined)
+  ) {
+    throw new Error('GIT_USER_NAME and GIT_USER_EMAIL must be configured together.');
+  }
+
   return {
     temporal: loadTemporalRuntimeConfig(),
     poller: {
@@ -218,9 +233,12 @@ export function loadRuntimeConfig(): RuntimeConfig {
       token: env.GITHUB_TOKEN,
       apiUrl: env.GITHUB_API_URL,
     },
+    gitIdentity: {
+      userName: toNullableString(env.GIT_USER_NAME),
+      userEmail: toNullableString(env.GIT_USER_EMAIL),
+    },
     convex: {
       url: env.CONVEX_URL,
-      deployKey: env.CONVEX_DEPLOY_KEY,
     },
     linear: {
       apiKey: env.LINEAR_API_KEY,
@@ -232,6 +250,7 @@ export function loadRuntimeConfig(): RuntimeConfig {
       codex: {
         model: env.CODEX_MODEL,
         allowNpx: env.CODEX_ALLOW_NPX,
+        homeDir: toNullableString(env.CODEX_HOME_DIR),
       },
       claudeCode: {
         model: env.CLAUDE_CODE_MODEL,

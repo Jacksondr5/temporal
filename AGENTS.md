@@ -16,6 +16,9 @@ To overwrite existing env files (e.g. after a credentials rotation), pass `--for
 scripts/bootstrap-worktree.sh --force-env
 ```
 
+# Self-Hosted Temporal
+For the self-hosted Temporal deployment on `10.0.10.80`, including Docker/Compose paths, Temporal CLI commands, and known operational pitfalls, see [docs/runbooks/self-hosted-temporal.md](docs/runbooks/self-hosted-temporal.md).
+
 
 <!-- convex-ai-start -->
 This project uses [Convex](https://convex.dev) as its backend.

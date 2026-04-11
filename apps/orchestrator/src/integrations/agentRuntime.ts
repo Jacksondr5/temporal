@@ -3,15 +3,20 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import type {
   AiRuntimeConfig,
+  CodexRuntimeConfig,
   GitHubRuntimeConfig,
+  GitIdentityRuntimeConfig,
   LinearRuntimeConfig,
 } from '../config.js';
 import type {
   AgentProvider,
+  CodeRabbitBatchAgentOutput,
   CodeRabbitAgentExecution,
   CodeRabbitAgentRunInput,
+  FixChecksBatchAgentOutput,
   FixChecksAgentExecution,
   FixChecksAgentRunInput,
+  SpecializedReviewerAgentOutput,
   SpecializedReviewerAgentRunInput,
   SpecializedReviewerExecution,
 } from '../domain/agentRuntime.js';
@@ -366,7 +371,9 @@ Return a structured result describing:
 
 function buildAgentEnvironment(
   github: GitHubRuntimeConfig,
+  gitIdentity: GitIdentityRuntimeConfig,
   linear: LinearRuntimeConfig,
+  codex: CodexRuntimeConfig,
 ): Record<string, string> {
   const env: Record<string, string> = {};
 
@@ -380,6 +387,17 @@ function buildAgentEnvironment(
   env.LINEAR_API_KEY = linear.apiKey;
   env.LINEAR_TEAM_ID = linear.teamId;
   env.LINEAR_DEFAULT_PROJECT_ID = linear.defaultProjectId;
+
+  if (gitIdentity.userName !== null && gitIdentity.userEmail !== null) {
+    env.GIT_AUTHOR_NAME = gitIdentity.userName;
+    env.GIT_AUTHOR_EMAIL = gitIdentity.userEmail;
+    env.GIT_COMMITTER_NAME = gitIdentity.userName;
+    env.GIT_COMMITTER_EMAIL = gitIdentity.userEmail;
+  }
+
+  if (codex.homeDir !== null) {
+    env.HOME = codex.homeDir;
+  }
 
   return env;
 }
@@ -549,6 +567,7 @@ async function runCodexStructuredObject<T>({
 export function createAgentRuntimeClient(options: {
   ai: AiRuntimeConfig;
   github: GitHubRuntimeConfig;
+  gitIdentity: GitIdentityRuntimeConfig;
   linear: LinearRuntimeConfig;
   workspaceManager: WorkspaceManager;
 }): AgentRuntimeClient {
@@ -578,11 +597,16 @@ export function createAgentRuntimeClient(options: {
         input.snapshot.pr,
       );
       const { output: object, usage, providerMetadata } =
-        await runCodexStructuredObject<FixChecksAgentExecution['result']>({
+        await runCodexStructuredObject<FixChecksBatchAgentOutput>({
         model: options.ai.codex.model,
         allowNpx: options.ai.codex.allowNpx,
         cwd: workspace.path,
-        env: buildAgentEnvironment(options.github, options.linear),
+        env: buildAgentEnvironment(
+          options.github,
+          options.gitIdentity,
+          options.linear,
+          options.ai.codex,
+        ),
         runLabel: 'fix-checks',
         schema: fixChecksBatchResultSchema,
         prompt: buildFixChecksPrompt(input),
@@ -657,11 +681,16 @@ export function createAgentRuntimeClient(options: {
         input.snapshot.pr,
       );
       const { output: object, usage, providerMetadata } =
-        await runCodexStructuredObject<CodeRabbitAgentExecution['result']>({
+        await runCodexStructuredObject<CodeRabbitBatchAgentOutput>({
         model: options.ai.codex.model,
         allowNpx: options.ai.codex.allowNpx,
         cwd: workspace.path,
-        env: buildAgentEnvironment(options.github, options.linear),
+        env: buildAgentEnvironment(
+          options.github,
+          options.gitIdentity,
+          options.linear,
+          options.ai.codex,
+        ),
         runLabel: 'code-rabbit',
         schema: codeRabbitBatchResultSchema,
         prompt: buildCodeRabbitPrompt(input),
@@ -751,11 +780,16 @@ export function createAgentRuntimeClient(options: {
         input.snapshot.pr,
       );
       const { output: object, usage, providerMetadata } =
-        await runCodexStructuredObject<SpecializedReviewerExecution['result']>({
+        await runCodexStructuredObject<SpecializedReviewerAgentOutput>({
           model: options.ai.codex.model,
           allowNpx: options.ai.codex.allowNpx,
           cwd: workspace.path,
-          env: buildAgentEnvironment(options.github, options.linear),
+          env: buildAgentEnvironment(
+            options.github,
+            options.gitIdentity,
+            options.linear,
+            options.ai.codex,
+          ),
           runLabel: `specialized-${input.reviewer.id}`,
           schema: specializedReviewerResultSchema,
           prompt: buildSpecializedReviewerPrompt(input),

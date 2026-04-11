@@ -74,12 +74,14 @@ export const codeRabbitBatchResultSchema = z.object({
   commandsSummary: z.array(z.string()),
   didModifyCode: z.boolean(),
   didCommitCode: z.boolean(),
-  observedCommitSha: z.string().nullable().optional(),
   outcomes: z.array(codeRabbitThreadOutcomeSchema).min(1),
 });
 
 export type CodeRabbitThreadOutcome = z.infer<typeof codeRabbitThreadOutcomeSchema>;
-export type CodeRabbitBatchResult = z.infer<typeof codeRabbitBatchResultSchema>;
+export type CodeRabbitBatchAgentOutput = z.infer<typeof codeRabbitBatchResultSchema>;
+export type CodeRabbitBatchResult = CodeRabbitBatchAgentOutput & {
+  observedCommitSha: string | null;
+};
 
 export interface AgentUsageDetails {
   usage: LanguageModelUsage | null;
@@ -116,12 +118,14 @@ export const fixChecksBatchResultSchema = z.object({
   commandsSummary: z.array(z.string()),
   didModifyCode: z.boolean(),
   didCommitCode: z.boolean(),
-  observedCommitSha: z.string().nullable().optional(),
   checks: z.array(fixCheckOutcomeSchema).min(1),
 });
 
 export type FixCheckOutcome = z.infer<typeof fixCheckOutcomeSchema>;
-export type FixChecksBatchResult = z.infer<typeof fixChecksBatchResultSchema>;
+export type FixChecksBatchAgentOutput = z.infer<typeof fixChecksBatchResultSchema>;
+export type FixChecksBatchResult = FixChecksBatchAgentOutput & {
+  observedCommitSha: string | null;
+};
 
 export interface FixChecksAgentExecution {
   status: 'completed' | 'skipped';
@@ -159,12 +163,16 @@ export const specializedReviewerResultSchema = z.object({
   commandsSummary: z.array(z.string()),
   didModifyCode: z.boolean(),
   didCommitCode: z.boolean(),
-  observedCommitSha: z.string().nullable().optional(),
   findings: z.array(specializedReviewerFindingSchema),
   handoffItems: z.array(specializedReviewerHandoffItemSchema),
 });
 
-export type SpecializedReviewerResult = z.infer<typeof specializedReviewerResultSchema>;
+export type SpecializedReviewerAgentOutput = z.infer<
+  typeof specializedReviewerResultSchema
+>;
+export type SpecializedReviewerResult = SpecializedReviewerAgentOutput & {
+  observedCommitSha: string | null;
+};
 
 export interface SpecializedReviewerExecution {
   status: 'completed' | 'skipped';
@@ -191,7 +199,7 @@ export interface NormalizedCodeRabbitThreadOutcome {
 
 export function normalizeCodeRabbitOutcomes(
   items: CodeRabbitReviewItem[],
-  result: CodeRabbitBatchResult,
+  result: CodeRabbitBatchAgentOutput,
 ): NormalizedCodeRabbitThreadOutcome[] {
   if (result.didCommitCode && !result.didModifyCode) {
     throw new Error('Code Rabbit agent reported didCommitCode=true while didModifyCode=false.');
@@ -234,7 +242,7 @@ export function normalizeCodeRabbitOutcomes(
 
 export function normalizeFixCheckOutcomes(
   checks: GitHubCheckRun[],
-  result: FixChecksBatchResult,
+  result: FixChecksBatchAgentOutput,
 ): FixCheckOutcome[] {
   if (result.didCommitCode && !result.didModifyCode) {
     throw new Error('Fix-check agent reported didCommitCode=true while didModifyCode=false.');
@@ -277,7 +285,7 @@ export function normalizeFixCheckOutcomes(
 
 export function normalizeSpecializedReviewerResult(
   input: SpecializedReviewerAgentRunInput,
-  result: SpecializedReviewerResult,
+  result: SpecializedReviewerAgentOutput,
 ): {
   findings: SpecializedReviewerFinding[];
   handoffItems: SpecializedReviewerHandoffItem[];
