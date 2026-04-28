@@ -99,12 +99,21 @@ export default function PoliciesListPage() {
                   </span>
                 )}
 
-                <CountBadge count={repo.statusCheckCount ?? 0} />
-                <CountBadge count={repo.enabledStatusCheckCount ?? 0} />
+                <CountBadge
+                  count={repo.statusCheckCount ?? 0}
+                  isCapped={repo.statusCheckCountIsCapped}
+                />
+                <CountBadge
+                  count={repo.enabledStatusCheckCount ?? 0}
+                  isCapped={repo.enabledStatusCheckCountIsCapped}
+                />
                 <CountBadge
                   count={repo.policy?.specializedReviewers.length ?? 0}
                 />
-                <CountBadge count={repo.activePrCount} />
+                <CountBadge
+                  count={repo.activePrCount}
+                  isCapped={repo.activePrCountIsCapped}
+                />
 
                 <ChevronRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-primary transition-colors" />
               </Link>
@@ -116,13 +125,20 @@ export default function PoliciesListPage() {
   );
 }
 
-function CountBadge({ count }: { count: number }) {
+function CountBadge({
+  count,
+  isCapped = false,
+}: {
+  count: number;
+  isCapped?: boolean;
+}) {
   return (
     <Badge
       variant="secondary"
       className="bg-muted/60 text-muted-foreground font-mono text-[11px] tabular-nums w-fit"
     >
       {count}
+      {isCapped ? "+" : ""}
     </Badge>
   );
 }
