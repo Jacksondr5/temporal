@@ -1,34 +1,17 @@
-import { v } from 'convex/values';
-import { mutation, query } from './_generated/server';
-import type { MutationCtx } from './_generated/server';
+import { v } from "convex/values";
+import { mutation, query } from "./_generated/server";
+import type { MutationCtx } from "./_generated/server";
 
 const statusCheckSourceValidator = v.union(
-  v.literal('check_run'),
-  v.literal('commit_status'),
+  v.literal("check_run"),
+  v.literal("commit_status"),
 );
 
 async function collectAllByRepoAndName(ctx: MutationCtx, repoSlug: string) {
-  const pageSize = 250;
-  let cursor: string | null = null;
-  const rows = [];
-
-  while (true) {
-    const page = await ctx.db
-      .query('repoStatusChecks')
-      .withIndex('by_repo_slug_and_name', (q) => q.eq('repoSlug', repoSlug))
-      .paginate({
-        cursor,
-        numItems: pageSize,
-      });
-
-    rows.push(...page.page);
-    if (page.isDone) {
-      break;
-    }
-    cursor = page.continueCursor;
-  }
-
-  return rows;
+  return await ctx.db
+    .query("repoStatusChecks")
+    .withIndex("by_repo_slug_and_name", (q) => q.eq("repoSlug", repoSlug))
+    .take(500);
 }
 
 export const listByRepo = query({
@@ -37,8 +20,10 @@ export const listByRepo = query({
   },
   handler: async (ctx, args) => {
     return await ctx.db
-      .query('repoStatusChecks')
-      .withIndex('by_repo_slug_and_name', (q) => q.eq('repoSlug', args.repoSlug))
+      .query("repoStatusChecks")
+      .withIndex("by_repo_slug_and_name", (q) =>
+        q.eq("repoSlug", args.repoSlug),
+      )
       .take(500);
   },
 });
@@ -48,29 +33,12 @@ export const listEnabledByRepo = query({
     repoSlug: v.string(),
   },
   handler: async (ctx, args) => {
-    const pageSize = 250;
-    let cursor: string | null = null;
-    const pages = [];
-
-    while (true) {
-      const page = await ctx.db
-        .query('repoStatusChecks')
-        .withIndex('by_repo_slug_and_enabled', (q) =>
-          q.eq('repoSlug', args.repoSlug).eq('enabled', true),
-        )
-        .paginate({
-          cursor,
-          numItems: pageSize,
-        });
-
-      pages.push(page.page);
-      if (page.isDone) {
-        break;
-      }
-      cursor = page.continueCursor;
-    }
-
-    return pages.flat();
+    return await ctx.db
+      .query("repoStatusChecks")
+      .withIndex("by_repo_slug_and_enabled", (q) =>
+        q.eq("repoSlug", args.repoSlug).eq("enabled", true),
+      )
+      .take(500);
   },
 });
 
@@ -92,14 +60,17 @@ export const upsertObservedBatch = mutation({
     );
 
     const existingByName = new Map(
-      (await collectAllByRepoAndName(ctx, args.repoSlug)).map((row) => [row.name, row]),
+      (await collectAllByRepoAndName(ctx, args.repoSlug)).map((row) => [
+        row.name,
+        row,
+      ]),
     );
 
     for (const check of uniqueChecks) {
       const existing = existingByName.get(check.name);
 
       if (!existing) {
-        await ctx.db.insert('repoStatusChecks', {
+        await ctx.db.insert("repoStatusChecks", {
           repoSlug: args.repoSlug,
           name: check.name,
           source: check.source,
@@ -129,9 +100,9 @@ export const setEnabled = mutation({
   },
   handler: async (ctx, args) => {
     const existing = await ctx.db
-      .query('repoStatusChecks')
-      .withIndex('by_repo_slug_and_name', (q) =>
-        q.eq('repoSlug', args.repoSlug).eq('name', args.name),
+      .query("repoStatusChecks")
+      .withIndex("by_repo_slug_and_name", (q) =>
+        q.eq("repoSlug", args.repoSlug).eq("name", args.name),
       )
       .unique();
 
