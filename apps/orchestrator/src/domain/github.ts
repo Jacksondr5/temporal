@@ -27,6 +27,7 @@ export interface GitHubActor {
 
 export interface GitHubCheckRun {
   name: string;
+  source: 'check_run' | 'commit_status';
   conclusion: string | null;
   status: string;
   detailsUrl: string | null;

@@ -502,6 +502,7 @@ export function createGitHubClient(config: GitHubRuntimeConfig): GitHubClient {
 
       return response.check_runs.map((checkRun) => ({
         name: checkRun.name,
+        source: 'check_run',
         conclusion: checkRun.conclusion,
         status: checkRun.status,
         detailsUrl: checkRun.details_url ?? checkRun.html_url ?? null,
@@ -520,6 +521,7 @@ export function createGitHubClient(config: GitHubRuntimeConfig): GitHubClient {
       // uniformly.
       return response.statuses.map((status) => ({
         name: status.context,
+        source: 'commit_status',
         conclusion: status.state === 'pending' ? null : status.state,
         status: status.state === 'pending' ? 'in_progress' : 'completed',
         detailsUrl: status.target_url,

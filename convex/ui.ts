@@ -156,6 +156,18 @@ export const listReposWithPolicies = query({
           .withIndex("by_repo_slug", (q) => q.eq("repoSlug", repo.slug))
           .unique();
 
+        const enabledStatusChecks = await ctx.db
+          .query("repoStatusChecks")
+          .withIndex("by_repo_slug_and_enabled", (q) =>
+            q.eq("repoSlug", repo.slug).eq("enabled", true),
+          )
+          .take(200);
+
+        const statusChecks = await ctx.db
+          .query("repoStatusChecks")
+          .withIndex("by_repo_slug_and_name", (q) => q.eq("repoSlug", repo.slug))
+          .take(500);
+
         const prCount = await ctx.db
           .query("pullRequests")
           .withIndex("by_repo_slug_and_pr_number", (q) =>
@@ -166,6 +178,8 @@ export const listReposWithPolicies = query({
         return {
           ...repo,
           policy,
+          statusCheckCount: statusChecks.length,
+          enabledStatusCheckCount: enabledStatusChecks.length,
           activePrCount: prCount.length,
         };
       }),
@@ -186,6 +200,11 @@ export const getRepoPolicyDetail = query({
       .withIndex("by_repo_slug", (q) => q.eq("repoSlug", args.repoSlug))
       .unique();
 
-    return { repo, policy };
+    const statusChecks = await ctx.db
+      .query("repoStatusChecks")
+      .withIndex("by_repo_slug_and_name", (q) => q.eq("repoSlug", args.repoSlug))
+      .take(500);
+
+    return { repo, policy, statusChecks };
   },
 });

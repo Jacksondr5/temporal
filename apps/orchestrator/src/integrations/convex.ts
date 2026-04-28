@@ -35,9 +35,14 @@ type ConvexFunctionResponse<TValue> =
 
 interface ConvexRepoPolicyRecord {
   repoSlug: string;
-  fixableChecks: string[];
-  ignoredChecks: string[];
   specializedReviewers: SpecializedReviewerDefinition[];
+}
+
+interface ConvexRepoStatusCheckRecord {
+  repoSlug: string;
+  name: string;
+  source: 'check_run' | 'commit_status';
+  enabled: boolean;
 }
 
 interface ConvexThreadDecisionRecord {
@@ -101,6 +106,13 @@ export interface ConvexClient {
   readonly url: string;
   ensureRepoWithPolicy(owner: string, name: string): Promise<unknown>;
   getRepoPolicy(repoSlug: string): Promise<RepositoryPolicy | null>;
+  upsertObservedStatusChecks(input: {
+    repoSlug: string;
+    checks: Array<{
+      name: string;
+      source: 'check_run' | 'commit_status';
+    }>;
+  }): Promise<unknown>;
   getPollCursor(repoSlug: string, cursorKey: string): Promise<unknown | null>;
   setPollCursor(input: {
     repoSlug: string;
@@ -243,26 +255,46 @@ export function createConvexClient(config: ConvexRuntimeConfig): ConvexClient {
         name,
       }),
     getRepoPolicy: async (repoSlug) => {
-      const record = await callConvexFunction<ConvexRepoPolicyRecord | null>(
-        baseUrl,
-        'query',
-        'repoPolicies:getByRepoSlug',
-        {
-          repoSlug,
-        },
-      );
+      const [record, enabledStatusChecks] = await Promise.all([
+        callConvexFunction<ConvexRepoPolicyRecord | null>(
+          baseUrl,
+          'query',
+          'repoPolicies:getByRepoSlug',
+          {
+            repoSlug,
+          },
+        ),
+        callConvexFunction<ConvexRepoStatusCheckRecord[]>(
+          baseUrl,
+          'query',
+          'repoStatusChecks:listEnabledByRepo',
+          {
+            repoSlug,
+          },
+        ),
+      ]);
 
       if (record === null) {
-        return null;
+        return {
+          repository: parseRepositorySlug(repoSlug),
+          enabledStatusChecks: enabledStatusChecks.map((check) => check.name),
+          specializedReviewers: [],
+        };
       }
 
       return {
         repository: parseRepositorySlug(record.repoSlug),
-        fixableChecks: record.fixableChecks,
-        ignoredChecks: record.ignoredChecks,
+        enabledStatusChecks: enabledStatusChecks.map((check) => check.name),
         specializedReviewers: record.specializedReviewers,
       };
     },
+    upsertObservedStatusChecks: async (input) =>
+      await callConvexFunction(
+        baseUrl,
+        'mutation',
+        'repoStatusChecks:upsertObservedBatch',
+        input,
+      ),
     getPollCursor: async (repoSlug, cursorKey) =>
       await callConvexFunction(baseUrl, 'query', 'pollState:getCursor', {
         repoSlug,

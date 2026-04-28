@@ -15,6 +15,7 @@ import type * as pollState from "../pollState.js";
 import type * as prRuns from "../prRuns.js";
 import type * as pullRequests from "../pullRequests.js";
 import type * as repoPolicies from "../repoPolicies.js";
+import type * as repoStatusChecks from "../repoStatusChecks.js";
 import type * as repos from "../repos.js";
 import type * as reviewThreads from "../reviewThreads.js";
 import type * as reviewerRuns from "../reviewerRuns.js";
@@ -36,6 +37,7 @@ declare const fullApi: ApiFromModules<{
   prRuns: typeof prRuns;
   pullRequests: typeof pullRequests;
   repoPolicies: typeof repoPolicies;
+  repoStatusChecks: typeof repoStatusChecks;
   repos: typeof repos;
   reviewThreads: typeof reviewThreads;
   reviewerRuns: typeof reviewerRuns;

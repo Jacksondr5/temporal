@@ -50,6 +50,14 @@ export async function discoverEventsForPullRequest(
     }
   }
 
+  await convex.upsertObservedStatusChecks({
+    repoSlug: pullRequest.repoSlug,
+    checks: Array.from(checksByName.values()).map((check) => ({
+      name: check.name,
+      source: check.source,
+    })),
+  });
+
   const events: GitHubPrEvent[] = [normalizeHeadEvent(pullRequest)];
   let mergeabilityCursorKey: string | null = null;
   let mergeabilityObservedAt: string | null = null;
