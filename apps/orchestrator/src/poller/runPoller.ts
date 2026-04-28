@@ -281,18 +281,16 @@ export async function runPoller(): Promise<PollerRunSummary> {
           blocked: !isWorkflowMissing,
         });
 
-        if (isWorkflowMissing) {
-          await convex.syncPullRequestStatus(lifecycle.pr, {
-            workflowId,
-            branchName: lifecycle.pr.branchName,
-            headSha: lifecycle.pr.headSha,
-            lifecycleState: lifecycle.lifecycleState,
-            currentPhase: 'terminal_cleanup',
-            dirty: false,
-            statusSummary: summary,
-            blockedReason: null,
-          });
-        }
+        await convex.syncPullRequestStatus(lifecycle.pr, {
+          workflowId,
+          branchName: lifecycle.pr.branchName,
+          headSha: lifecycle.pr.headSha,
+          lifecycleState: lifecycle.lifecycleState,
+          currentPhase: 'terminal_cleanup',
+          dirty: false,
+          statusSummary: summary,
+          blockedReason: null,
+        });
       }
     }
 

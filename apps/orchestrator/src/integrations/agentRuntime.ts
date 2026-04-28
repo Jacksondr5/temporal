@@ -123,6 +123,7 @@ async function pushCurrentHead(input: {
 function buildGitOperationEnvironment(
   github: GitHubRuntimeConfig,
   gitIdentity: GitIdentityRuntimeConfig,
+  codex: CodexRuntimeConfig,
 ): Record<string, string> {
   const env: Record<string, string> = {};
 
@@ -142,6 +143,10 @@ function buildGitOperationEnvironment(
     env.GIT_COMMITTER_EMAIL = gitIdentity.userEmail;
   }
 
+  if (codex.homeDir !== null) {
+    env.HOME = codex.homeDir;
+  }
+
   return env;
 }
 
@@ -159,6 +164,22 @@ async function publishCommittedHead(input: {
   const localHeadBeforePush = (
     await runGit(['rev-parse', 'HEAD'], input.workspacePath, input.env)
   ).stdout.trim();
+  const workspaceStatus = (
+    await runGit(['status', '--porcelain', '-uall'], input.workspacePath, input.env)
+  ).stdout.trim();
+
+  if (workspaceStatus.length > 0) {
+    throw new Error(
+      [
+        'Agent left the shared PR workspace dirty before publish.',
+        `workspacePath=${input.workspacePath}`,
+        `branchName=${input.branchName}`,
+        `startingHeadSha=${input.startingHeadSha}`,
+        'status:',
+        workspaceStatus,
+      ].join('\n'),
+    );
+  }
 
   if (input.didCommitCode) {
     if (localHeadBeforePush === input.startingHeadSha) {
@@ -777,6 +798,7 @@ export function createAgentRuntimeClient(options: {
       const gitEnv = buildGitOperationEnvironment(
         options.github,
         options.gitIdentity,
+        options.ai.codex,
       );
 
       if (workspace.mergeAttemptStatus === 'clean_merge') {
@@ -1002,6 +1024,7 @@ export function createAgentRuntimeClient(options: {
       const gitEnv = buildGitOperationEnvironment(
         options.github,
         options.gitIdentity,
+        options.ai.codex,
       );
       const { output: object, usage, providerMetadata } =
         await runCodexStructuredObject<FixChecksBatchAgentOutput>({
@@ -1093,6 +1116,7 @@ export function createAgentRuntimeClient(options: {
       const gitEnv = buildGitOperationEnvironment(
         options.github,
         options.gitIdentity,
+        options.ai.codex,
       );
       const { output: object, usage, providerMetadata } =
         await runCodexStructuredObject<CodeRabbitBatchAgentOutput>({
@@ -1199,6 +1223,7 @@ export function createAgentRuntimeClient(options: {
       const gitEnv = buildGitOperationEnvironment(
         options.github,
         options.gitIdentity,
+        options.ai.codex,
       );
       const { output: object, usage, providerMetadata } =
         await runCodexStructuredObject<SpecializedReviewerAgentOutput>({
