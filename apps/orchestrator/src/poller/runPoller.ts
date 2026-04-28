@@ -1,5 +1,5 @@
 import { ServiceError, WorkflowNotFoundError } from '@temporalio/client';
-import { temporal } from '@temporalio/proto';
+import temporalProto from '@temporalio/proto';
 import {
   signalPullRequestActivity,
   signalPullRequestTerminalState,
@@ -21,6 +21,7 @@ export interface PollerRunSummary {
 const MANUAL_EVENT_CURSOR_REPO = '__manual__';
 const MANUAL_EVENT_CURSOR_KEY = 'last_manual_event_id';
 const MANUAL_EVENT_BATCH_SIZE = 100;
+const { temporal } = temporalProto;
 const PENDING_SIGNALS_LIMIT_EXCEEDED =
   temporal.api.enums.v1.WorkflowTaskFailedCause
     .WORKFLOW_TASK_FAILED_CAUSE_PENDING_SIGNALS_LIMIT_EXCEEDED;
