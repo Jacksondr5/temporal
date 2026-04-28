@@ -57,6 +57,10 @@ function createGitEnv(githubToken?: string): NodeJS.ProcessEnv {
   if (githubToken) {
     env.GH_TOKEN = githubToken;
     env.GITHUB_TOKEN = githubToken;
+    env.GIT_CONFIG_COUNT = '1';
+    env.GIT_CONFIG_KEY_0 = 'credential.https://github.com.helper';
+    env.GIT_CONFIG_VALUE_0 =
+      '!f() { if test "$1" = get; then echo username=x-access-token; echo password="$GITHUB_TOKEN"; fi; }; f';
   }
 
   return env;

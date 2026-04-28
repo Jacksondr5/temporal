@@ -154,6 +154,11 @@ function buildGitOperationEnvironment(
   const env = buildBaseEnvironment(gitIdentity, codex);
   env.GITHUB_TOKEN = github.token;
   env.GH_TOKEN = github.token;
+  env.GIT_TERMINAL_PROMPT = '0';
+  env.GIT_CONFIG_COUNT = '1';
+  env.GIT_CONFIG_KEY_0 = 'credential.https://github.com.helper';
+  env.GIT_CONFIG_VALUE_0 =
+    '!f() { if test "$1" = get; then echo username=x-access-token; echo password="$GITHUB_TOKEN"; fi; }; f';
   return env;
 }
 
@@ -835,13 +840,13 @@ export function createAgentRuntimeClient(options: {
         await pushCurrentHead({
           workspacePath: workspace.path,
           branchName: input.snapshot.pr.branchName,
-          env: agentEnv,
+          env: gitEnv,
         });
         const observedGitState = await resolveObservedPushedHead({
           workspacePath: workspace.path,
           branchName: input.snapshot.pr.branchName,
           startingHeadSha: input.snapshot.pr.headSha,
-          env: agentEnv,
+          env: gitEnv,
         });
         const observedCommitSha = observedGitState.detectedCommitSha;
 
