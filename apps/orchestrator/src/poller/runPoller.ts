@@ -1,4 +1,6 @@
-import { WorkflowNotFoundError } from '@temporalio/client';
+import { ServiceError, WorkflowNotFoundError } from '@temporalio/client';
+import { TemporalFailure } from '@temporalio/common';
+import { WorkflowTaskFailedCause } from '@temporalio/proto/lib/temporal/api/enums/v1';
 import {
   signalPullRequestActivity,
   signalPullRequestTerminalState,
@@ -27,6 +29,21 @@ function buildTerminalSignalFallbackSummary(
   return lifecycleState === 'merged'
     ? 'PR merged. Terminal state recorded without a live workflow.'
     : 'PR closed. Terminal state recorded without a live workflow.';
+}
+
+function isSignalEventLimitError(error: unknown): boolean {
+  if (!(error instanceof ServiceError)) {
+    return false;
+  }
+
+  if (!(error.cause instanceof TemporalFailure)) {
+    return false;
+  }
+
+  return (
+    (error.cause as TemporalFailure & { cause?: unknown }).cause ===
+    WorkflowTaskFailedCause.PENDING_SIGNALS_LIMIT_EXCEEDED
+  );
 }
 
 async function drainManualEvents(
@@ -230,17 +247,21 @@ export async function runPoller(): Promise<PollerRunSummary> {
         });
         signaledWorkflowCount += 1;
       } catch (error) {
-        if (!(error instanceof WorkflowNotFoundError)) {
+        if (!(error instanceof WorkflowNotFoundError) && !isSignalEventLimitError(error)) {
           throw error;
         }
 
         const workflowId = trackedPullRequest.workflowId;
-        const summary = buildTerminalSignalFallbackSummary(
-          lifecycle.lifecycleState,
-        );
-        const errorMessage =
-          `Terminal cleanup signal skipped because workflow ${workflowId} was not found. ` +
-          'Convex lifecycle state was updated directly, and workspace cleanup did not run.';
+        const isWorkflowMissing = error instanceof WorkflowNotFoundError;
+        const summary = isWorkflowMissing
+          ? buildTerminalSignalFallbackSummary(lifecycle.lifecycleState)
+          : `Terminal cleanup could not start because workflow ${workflowId} exceeded Temporal's signal event limit.`;
+        const errorType = isWorkflowMissing
+          ? 'terminal_signal_workflow_not_found'
+          : 'terminal_signal_event_limit_exceeded';
+        const errorMessage = isWorkflowMissing
+          ? `Terminal cleanup signal skipped because workflow ${workflowId} was not found. Convex lifecycle state was updated directly, and workspace cleanup did not run.`
+          : `Terminal cleanup signal failed because workflow ${workflowId} exceeded Temporal's signal event limit. The poller skipped this PR so the rest of the run could continue.`;
 
         console.warn(
           [
@@ -249,7 +270,7 @@ export async function runPoller(): Promise<PollerRunSummary> {
             `pr=${trackedPullRequest.prNumber}`,
             `workflowId=${workflowId}`,
             `lifecycle=${lifecycle.lifecycleState}`,
-            'reason=workflow_not_found',
+            `reason=${isWorkflowMissing ? 'workflow_not_found' : 'signal_event_limit_exceeded'}`,
           ].join(' | '),
         );
 
@@ -257,11 +278,11 @@ export async function runPoller(): Promise<PollerRunSummary> {
           repoSlug,
           prNumber: trackedPullRequest.prNumber,
           workflowId,
-          errorType: 'terminal_signal_workflow_not_found',
+          errorType,
           errorMessage,
           phase: 'terminal_cleanup',
           retryable: false,
-          blocked: false,
+          blocked: !isWorkflowMissing,
         });
 
         await convex.syncPullRequestStatus(lifecycle.pr, {

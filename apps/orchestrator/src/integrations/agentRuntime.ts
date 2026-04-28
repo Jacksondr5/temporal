@@ -120,6 +120,129 @@ async function pushCurrentHead(input: {
   await runGit(['push', 'origin', `HEAD:${input.branchName}`], input.workspacePath, input.env);
 }
 
+function buildBaseEnvironment(
+  gitIdentity: GitIdentityRuntimeConfig,
+  codex: CodexRuntimeConfig,
+): Record<string, string> {
+  const env: Record<string, string> = {};
+
+  for (const [key, value] of Object.entries(process.env)) {
+    if (typeof value === 'string') {
+      env[key] = value;
+    }
+  }
+
+  if (gitIdentity.userName !== null && gitIdentity.userEmail !== null) {
+    env.GIT_AUTHOR_NAME = gitIdentity.userName;
+    env.GIT_AUTHOR_EMAIL = gitIdentity.userEmail;
+    env.GIT_COMMITTER_NAME = gitIdentity.userName;
+    env.GIT_COMMITTER_EMAIL = gitIdentity.userEmail;
+  }
+
+  if (codex.homeDir !== null) {
+    env.HOME = codex.homeDir;
+  }
+
+  return env;
+}
+
+function buildGitOperationEnvironment(
+  github: GitHubRuntimeConfig,
+  gitIdentity: GitIdentityRuntimeConfig,
+  codex: CodexRuntimeConfig,
+): Record<string, string> {
+  const env = buildBaseEnvironment(gitIdentity, codex);
+  env.GITHUB_TOKEN = github.token;
+  env.GH_TOKEN = github.token;
+  return env;
+}
+
+async function publishCommittedHead(input: {
+  workspacePath: string;
+  branchName: string;
+  startingHeadSha: string;
+  didCommitCode: boolean;
+  env: NodeJS.ProcessEnv;
+}): Promise<{
+  detectedCommitSha: string | null;
+  localHeadAfter: string;
+  remoteHeadAfter: string;
+}> {
+  const localHeadBeforePush = (
+    await runGit(['rev-parse', 'HEAD'], input.workspacePath, input.env)
+  ).stdout.trim();
+  const workspaceStatus = (
+    await runGit(['status', '--porcelain', '-uall'], input.workspacePath, input.env)
+  ).stdout.trim();
+
+  if (workspaceStatus.length > 0) {
+    throw new Error(
+      [
+        'Agent left the shared PR workspace dirty before publish.',
+        `workspacePath=${input.workspacePath}`,
+        `branchName=${input.branchName}`,
+        `startingHeadSha=${input.startingHeadSha}`,
+        'status:',
+        workspaceStatus,
+      ].join('\n'),
+    );
+  }
+
+  if (input.didCommitCode) {
+    if (localHeadBeforePush === input.startingHeadSha) {
+      throw new Error(
+        [
+          'Agent reported didCommitCode=true but local HEAD did not change.',
+          `startingHeadSha=${input.startingHeadSha}`,
+          `localHeadAfter=${localHeadBeforePush}`,
+        ].join(' '),
+      );
+    }
+
+    await pushCurrentHead({
+      workspacePath: input.workspacePath,
+      branchName: input.branchName,
+      env: input.env,
+    });
+  } else if (localHeadBeforePush !== input.startingHeadSha) {
+    throw new Error(
+      [
+        'Agent reported didCommitCode=false but local HEAD changed.',
+        `startingHeadSha=${input.startingHeadSha}`,
+        `localHeadAfter=${localHeadBeforePush}`,
+      ].join(' '),
+    );
+  }
+
+  const observed = await resolveObservedPushedHead({
+    workspacePath: input.workspacePath,
+    branchName: input.branchName,
+    startingHeadSha: input.startingHeadSha,
+    env: input.env,
+  });
+
+  if (input.didCommitCode) {
+    try {
+      await runGit(
+        ['merge-base', '--is-ancestor', localHeadBeforePush, observed.remoteHeadAfter],
+        input.workspacePath,
+        input.env,
+      );
+    } catch {
+      throw new Error(
+        [
+          'Published commit was overwritten before verification completed.',
+          `expectedAncestor=${localHeadBeforePush}`,
+          `remoteHeadAfter=${observed.remoteHeadAfter}`,
+          `startingHeadSha=${input.startingHeadSha}`,
+        ].join(' '),
+      );
+    }
+  }
+
+  return observed;
+}
+
 async function listUnmergedPaths(workspacePath: string): Promise<string[]> {
   const output = (
     await runGit(['diff', '--name-only', '--diff-filter=U'], workspacePath)
@@ -307,17 +430,18 @@ Requirements:
 - You may inspect logs and external systems using credentials already present in the environment.
 - For GitHub-hosted CI and Playwright checks, use the GitHub CLI (\`gh\`) to inspect workflow runs, jobs, and logs.
 - For Vercel failures, inspect Vercel deployment/build logs instead of GitHub workflow logs.
-- Make all code changes first and push exactly once at the end if you fix anything.
-- Return didModifyCode=true if you changed repository code.
-- Return didCommitCode=true if you created and pushed a commit.
-- If you do not push a commit, explain why in whyNoCommit.
-- Return only truthful final IDs and summaries for work you actually performed.
+  - Make all code changes first and create exactly one commit at the end if you fix anything.
+  - Return didModifyCode=true if you changed repository code.
+  - Return didCommitCode=true if you created a commit for your code changes.
+  - Do not push the branch yourself; the orchestrator will push after verifying the workspace.
+  - If you do not create a commit, explain why in whyNoCommit.
+  - Return only truthful final IDs and summaries for work you actually performed.
 
 Return a structured result describing:
 - an overallSummary
 - an investigationSummary explaining what you inspected and learned
 - a finalAssessment explaining why your final state is correct
-- whyNoCommit if you did not push, otherwise null
+  - whyNoCommit if you did not create a commit, otherwise null
 - commandsSummary listing the most important commands/tools you used
 - didModifyCode
 - didCommitCode
@@ -380,10 +504,11 @@ ${threadBlocks}
 Requirements:
 - Address every listed thread exactly once.
 - Mixed outcomes are allowed: fix, false_positive, or defer.
-- If you fix code, make all edits first and push exactly once at the end.
-- Return didModifyCode=true if you changed repository code.
-- Return didCommitCode=true if you created and pushed a commit.
-- Do not comment on GitHub for fixed threads.
+  - If you fix code, make all edits first and create exactly one commit at the end.
+  - Return didModifyCode=true if you changed repository code.
+  - Return didCommitCode=true if you created a commit for your code changes.
+  - Do not push the branch yourself; the orchestrator will push after verifying the workspace.
+  - Do not comment on GitHub for fixed threads.
 - For false_positive threads, reply on the GitHub thread with a concise rationale.
 - For deferred threads, create exactly one Linear ticket per deferred thread and reply on the GitHub thread with the ticket reference.
 - Use the credentials already available in the environment.
@@ -393,7 +518,7 @@ Return a structured result describing:
 - an overallSummary
 - an investigationSummary explaining what you inspected and learned
 - a finalAssessment explaining why your final state is correct
-- whyNoCommit if you did not push, otherwise null
+  - whyNoCommit if you did not create a commit, otherwise null
 - commandsSummary listing the most important commands/tools you used
 - didModifyCode
 - didCommitCode
@@ -402,35 +527,16 @@ Return a structured result describing:
 }
 
 function buildAgentEnvironment(
-  github: GitHubRuntimeConfig,
   gitIdentity: GitIdentityRuntimeConfig,
   linear: LinearRuntimeConfig,
   codex: CodexRuntimeConfig,
 ): Record<string, string> {
-  const env: Record<string, string> = {};
-
-  for (const [key, value] of Object.entries(process.env)) {
-    if (typeof value === 'string') {
-      env[key] = value;
-    }
-  }
-
-  env.GITHUB_TOKEN = github.token;
-  env.GH_TOKEN = github.token;
+  const env = buildBaseEnvironment(gitIdentity, codex);
+  delete env.GITHUB_TOKEN;
+  delete env.GH_TOKEN;
   env.LINEAR_API_KEY = linear.apiKey;
   env.LINEAR_TEAM_ID = linear.teamId;
   env.LINEAR_DEFAULT_PROJECT_ID = linear.defaultProjectId;
-
-  if (gitIdentity.userName !== null && gitIdentity.userEmail !== null) {
-    env.GIT_AUTHOR_NAME = gitIdentity.userName;
-    env.GIT_AUTHOR_EMAIL = gitIdentity.userEmail;
-    env.GIT_COMMITTER_NAME = gitIdentity.userName;
-    env.GIT_COMMITTER_EMAIL = gitIdentity.userEmail;
-  }
-
-  if (codex.homeDir !== null) {
-    env.HOME = codex.homeDir;
-  }
 
   return env;
 }
@@ -489,17 +595,18 @@ Requirements:
 - Avoid broad or unrelated refactoring.
 - Inspect conflicted files before editing.
 - Run focused verification when practical.
-- Commit and push exactly once if you resolve the conflict.
-- Return didModifyCode=true if you changed repository code.
-- Return didCommitCode=true if you created and pushed a commit.
-- If you do not push a commit, explain why in whyNoCommit.
+  - Commit exactly once if you resolve the conflict.
+  - Return didModifyCode=true if you changed repository code.
+  - Return didCommitCode=true if you created a commit for the resolved conflict.
+  - Do not push the branch yourself; the orchestrator will push after verifying the workspace.
+  - If you do not create a commit, explain why in whyNoCommit.
 - Return only truthful final IDs and summaries for work you actually performed.
 
 Return a structured result describing:
 - an overallSummary
 - an investigationSummary explaining what you inspected and learned
 - a finalAssessment explaining why your final state is correct
-- whyNoCommit if you did not push, otherwise null
+  - whyNoCommit if you did not create a commit, otherwise null
 - commandsSummary listing the most important commands/tools you used
 - didModifyCode
 - didCommitCode
@@ -581,10 +688,11 @@ Requirements:
 - You may make cross-cutting edits when required for correctness.
 - Prefer fixing concrete issues directly instead of only reporting them.
 - Only leave an issue unresolved when it is unsafe, out of scope for this reviewer, or genuinely requires follow-up from a later reviewer or a human.
-- If you modify code, make all edits first and push exactly once at the end.
-- Return didModifyCode=true if you changed repository code.
-- Return didCommitCode=true if you created and pushed a commit.
-- If you do not push a commit, explain the blocking reason in whyNoCommit.
+  - If you modify code, make all edits first and create exactly one commit at the end.
+  - Return didModifyCode=true if you changed repository code.
+  - Return didCommitCode=true if you created a commit for your code changes.
+  - Do not push the branch yourself; the orchestrator will push after verifying the workspace.
+  - If you do not create a commit, explain the blocking reason in whyNoCommit.
 - Treat findings as any issues that still need attention after your run. If you fixed everything you found, findings may be empty.
 - Emit handoff items for later reviewers when they should verify or adapt to something you changed.
 
@@ -691,15 +799,19 @@ export function createAgentRuntimeClient(options: {
         baseSha: input.baseSha,
       });
       const agentEnv = buildAgentEnvironment(
-        options.github,
         options.gitIdentity,
         options.linear,
+        options.ai.codex,
+      );
+      const gitEnv = buildGitOperationEnvironment(
+        options.github,
+        options.gitIdentity,
         options.ai.codex,
       );
 
       if (workspace.mergeAttemptStatus === 'clean_merge') {
         const localHeadAfter = (
-          await runGit(['rev-parse', 'HEAD'], workspace.path, agentEnv)
+          await runGit(['rev-parse', 'HEAD'], workspace.path, gitEnv)
         ).stdout.trim();
 
         if (localHeadAfter === input.snapshot.pr.headSha) {
@@ -814,7 +926,7 @@ export function createAgentRuntimeClient(options: {
           normalizedResult.whyNoCommit ??
           (unmergedPaths.length > 0
             ? `Unresolved merge conflicts remain in ${unmergedPaths.join(', ')}.`
-            : 'Merge-conflict agent did not push a resolution commit.');
+            : 'Merge-conflict agent did not create a resolution commit.');
         const localHeadAfter = (
           await runGit(['rev-parse', 'HEAD'], workspace.path, agentEnv)
         ).stdout.trim();
@@ -851,18 +963,19 @@ export function createAgentRuntimeClient(options: {
         );
       }
 
-      const observedGitState = await resolveObservedPushedHead({
+      const observedGitState = await publishCommittedHead({
         workspacePath: workspace.path,
         branchName: input.snapshot.pr.branchName,
         startingHeadSha: input.snapshot.pr.headSha,
-        env: agentEnv,
+        didCommitCode: normalizedResult.didCommitCode,
+        env: gitEnv,
       });
       const observedCommitSha = observedGitState.detectedCommitSha;
 
       if (observedCommitSha === null) {
         throw new Error(
           [
-            'Merge-conflict agent reported didCommitCode=true but no pushed commit was observed.',
+            'Merge-conflict agent created a resolution commit but the orchestrator did not observe it on the remote branch.',
             `startingHeadSha=${input.snapshot.pr.headSha}`,
             `localHeadAfter=${observedGitState.localHeadAfter}`,
             `remoteHeadAfter=${observedGitState.remoteHeadAfter}`,
@@ -911,9 +1024,13 @@ export function createAgentRuntimeClient(options: {
         input.snapshot.pr,
       );
       const agentEnv = buildAgentEnvironment(
-        options.github,
         options.gitIdentity,
         options.linear,
+        options.ai.codex,
+      );
+      const gitEnv = buildGitOperationEnvironment(
+        options.github,
+        options.gitIdentity,
         options.ai.codex,
       );
       const { output: object, usage, providerMetadata } =
@@ -932,17 +1049,18 @@ export function createAgentRuntimeClient(options: {
       }
 
       normalizeFixCheckOutcomes(input.checks, object);
-      const observedGitState = await resolveObservedPushedHead({
+      const observedGitState = await publishCommittedHead({
         workspacePath: workspace.path,
         branchName: input.snapshot.pr.branchName,
         startingHeadSha: input.snapshot.pr.headSha,
-        env: agentEnv,
+        didCommitCode: object.didCommitCode,
+        env: gitEnv,
       });
       const observedCommitSha = observedGitState.detectedCommitSha;
       if (object.didCommitCode && observedCommitSha === null) {
         throw new Error(
           [
-            'Agent reported completed fix-check handling but no pushed commit was observed.',
+            'Fix-check handling created a local commit but the orchestrator did not observe it on the remote branch.',
             `startingHeadSha=${input.snapshot.pr.headSha}`,
             `localHeadAfter=${observedGitState.localHeadAfter}`,
             `remoteHeadAfter=${observedGitState.remoteHeadAfter}`,
@@ -997,9 +1115,13 @@ export function createAgentRuntimeClient(options: {
         input.snapshot.pr,
       );
       const agentEnv = buildAgentEnvironment(
-        options.github,
         options.gitIdentity,
         options.linear,
+        options.ai.codex,
+      );
+      const gitEnv = buildGitOperationEnvironment(
+        options.github,
+        options.gitIdentity,
         options.ai.codex,
       );
       const { output: object, usage, providerMetadata } =
@@ -1018,11 +1140,12 @@ export function createAgentRuntimeClient(options: {
       }
 
       const normalizedOutcomes = normalizeCodeRabbitOutcomes(input.items, object);
-      const observedGitState = await resolveObservedPushedHead({
+      const observedGitState = await publishCommittedHead({
         workspacePath: workspace.path,
         branchName: input.snapshot.pr.branchName,
         startingHeadSha: input.snapshot.pr.headSha,
-        env: agentEnv,
+        didCommitCode: object.didCommitCode,
+        env: gitEnv,
       });
       const observedCommitSha = observedGitState.detectedCommitSha;
       const fixCount = normalizedOutcomes.filter(
@@ -1032,7 +1155,7 @@ export function createAgentRuntimeClient(options: {
       if (fixCount > 0 && observedCommitSha === null) {
         throw new Error(
           [
-            'Agent reported fixed Code Rabbit threads but no pushed commit was observed.',
+            'Code Rabbit handling created a local fix commit but the orchestrator did not observe it on the remote branch.',
             `startingHeadSha=${input.snapshot.pr.headSha}`,
             `localHeadAfter=${observedGitState.localHeadAfter}`,
             `remoteHeadAfter=${observedGitState.remoteHeadAfter}`,
@@ -1043,7 +1166,7 @@ export function createAgentRuntimeClient(options: {
       if (object.didCommitCode && observedCommitSha === null) {
         throw new Error(
           [
-            'Agent reported didCommitCode=true for Code Rabbit handling but no pushed commit was observed.',
+            'Code Rabbit handling reported didCommitCode=true but the orchestrator did not observe the commit on the remote branch.',
             `startingHeadSha=${input.snapshot.pr.headSha}`,
             `localHeadAfter=${observedGitState.localHeadAfter}`,
             `remoteHeadAfter=${observedGitState.remoteHeadAfter}`,
@@ -1098,9 +1221,13 @@ export function createAgentRuntimeClient(options: {
         input.snapshot.pr,
       );
       const agentEnv = buildAgentEnvironment(
-        options.github,
         options.gitIdentity,
         options.linear,
+        options.ai.codex,
+      );
+      const gitEnv = buildGitOperationEnvironment(
+        options.github,
+        options.gitIdentity,
         options.ai.codex,
       );
       const { output: object, usage, providerMetadata } =
@@ -1119,18 +1246,19 @@ export function createAgentRuntimeClient(options: {
       }
 
       normalizeSpecializedReviewerResult(input, object);
-      const observedGitState = await resolveObservedPushedHead({
+      const observedGitState = await publishCommittedHead({
         workspacePath: workspace.path,
         branchName: input.snapshot.pr.branchName,
         startingHeadSha: input.snapshot.pr.headSha,
-        env: agentEnv,
+        didCommitCode: object.didCommitCode,
+        env: gitEnv,
       });
       const observedCommitSha = observedGitState.detectedCommitSha;
 
       if (object.didCommitCode && observedCommitSha === null) {
         throw new Error(
           [
-            `Specialized reviewer "${input.reviewer.id}" reported didCommitCode=true but no pushed commit was observed.`,
+            `Specialized reviewer "${input.reviewer.id}" created a local commit but the orchestrator did not observe it on the remote branch.`,
             `startingHeadSha=${input.snapshot.pr.headSha}`,
             `localHeadAfter=${observedGitState.localHeadAfter}`,
             `remoteHeadAfter=${observedGitState.remoteHeadAfter}`,

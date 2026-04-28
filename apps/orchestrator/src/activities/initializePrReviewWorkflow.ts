@@ -7,5 +7,9 @@ import { createInitialWorkflowState } from '../domain/workflow.js';
 export async function initializePrReviewWorkflow(
   input: PrReviewWorkflowInput,
 ): Promise<PrReviewWorkflowState> {
+  if (input.resumedState) {
+    return input.resumedState;
+  }
+
   return createInitialWorkflowState(input);
 }
