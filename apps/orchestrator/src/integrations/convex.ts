@@ -255,7 +255,7 @@ export function createConvexClient(config: ConvexRuntimeConfig): ConvexClient {
         name,
       }),
     getRepoPolicy: async (repoSlug) => {
-      const [record, enabledStatusChecks] = await Promise.all([
+      const [record, firstPage] = await Promise.all([
         callConvexFunction<ConvexRepoPolicyRecord | null>(
           baseUrl,
           'query',
@@ -264,15 +264,36 @@ export function createConvexClient(config: ConvexRuntimeConfig): ConvexClient {
             repoSlug,
           },
         ),
-        callConvexFunction<ConvexRepoStatusCheckRecord[]>(
+        callConvexFunction<{
+          page: ConvexRepoStatusCheckRecord[];
+          isDone: boolean;
+          continueCursor: string;
+        }>(
           baseUrl,
           'query',
           'repoStatusChecks:listEnabledByRepo',
           {
             repoSlug,
+            paginationOpts: { numItems: 256, cursor: null },
           },
         ),
       ]);
+      const enabledStatusChecks = [...firstPage.page];
+      let cursor = firstPage.continueCursor;
+      let isDone = firstPage.isDone;
+      while (!isDone) {
+        const nextPage = await callConvexFunction<{
+          page: ConvexRepoStatusCheckRecord[];
+          isDone: boolean;
+          continueCursor: string;
+        }>(baseUrl, 'query', 'repoStatusChecks:listEnabledByRepo', {
+          repoSlug,
+          paginationOpts: { numItems: 256, cursor },
+        });
+        enabledStatusChecks.push(...nextPage.page);
+        cursor = nextPage.continueCursor;
+        isDone = nextPage.isDone;
+      }
 
       if (record === null) {
         return {

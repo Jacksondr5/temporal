@@ -11,6 +11,7 @@ import type {
   PreparedPullRequestWorkspace,
 } from '../domain/agentRuntime.js';
 import type { PullRequestRef } from '../domain/github.js';
+import { buildGitHubCredentialEnv } from './gitAuthEnv.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -49,21 +50,11 @@ async function pathExists(path: string): Promise<boolean> {
 }
 
 function createGitEnv(githubToken?: string): NodeJS.ProcessEnv {
-  const env: NodeJS.ProcessEnv = {
+  return {
     ...process.env,
     GIT_TERMINAL_PROMPT: '0',
+    ...buildGitHubCredentialEnv(githubToken),
   };
-
-  if (githubToken) {
-    env.GH_TOKEN = githubToken;
-    env.GITHUB_TOKEN = githubToken;
-    env.GIT_CONFIG_COUNT = '1';
-    env.GIT_CONFIG_KEY_0 = 'credential.https://github.com.helper';
-    env.GIT_CONFIG_VALUE_0 =
-      '!f() { if test "$1" = get; then echo username=x-access-token; echo password="$GITHUB_TOKEN"; fi; }; f';
-  }
-
-  return env;
 }
 
 async function runGit(
@@ -113,6 +104,18 @@ async function cloneWorkspace(
       '--single-branch',
     ],
     {
+      githubToken,
+    },
+  );
+  await runGit(
+    [
+      'remote',
+      'set-url',
+      'origin',
+      `https://github.com/${repository.owner}/${repository.name}.git`,
+    ],
+    {
+      cwd: path,
       githubToken,
     },
   );

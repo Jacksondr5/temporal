@@ -34,6 +34,7 @@ import {
 } from '../domain/agentRuntime.js';
 import type { GitHubCheckRun } from '../domain/github.js';
 import type { CodeRabbitReviewItem } from '../domain/review.js';
+import { buildGitHubCredentialEnv } from './gitAuthEnv.js';
 import type { WorkspaceManager } from './workspace.js';
 
 const execFileAsync = promisify(execFile);
@@ -152,14 +153,11 @@ function buildGitOperationEnvironment(
   codex: CodexRuntimeConfig,
 ): Record<string, string> {
   const env = buildBaseEnvironment(gitIdentity, codex);
-  env.GITHUB_TOKEN = github.token;
-  env.GH_TOKEN = github.token;
   env.GIT_TERMINAL_PROMPT = '0';
-  env.GIT_CONFIG_COUNT = '1';
-  env.GIT_CONFIG_KEY_0 = 'credential.https://github.com.helper';
-  env.GIT_CONFIG_VALUE_0 =
-    '!f() { if test "$1" = get; then echo username=x-access-token; echo password="$GITHUB_TOKEN"; fi; }; f';
-  return env;
+  return {
+    ...env,
+    ...(buildGitHubCredentialEnv(github.token) as Record<string, string>),
+  };
 }
 
 async function publishCommittedHead(input: {

@@ -1,6 +1,8 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import type { MutationCtx } from "./_generated/server";
+import { paginationOptsValidator } from "convex/server";
+import type { Doc } from "./_generated/dataModel";
 
 const statusCheckSourceValidator = v.union(
   v.literal("check_run"),
@@ -8,15 +10,29 @@ const statusCheckSourceValidator = v.union(
 );
 
 async function collectAllByRepoAndName(ctx: MutationCtx, repoSlug: string) {
-  return await ctx.db
-    .query("repoStatusChecks")
-    .withIndex("by_repo_slug_and_name", (q) => q.eq("repoSlug", repoSlug))
-    .take(500);
+  const checks = new Map<string, Doc<"repoStatusChecks">>();
+  let cursor: string | null = null;
+  let isDone = false;
+
+  while (!isDone) {
+    const page = await ctx.db
+      .query("repoStatusChecks")
+      .withIndex("by_repo_slug_and_name", (q) => q.eq("repoSlug", repoSlug))
+      .paginate({ numItems: 256, cursor });
+    for (const row of page.page) {
+      checks.set(row.name, row);
+    }
+    cursor = page.continueCursor;
+    isDone = page.isDone;
+  }
+
+  return checks;
 }
 
 export const listByRepo = query({
   args: {
     repoSlug: v.string(),
+    paginationOpts: paginationOptsValidator,
   },
   handler: async (ctx, args) => {
     return await ctx.db
@@ -24,13 +40,14 @@ export const listByRepo = query({
       .withIndex("by_repo_slug_and_name", (q) =>
         q.eq("repoSlug", args.repoSlug),
       )
-      .take(500);
+      .paginate(args.paginationOpts);
   },
 });
 
 export const listEnabledByRepo = query({
   args: {
     repoSlug: v.string(),
+    paginationOpts: paginationOptsValidator,
   },
   handler: async (ctx, args) => {
     return await ctx.db
@@ -38,7 +55,7 @@ export const listEnabledByRepo = query({
       .withIndex("by_repo_slug_and_enabled", (q) =>
         q.eq("repoSlug", args.repoSlug).eq("enabled", true),
       )
-      .take(500);
+      .paginate(args.paginationOpts);
   },
 });
 
@@ -59,12 +76,7 @@ export const upsertObservedBatch = mutation({
       new Map(args.checks.map((check) => [check.name, check])).values(),
     );
 
-    const existingByName = new Map(
-      (await collectAllByRepoAndName(ctx, args.repoSlug)).map((row) => [
-        row.name,
-        row,
-      ]),
-    );
+    const existingByName = await collectAllByRepoAndName(ctx, args.repoSlug);
 
     for (const check of uniqueChecks) {
       const existing = existingByName.get(check.name);
