@@ -120,8 +120,7 @@ async function pushCurrentHead(input: {
   await runGit(['push', 'origin', `HEAD:${input.branchName}`], input.workspacePath, input.env);
 }
 
-function buildGitOperationEnvironment(
-  github: GitHubRuntimeConfig,
+function buildBaseEnvironment(
   gitIdentity: GitIdentityRuntimeConfig,
   codex: CodexRuntimeConfig,
 ): Record<string, string> {
@@ -132,9 +131,6 @@ function buildGitOperationEnvironment(
       env[key] = value;
     }
   }
-
-  env.GITHUB_TOKEN = github.token;
-  env.GH_TOKEN = github.token;
 
   if (gitIdentity.userName !== null && gitIdentity.userEmail !== null) {
     env.GIT_AUTHOR_NAME = gitIdentity.userName;
@@ -147,6 +143,17 @@ function buildGitOperationEnvironment(
     env.HOME = codex.homeDir;
   }
 
+  return env;
+}
+
+function buildGitOperationEnvironment(
+  github: GitHubRuntimeConfig,
+  gitIdentity: GitIdentityRuntimeConfig,
+  codex: CodexRuntimeConfig,
+): Record<string, string> {
+  const env = buildBaseEnvironment(gitIdentity, codex);
+  env.GITHUB_TOKEN = github.token;
+  env.GH_TOKEN = github.token;
   return env;
 }
 
@@ -207,12 +214,33 @@ async function publishCommittedHead(input: {
     );
   }
 
-  return await resolveObservedPushedHead({
+  const observed = await resolveObservedPushedHead({
     workspacePath: input.workspacePath,
     branchName: input.branchName,
     startingHeadSha: input.startingHeadSha,
     env: input.env,
   });
+
+  if (input.didCommitCode) {
+    try {
+      await runGit(
+        ['merge-base', '--is-ancestor', localHeadBeforePush, observed.remoteHeadAfter],
+        input.workspacePath,
+        input.env,
+      );
+    } catch {
+      throw new Error(
+        [
+          'Published commit was overwritten before verification completed.',
+          `expectedAncestor=${localHeadBeforePush}`,
+          `remoteHeadAfter=${observed.remoteHeadAfter}`,
+          `startingHeadSha=${input.startingHeadSha}`,
+        ].join(' '),
+      );
+    }
+  }
+
+  return observed;
 }
 
 async function listUnmergedPaths(workspacePath: string): Promise<string[]> {
@@ -499,35 +527,16 @@ Return a structured result describing:
 }
 
 function buildAgentEnvironment(
-  github: GitHubRuntimeConfig,
   gitIdentity: GitIdentityRuntimeConfig,
   linear: LinearRuntimeConfig,
   codex: CodexRuntimeConfig,
 ): Record<string, string> {
-  const env: Record<string, string> = {};
-
-  for (const [key, value] of Object.entries(process.env)) {
-    if (typeof value === 'string') {
-      env[key] = value;
-    }
-  }
-
-  env.GITHUB_TOKEN = github.token;
-  env.GH_TOKEN = github.token;
+  const env = buildBaseEnvironment(gitIdentity, codex);
+  delete env.GITHUB_TOKEN;
+  delete env.GH_TOKEN;
   env.LINEAR_API_KEY = linear.apiKey;
   env.LINEAR_TEAM_ID = linear.teamId;
   env.LINEAR_DEFAULT_PROJECT_ID = linear.defaultProjectId;
-
-  if (gitIdentity.userName !== null && gitIdentity.userEmail !== null) {
-    env.GIT_AUTHOR_NAME = gitIdentity.userName;
-    env.GIT_AUTHOR_EMAIL = gitIdentity.userEmail;
-    env.GIT_COMMITTER_NAME = gitIdentity.userName;
-    env.GIT_COMMITTER_EMAIL = gitIdentity.userEmail;
-  }
-
-  if (codex.homeDir !== null) {
-    env.HOME = codex.homeDir;
-  }
 
   return env;
 }
@@ -790,7 +799,6 @@ export function createAgentRuntimeClient(options: {
         baseSha: input.baseSha,
       });
       const agentEnv = buildAgentEnvironment(
-        options.github,
         options.gitIdentity,
         options.linear,
         options.ai.codex,
@@ -1016,7 +1024,6 @@ export function createAgentRuntimeClient(options: {
         input.snapshot.pr,
       );
       const agentEnv = buildAgentEnvironment(
-        options.github,
         options.gitIdentity,
         options.linear,
         options.ai.codex,
@@ -1108,7 +1115,6 @@ export function createAgentRuntimeClient(options: {
         input.snapshot.pr,
       );
       const agentEnv = buildAgentEnvironment(
-        options.github,
         options.gitIdentity,
         options.linear,
         options.ai.codex,
@@ -1215,7 +1221,6 @@ export function createAgentRuntimeClient(options: {
         input.snapshot.pr,
       );
       const agentEnv = buildAgentEnvironment(
-        options.github,
         options.gitIdentity,
         options.linear,
         options.ai.codex,

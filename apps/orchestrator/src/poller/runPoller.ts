@@ -1,4 +1,5 @@
 import { ServiceError, WorkflowNotFoundError } from '@temporalio/client';
+import { WorkflowTaskFailedCause } from '@temporalio/proto/lib/temporal/api/enums/v1';
 import {
   signalPullRequestActivity,
   signalPullRequestTerminalState,
@@ -30,16 +31,12 @@ function buildTerminalSignalFallbackSummary(
 }
 
 function isSignalEventLimitError(error: unknown): boolean {
-  const message =
-    error instanceof ServiceError
-      ? error.cause instanceof Error
-        ? error.cause.message
-        : error.message
-      : error instanceof Error
-        ? error.message
-        : '';
+  if (!(error instanceof ServiceError)) {
+    return false;
+  }
 
-  return message.includes('exceeded workflow execution limit for signal events');
+  const cause = error.failure?.workflowTaskFailedFailure?.cause;
+  return cause === WorkflowTaskFailedCause.PENDING_SIGNALS_LIMIT_EXCEEDED;
 }
 
 async function drainManualEvents(
