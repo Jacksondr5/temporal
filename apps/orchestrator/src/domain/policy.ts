@@ -2,7 +2,6 @@ import type { RepositoryRef } from './github.js';
 
 export type CheckClassification =
   | 'fixable_blocking'
-  | 'ignored_nonblocking'
   | 'informational';
 
 export interface SpecializedReviewerDefinition {
