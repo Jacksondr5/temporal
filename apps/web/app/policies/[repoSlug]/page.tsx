@@ -2,8 +2,10 @@
 
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@convex/_generated/api";
-import { use, useState, useCallback, useEffect } from "react";
+import type { Doc } from "@convex/_generated/dataModel";
+import { useState, useCallback } from "react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
 import { Label } from "../../../components/ui/label";
@@ -28,45 +30,66 @@ interface ReviewerDraft {
   promptId: string;
 }
 
-export default function PolicyEditPage({
-  params,
-}: {
-  params: Promise<{ repoSlug: string }>;
-}) {
-  const { repoSlug } = use(params);
+interface RepoPolicyDetail {
+  repo: Doc<"repos"> | null;
+  policy: Doc<"repoPolicies"> | null;
+}
+
+export default function PolicyEditPage() {
+  const { repoSlug } = useParams<{ repoSlug: string }>();
   const decodedSlug = decodeURIComponent(repoSlug);
 
   const detail = useQuery(api.ui.getRepoPolicyDetail, {
     repoSlug: decodedSlug,
   });
+
+  if (detail === undefined) {
+    return (
+      <div className="space-y-6">
+        <div className="h-5 w-32 rounded animate-shimmer" />
+        <div className="h-8 w-72 rounded animate-shimmer" />
+        <div className="h-64 w-full rounded-lg animate-shimmer" />
+      </div>
+    );
+  }
+
+  return (
+    <PolicyEditForm
+      key={decodedSlug}
+      decodedSlug={decodedSlug}
+      detail={detail}
+    />
+  );
+}
+
+function PolicyEditForm({
+  decodedSlug,
+  detail,
+}: {
+  decodedSlug: string;
+  detail: RepoPolicyDetail;
+}) {
   const upsertRepo = useMutation(api.repos.upsert);
   const upsertPolicy = useMutation(api.repoPolicies.upsert);
 
-  const [enabled, setEnabled] = useState(true);
-  const [fixableChecks, setFixableChecks] = useState("");
-  const [ignoredChecks, setIgnoredChecks] = useState("");
-  const [reviewers, setReviewers] = useState<ReviewerDraft[]>([]);
+  const [enabled, setEnabled] = useState(() => detail.repo?.enabled ?? true);
+  const [fixableChecks, setFixableChecks] = useState(
+    () => detail.policy?.fixableChecks.join("\n") ?? "",
+  );
+  const [ignoredChecks, setIgnoredChecks] = useState(
+    () => detail.policy?.ignoredChecks.join("\n") ?? "",
+  );
+  const [reviewers, setReviewers] = useState<ReviewerDraft[]>(() =>
+    detail.policy
+      ? detail.policy.specializedReviewers.map((reviewer) => ({
+          ...reviewer,
+          fileGlobs: reviewer.fileGlobs.join(", "),
+        }))
+      : [],
+  );
   const [saveStatus, setSaveStatus] = useState<
     "idle" | "saving" | "saved" | "error"
   >("idle");
-  const [initialized, setInitialized] = useState(false);
-
-  useEffect(() => {
-    if (detail && !initialized) {
-      if (detail.repo) setEnabled(detail.repo.enabled);
-      if (detail.policy) {
-        setFixableChecks(detail.policy.fixableChecks.join("\n"));
-        setIgnoredChecks(detail.policy.ignoredChecks.join("\n"));
-        setReviewers(
-          detail.policy.specializedReviewers.map((r) => ({
-            ...r,
-            fileGlobs: r.fileGlobs.join(", "),
-          })),
-        );
-      }
-      setInitialized(true);
-    }
-  }, [detail, initialized]);
 
   const addReviewer = useCallback(() => {
     setReviewers((prev) => [
@@ -142,16 +165,6 @@ export default function PolicyEditPage({
       setTimeout(() => setSaveStatus("idle"), 3000);
     }
   };
-
-  if (detail === undefined) {
-    return (
-      <div className="space-y-6">
-        <div className="h-5 w-32 rounded animate-shimmer" />
-        <div className="h-8 w-72 rounded animate-shimmer" />
-        <div className="h-64 w-full rounded-lg animate-shimmer" />
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">
