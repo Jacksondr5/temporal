@@ -1,10 +1,35 @@
 import { v } from 'convex/values';
 import { mutation, query } from './_generated/server';
+import type { MutationCtx } from './_generated/server';
 
 const statusCheckSourceValidator = v.union(
   v.literal('check_run'),
   v.literal('commit_status'),
 );
+
+async function collectAllByRepoAndName(ctx: MutationCtx, repoSlug: string) {
+  const pageSize = 250;
+  let cursor: string | null = null;
+  const rows = [];
+
+  while (true) {
+    const page = await ctx.db
+      .query('repoStatusChecks')
+      .withIndex('by_repo_slug_and_name', (q) => q.eq('repoSlug', repoSlug))
+      .paginate({
+        cursor,
+        numItems: pageSize,
+      });
+
+    rows.push(...page.page);
+    if (page.isDone) {
+      break;
+    }
+    cursor = page.continueCursor;
+  }
+
+  return rows;
+}
 
 export const listByRepo = query({
   args: {
@@ -23,12 +48,29 @@ export const listEnabledByRepo = query({
     repoSlug: v.string(),
   },
   handler: async (ctx, args) => {
-    return await ctx.db
-      .query('repoStatusChecks')
-      .withIndex('by_repo_slug_and_enabled', (q) =>
-        q.eq('repoSlug', args.repoSlug).eq('enabled', true),
-      )
-      .take(500);
+    const pageSize = 250;
+    let cursor: string | null = null;
+    const pages = [];
+
+    while (true) {
+      const page = await ctx.db
+        .query('repoStatusChecks')
+        .withIndex('by_repo_slug_and_enabled', (q) =>
+          q.eq('repoSlug', args.repoSlug).eq('enabled', true),
+        )
+        .paginate({
+          cursor,
+          numItems: pageSize,
+        });
+
+      pages.push(page.page);
+      if (page.isDone) {
+        break;
+      }
+      cursor = page.continueCursor;
+    }
+
+    return pages.flat();
   },
 });
 
@@ -46,13 +88,12 @@ export const upsertObservedBatch = mutation({
     let inserted = 0;
     let updated = 0;
 
+    const existingByName = new Map(
+      (await collectAllByRepoAndName(ctx, args.repoSlug)).map((row) => [row.name, row]),
+    );
+
     for (const check of args.checks) {
-      const existing = await ctx.db
-        .query('repoStatusChecks')
-        .withIndex('by_repo_slug_and_name', (q) =>
-          q.eq('repoSlug', args.repoSlug).eq('name', check.name),
-        )
-        .unique();
+      const existing = existingByName.get(check.name);
 
       if (!existing) {
         await ctx.db.insert('repoStatusChecks', {

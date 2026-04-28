@@ -1,6 +1,52 @@
 import { v } from "convex/values";
 import { query } from "./_generated/server";
 
+async function countByPagination<T>(queryBuilder: {
+  paginate: (opts: { cursor: string | null; numItems: number }) => Promise<{
+    page: T[];
+    isDone: boolean;
+    continueCursor: string;
+  }>;
+}) {
+  const pageSize = 250;
+  let cursor: string | null = null;
+  let total = 0;
+
+  while (true) {
+    const page = await queryBuilder.paginate({ cursor, numItems: pageSize });
+    total += page.page.length;
+    if (page.isDone) {
+      break;
+    }
+    cursor = page.continueCursor;
+  }
+
+  return total;
+}
+
+async function listAllByPagination<T>(queryBuilder: {
+  paginate: (opts: { cursor: string | null; numItems: number }) => Promise<{
+    page: T[];
+    isDone: boolean;
+    continueCursor: string;
+  }>;
+}) {
+  const pageSize = 250;
+  let cursor: string | null = null;
+  const pages: T[][] = [];
+
+  while (true) {
+    const page = await queryBuilder.paginate({ cursor, numItems: pageSize });
+    pages.push(page.page);
+    if (page.isDone) {
+      break;
+    }
+    cursor = page.continueCursor;
+  }
+
+  return pages.flat();
+}
+
 /**
  * UI-optimized read-model queries for the operator dashboard.
  *
@@ -156,17 +202,22 @@ export const listReposWithPolicies = query({
           .withIndex("by_repo_slug", (q) => q.eq("repoSlug", repo.slug))
           .unique();
 
-        const enabledStatusChecks = await ctx.db
-          .query("repoStatusChecks")
-          .withIndex("by_repo_slug_and_enabled", (q) =>
-            q.eq("repoSlug", repo.slug).eq("enabled", true),
-          )
-          .take(200);
-
-        const statusChecks = await ctx.db
-          .query("repoStatusChecks")
-          .withIndex("by_repo_slug_and_name", (q) => q.eq("repoSlug", repo.slug))
-          .take(500);
+        const [enabledStatusCheckCount, statusCheckCount] = await Promise.all([
+          countByPagination(
+            ctx.db
+              .query("repoStatusChecks")
+              .withIndex("by_repo_slug_and_enabled", (q) =>
+                q.eq("repoSlug", repo.slug).eq("enabled", true),
+              ),
+          ),
+          countByPagination(
+            ctx.db
+              .query("repoStatusChecks")
+              .withIndex("by_repo_slug_and_name", (q) =>
+                q.eq("repoSlug", repo.slug),
+              ),
+          ),
+        ]);
 
         const prCount = await ctx.db
           .query("pullRequests")
@@ -178,8 +229,8 @@ export const listReposWithPolicies = query({
         return {
           ...repo,
           policy,
-          statusCheckCount: statusChecks.length,
-          enabledStatusCheckCount: enabledStatusChecks.length,
+          statusCheckCount,
+          enabledStatusCheckCount,
           activePrCount: prCount.length,
         };
       }),
@@ -200,10 +251,11 @@ export const getRepoPolicyDetail = query({
       .withIndex("by_repo_slug", (q) => q.eq("repoSlug", args.repoSlug))
       .unique();
 
-    const statusChecks = await ctx.db
-      .query("repoStatusChecks")
-      .withIndex("by_repo_slug_and_name", (q) => q.eq("repoSlug", args.repoSlug))
-      .take(500);
+    const statusChecks = await listAllByPagination(
+      ctx.db
+        .query("repoStatusChecks")
+        .withIndex("by_repo_slug_and_name", (q) => q.eq("repoSlug", args.repoSlug)),
+    );
 
     return { repo, policy, statusChecks };
   },

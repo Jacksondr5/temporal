@@ -10,7 +10,7 @@
 
 ---
 
-### Task 1: Add Convex Catalog
+## Task 1: Add Convex Catalog
 
 **Files:**
 - Modify: `convex/schema.ts`
@@ -21,7 +21,7 @@ Add a new `repoStatusChecks` table with `repoSlug`, `name`, `source`, and `enabl
 Expose mutations to upsert observed checks and set enabled state.
 Expose queries for repo detail and policy list counts.
 
-### Task 2: Wire Orchestrator Reads And Discovery
+## Task 2: Wire Orchestrator Reads And Discovery
 
 **Files:**
 - Modify: `apps/orchestrator/src/domain/github.ts`
@@ -36,7 +36,7 @@ Upsert status-check catalog rows during poller discovery.
 Load enabled catalog names for workflow classification.
 Continue ignoring enabled catalog rows absent from the current PR snapshot.
 
-### Task 3: Replace Policy UI Textareas
+## Task 3: Replace Policy UI Textareas
 
 **Files:**
 - Add: `apps/web/components/ui/checkbox.tsx`
@@ -47,12 +47,13 @@ Use shadcn-style checkboxes for discovered status checks.
 Remove fixable/ignored textareas from the UI.
 Preserve specialized reviewer editing.
 
-### Task 4: Verify
+## Task 4: Verify
 
 Run:
 
 ```bash
 scripts/bootstrap-worktree.sh
+pnpm exec convex codegen
 pnpm typecheck
 ```
 
