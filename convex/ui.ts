@@ -146,6 +146,8 @@ export const getPullRequestDetail = query({
 // Repo + Policy management
 // ---------------------------------------------------------------------------
 
+const DASHBOARD_COUNT_LIMIT = 1000;
+
 export const listReposWithPolicies = query({
   args: {},
   handler: async (ctx) => {
@@ -158,44 +160,38 @@ export const listReposWithPolicies = query({
           .withIndex("by_repo_slug", (q) => q.eq("repoSlug", repo.slug))
           .unique();
 
-        const countAll = async (
+        // Keep these as bounded `.take()` reads. Convex allows only one
+        // paginated query per function, so converting these dashboard counts
+        // to `.paginate()` reintroduces the policies page runtime error.
+        const boundedCount = async (
           buildQuery: () => {
-            paginate: (opts: { numItems: number; cursor: string | null }) => Promise<{
-              page: unknown[];
-              isDone: boolean;
-              continueCursor: string;
-            }>;
+            take: (n: number) => Promise<unknown[]>;
           },
         ) => {
-          let count = 0;
-          let cursor: string | null = null;
-          let isDone = false;
-          while (!isDone) {
-            const page = await buildQuery().paginate({ numItems: 256, cursor });
-            count += page.page.length;
-            cursor = page.continueCursor;
-            isDone = page.isDone;
-          }
-          return count;
+          const rows = await buildQuery().take(DASHBOARD_COUNT_LIMIT + 1);
+          return {
+            count: Math.min(rows.length, DASHBOARD_COUNT_LIMIT),
+            isCapped: rows.length > DASHBOARD_COUNT_LIMIT,
+          };
         };
 
         const [enabledStatusCheckCount, statusCheckCount, activePrCount] =
           await Promise.all([
-            countAll(() =>
+            boundedCount(() =>
               ctx.db
                 .query("repoStatusChecks")
                 .withIndex("by_repo_slug_and_enabled", (q) =>
                   q.eq("repoSlug", repo.slug).eq("enabled", true),
                 ),
             ),
-            countAll(() =>
+            boundedCount(() =>
               ctx.db
                 .query("repoStatusChecks")
                 .withIndex("by_repo_slug_and_name", (q) =>
                   q.eq("repoSlug", repo.slug),
                 ),
             ),
-            countAll(() =>
+            boundedCount(() =>
               ctx.db
                 .query("pullRequests")
                 .withIndex("by_repo_slug_and_pr_number", (q) =>
@@ -207,9 +203,12 @@ export const listReposWithPolicies = query({
         return {
           ...repo,
           policy,
-          statusCheckCount,
-          enabledStatusCheckCount,
-          activePrCount,
+          statusCheckCount: statusCheckCount.count,
+          statusCheckCountIsCapped: statusCheckCount.isCapped,
+          enabledStatusCheckCount: enabledStatusCheckCount.count,
+          enabledStatusCheckCountIsCapped: enabledStatusCheckCount.isCapped,
+          activePrCount: activePrCount.count,
+          activePrCountIsCapped: activePrCount.isCapped,
         };
       }),
     );
