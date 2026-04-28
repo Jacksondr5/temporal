@@ -1,4 +1,4 @@
-import { WorkflowNotFoundError } from '@temporalio/client';
+import { ServiceError, WorkflowNotFoundError } from '@temporalio/client';
 import {
   signalPullRequestActivity,
   signalPullRequestTerminalState,
@@ -27,6 +27,19 @@ function buildTerminalSignalFallbackSummary(
   return lifecycleState === 'merged'
     ? 'PR merged. Terminal state recorded without a live workflow.'
     : 'PR closed. Terminal state recorded without a live workflow.';
+}
+
+function isSignalEventLimitError(error: unknown): boolean {
+  const message =
+    error instanceof ServiceError
+      ? error.cause instanceof Error
+        ? error.cause.message
+        : error.message
+      : error instanceof Error
+        ? error.message
+        : '';
+
+  return message.includes('exceeded workflow execution limit for signal events');
 }
 
 async function drainManualEvents(
@@ -230,17 +243,21 @@ export async function runPoller(): Promise<PollerRunSummary> {
         });
         signaledWorkflowCount += 1;
       } catch (error) {
-        if (!(error instanceof WorkflowNotFoundError)) {
+        if (!(error instanceof WorkflowNotFoundError) && !isSignalEventLimitError(error)) {
           throw error;
         }
 
         const workflowId = trackedPullRequest.workflowId;
-        const summary = buildTerminalSignalFallbackSummary(
-          lifecycle.lifecycleState,
-        );
-        const errorMessage =
-          `Terminal cleanup signal skipped because workflow ${workflowId} was not found. ` +
-          'Convex lifecycle state was updated directly, and workspace cleanup did not run.';
+        const isWorkflowMissing = error instanceof WorkflowNotFoundError;
+        const summary = isWorkflowMissing
+          ? buildTerminalSignalFallbackSummary(lifecycle.lifecycleState)
+          : `Terminal cleanup could not start because workflow ${workflowId} exceeded Temporal's signal event limit.`;
+        const errorType = isWorkflowMissing
+          ? 'terminal_signal_workflow_not_found'
+          : 'terminal_signal_event_limit_exceeded';
+        const errorMessage = isWorkflowMissing
+          ? `Terminal cleanup signal skipped because workflow ${workflowId} was not found. Convex lifecycle state was updated directly, and workspace cleanup did not run.`
+          : `Terminal cleanup signal failed because workflow ${workflowId} exceeded Temporal's signal event limit. The poller skipped this PR so the rest of the run could continue.`;
 
         console.warn(
           [
@@ -249,7 +266,7 @@ export async function runPoller(): Promise<PollerRunSummary> {
             `pr=${trackedPullRequest.prNumber}`,
             `workflowId=${workflowId}`,
             `lifecycle=${lifecycle.lifecycleState}`,
-            'reason=workflow_not_found',
+            `reason=${isWorkflowMissing ? 'workflow_not_found' : 'signal_event_limit_exceeded'}`,
           ].join(' | '),
         );
 
@@ -257,23 +274,25 @@ export async function runPoller(): Promise<PollerRunSummary> {
           repoSlug,
           prNumber: trackedPullRequest.prNumber,
           workflowId,
-          errorType: 'terminal_signal_workflow_not_found',
+          errorType,
           errorMessage,
           phase: 'terminal_cleanup',
           retryable: false,
-          blocked: false,
+          blocked: !isWorkflowMissing,
         });
 
-        await convex.syncPullRequestStatus(lifecycle.pr, {
-          workflowId,
-          branchName: lifecycle.pr.branchName,
-          headSha: lifecycle.pr.headSha,
-          lifecycleState: lifecycle.lifecycleState,
-          currentPhase: 'terminal_cleanup',
-          dirty: false,
-          statusSummary: summary,
-          blockedReason: null,
-        });
+        if (isWorkflowMissing) {
+          await convex.syncPullRequestStatus(lifecycle.pr, {
+            workflowId,
+            branchName: lifecycle.pr.branchName,
+            headSha: lifecycle.pr.headSha,
+            lifecycleState: lifecycle.lifecycleState,
+            currentPhase: 'terminal_cleanup',
+            dirty: false,
+            statusSummary: summary,
+            blockedReason: null,
+          });
+        }
       }
     }
 

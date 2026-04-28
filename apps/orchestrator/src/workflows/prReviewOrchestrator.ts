@@ -1,4 +1,11 @@
-import { condition, proxyActivities, setHandler } from '@temporalio/workflow';
+import {
+  condition,
+  continueAsNew,
+  patched,
+  proxyActivities,
+  setHandler,
+  workflowInfo,
+} from '@temporalio/workflow';
 import type * as activities from '../activities.js';
 import type {
   CodeRabbitAgentExecution,
@@ -240,11 +247,19 @@ function createTerminalCleanupState(
   };
 }
 
+const CONTINUE_AS_NEW_PATCH_ID = 'pr-review-continue-as-new-v1';
+const CONTINUE_AS_NEW_HISTORY_LENGTH = 250;
+
 export async function prReviewOrchestratorWorkflow(
   input: PrReviewWorkflowInput,
 ): Promise<PrReviewWorkflowState> {
-  let state = await initializePrReviewWorkflow(input);
+  let state = input.resumedState ?? await initializePrReviewWorkflow(input);
   let terminalSignal: PrReviewWorkflowTerminalSignal | null = null;
+  const activityInput: PrReviewWorkflowInput = {
+    pr: input.pr,
+    triggeredBy: input.triggeredBy,
+    maxReconciliationPasses: input.maxReconciliationPasses,
+  };
 
   setHandler(prActivityObservedSignal, (signal: PrReviewWorkflowSignal) => {
     state = recordWorkflowSignal(state, signal);
@@ -270,7 +285,7 @@ export async function prReviewOrchestratorWorkflow(
     const repoSlug = `${state.pr.repository.owner}/${state.pr.repository.name}`;
     state = createTerminalCleanupState(state, terminalSignal);
 
-    await recordWorkflowState(input, toWorkflowStatusRecord(state));
+    await recordWorkflowState(activityInput, toWorkflowStatusRecord(state));
     await removePullRequestWorkspace({
       ...state.pr,
       headSha: state.latestKnownHeadSha,
@@ -307,11 +322,11 @@ export async function prReviewOrchestratorWorkflow(
       return state;
     }
 
-    await recordWorkflowState(input, toWorkflowStatusRecord(state));
+    await recordWorkflowState(activityInput, toWorkflowStatusRecord(state));
 
     const baselineProcessedEventCount = state.processedEventIds.length;
     state = beginWorkflowPass(state);
-    await recordWorkflowState(input, toWorkflowStatusRecord(state));
+    await recordWorkflowState(activityInput, toWorkflowStatusRecord(state));
 
     const snapshot: PullRequestSnapshot = await fetchPullRequestSnapshot({
       ...state.pr,
@@ -1042,7 +1057,24 @@ export async function prReviewOrchestratorWorkflow(
       baselineProcessedEventCount,
     );
 
-    await recordWorkflowState(input, toWorkflowStatusRecord(state));
+    await recordWorkflowState(activityInput, toWorkflowStatusRecord(state));
+
+    if (
+      input.maxReconciliationPasses === undefined &&
+      patched(CONTINUE_AS_NEW_PATCH_ID)
+    ) {
+      const info = workflowInfo();
+      if (
+        info.continueAsNewSuggested ||
+        info.historyLength >= CONTINUE_AS_NEW_HISTORY_LENGTH
+      ) {
+        await continueAsNew<typeof prReviewOrchestratorWorkflow>({
+          ...input,
+          pr: state.pr,
+          resumedState: state,
+        });
+      }
+    }
 
     if (
       input.maxReconciliationPasses !== undefined &&
