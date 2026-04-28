@@ -76,6 +76,7 @@ const {
 } =
   proxyActivities<typeof activities>({
     startToCloseTimeout: '30 minutes',
+    heartbeatTimeout: '2 minutes',
     retry: {
       maximumAttempts: 1,
     },

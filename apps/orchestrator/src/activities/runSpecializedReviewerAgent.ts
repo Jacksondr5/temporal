@@ -5,6 +5,7 @@ import type {
 } from '../domain/agentRuntime.js';
 import { createAgentRuntimeClient } from '../integrations/agentRuntime.js';
 import { createWorkspaceManager } from '../integrations/workspace.js';
+import { withActivityHeartbeat } from './withActivityHeartbeat.js';
 
 export async function runSpecializedReviewerAgent(
   input: SpecializedReviewerAgentRunInput,
@@ -24,5 +25,8 @@ export async function runSpecializedReviewerAgent(
     workspaceManager,
   });
 
-  return await runtime.runSpecializedReviewer(input);
+  return await withActivityHeartbeat(
+    'runSpecializedReviewerAgent',
+    async () => await runtime.runSpecializedReviewer(input),
+  );
 }

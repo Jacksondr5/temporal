@@ -5,6 +5,7 @@ import type {
 } from '../domain/agentRuntime.js';
 import { createAgentRuntimeClient } from '../integrations/agentRuntime.js';
 import { createWorkspaceManager } from '../integrations/workspace.js';
+import { withActivityHeartbeat } from './withActivityHeartbeat.js';
 
 export async function runMergeConflictAgent(
   input: MergeConflictAgentRunInput,
@@ -24,5 +25,8 @@ export async function runMergeConflictAgent(
     workspaceManager,
   });
 
-  return await runtime.runMergeConflictResolution(input);
+  return await withActivityHeartbeat(
+    'runMergeConflictAgent',
+    async () => await runtime.runMergeConflictResolution(input),
+  );
 }
