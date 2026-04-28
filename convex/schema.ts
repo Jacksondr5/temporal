@@ -21,10 +21,21 @@ export default defineSchema({
 
   repoPolicies: defineTable({
     repoSlug: v.string(),
-    fixableChecks: v.array(v.string()),
-    ignoredChecks: v.array(v.string()),
+    // Deprecated. Status-check policy now lives in repoStatusChecks.
+    fixableChecks: v.optional(v.array(v.string())),
+    // Deprecated. Status-check policy now lives in repoStatusChecks.
+    ignoredChecks: v.optional(v.array(v.string())),
     specializedReviewers: v.array(reviewerDefinitionValidator),
   }).index('by_repo_slug', ['repoSlug']),
+
+  repoStatusChecks: defineTable({
+    repoSlug: v.string(),
+    name: v.string(),
+    source: v.union(v.literal('check_run'), v.literal('commit_status')),
+    enabled: v.boolean(),
+  })
+    .index('by_repo_slug_and_name', ['repoSlug', 'name'])
+    .index('by_repo_slug_and_enabled', ['repoSlug', 'enabled']),
 
   pollState: defineTable({
     repoSlug: v.string(),

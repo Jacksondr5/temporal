@@ -15,8 +15,7 @@ export interface SpecializedReviewerDefinition {
 
 export interface RepositoryPolicy {
   repository: RepositoryRef;
-  fixableChecks: string[];
-  ignoredChecks: string[];
+  enabledStatusChecks: string[];
   specializedReviewers: SpecializedReviewerDefinition[];
 }
 

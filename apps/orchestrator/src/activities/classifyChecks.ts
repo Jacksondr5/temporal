@@ -10,7 +10,7 @@ export async function classifyChecks(
 ): Promise<CheckClassificationResult[]> {
   return snapshot.checks.map((check) => {
     const isFixablePolicyMatch =
-      policy !== null && policy.fixableChecks.includes(check.name);
+      policy !== null && policy.enabledStatusChecks.includes(check.name);
     const isFailing =
       check.conclusion === 'failure' ||
       check.conclusion === 'timed_out' ||
@@ -22,9 +22,7 @@ export async function classifyChecks(
         ? 'informational'
         : isFixablePolicyMatch && isFailing
           ? 'fixable_blocking'
-          : policy.ignoredChecks.includes(check.name)
-            ? 'ignored_nonblocking'
-            : 'informational';
+          : 'informational';
 
     return {
       name: check.name,

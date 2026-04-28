@@ -33,8 +33,8 @@ export default function PoliciesListPage() {
         <div className="grid grid-cols-[1fr_80px_90px_90px_80px_70px_32px] gap-4 px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border/60 bg-card/80">
           <span>Repository</span>
           <span>Status</span>
-          <span>Fixable</span>
-          <span>Ignored</span>
+          <span>Checks</span>
+          <span>Fixing</span>
           <span>Reviewers</span>
           <span>PRs</span>
           <span />
@@ -99,8 +99,8 @@ export default function PoliciesListPage() {
                   </span>
                 )}
 
-                <CountBadge count={repo.policy?.fixableChecks.length ?? 0} />
-                <CountBadge count={repo.policy?.ignoredChecks.length ?? 0} />
+                <CountBadge count={repo.statusCheckCount ?? 0} />
+                <CountBadge count={repo.enabledStatusCheckCount ?? 0} />
                 <CountBadge
                   count={repo.policy?.specializedReviewers.length ?? 0}
                 />

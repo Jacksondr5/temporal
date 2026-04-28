@@ -84,8 +84,6 @@ export const ensureRepoWithPolicy = mutation({
     if (!existingPolicy) {
       await ctx.db.insert('repoPolicies', {
         repoSlug: args.slug,
-        fixableChecks: [],
-        ignoredChecks: [],
         specializedReviewers: [],
       });
     }

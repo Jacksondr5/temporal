@@ -9,9 +9,9 @@ import { useParams } from "next/navigation";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
 import { Label } from "../../../components/ui/label";
-import { Textarea } from "../../../components/ui/textarea";
 import { Badge } from "../../../components/ui/badge";
 import { Switch } from "../../../components/ui/switch";
+import { Checkbox } from "../../../components/ui/checkbox";
 import {
   ArrowLeft,
   Plus,
@@ -33,6 +33,11 @@ interface ReviewerDraft {
 interface RepoPolicyDetail {
   repo: Doc<"repos"> | null;
   policy: Doc<"repoPolicies"> | null;
+  statusChecks: Array<{
+    name: string;
+    source: "check_run" | "commit_status";
+    enabled: boolean;
+  }>;
 }
 
 export default function PolicyEditPage() {
@@ -71,13 +76,13 @@ function PolicyEditForm({
 }) {
   const upsertRepo = useMutation(api.repos.upsert);
   const upsertPolicy = useMutation(api.repoPolicies.upsert);
+  const setStatusCheckEnabled = useMutation(api.repoStatusChecks.setEnabled);
 
   const [enabled, setEnabled] = useState(() => detail.repo?.enabled ?? true);
-  const [fixableChecks, setFixableChecks] = useState(
-    () => detail.policy?.fixableChecks.join("\n") ?? "",
-  );
-  const [ignoredChecks, setIgnoredChecks] = useState(
-    () => detail.policy?.ignoredChecks.join("\n") ?? "",
+  const [statusCheckSelections, setStatusCheckSelections] = useState(() =>
+    Object.fromEntries(
+      detail.statusChecks.map((check) => [check.name, check.enabled]),
+    ),
   );
   const [reviewers, setReviewers] = useState<ReviewerDraft[]>(() =>
     detail.policy
@@ -120,14 +125,6 @@ function PolicyEditForm({
   const handleSave = async () => {
     setSaveStatus("saving");
     try {
-      const parsedFixable = fixableChecks
-        .split("\n")
-        .map((s) => s.trim())
-        .filter(Boolean);
-      const parsedIgnored = ignoredChecks
-        .split("\n")
-        .map((s) => s.trim())
-        .filter(Boolean);
       const parsedReviewers = reviewers.map((r) => ({
         id: r.id,
         description: r.description,
@@ -152,10 +149,23 @@ function PolicyEditForm({
 
       await upsertPolicy({
         repoSlug: decodedSlug,
-        fixableChecks: parsedFixable,
-        ignoredChecks: parsedIgnored,
         specializedReviewers: parsedReviewers,
       });
+
+      await Promise.all(
+        detail.statusChecks
+          .filter(
+            (check) =>
+              (statusCheckSelections[check.name] ?? false) !== check.enabled,
+          )
+          .map((check) =>
+            setStatusCheckEnabled({
+              repoSlug: decodedSlug,
+              name: check.name,
+              enabled: statusCheckSelections[check.name] ?? false,
+            }),
+          ),
+      );
 
       setSaveStatus("saved");
       setTimeout(() => setSaveStatus("idle"), 2000);
@@ -222,34 +232,56 @@ function PolicyEditForm({
       </Section>
 
       {/* Check classifications */}
-      <Section title="Check Classifications">
-        <div className="space-y-5">
-          <FieldGroup
-            label="Fixable Checks"
-            description="Check names to auto-fix on failure. One per line."
-          >
-            <Textarea
-              value={fixableChecks}
-              onChange={(e) => setFixableChecks(e.target.value)}
-              placeholder={"lint\ntypecheck\nbuild"}
-              rows={4}
-              className="font-mono text-xs bg-muted/30 border-border/60 focus:border-primary/40 focus:ring-primary/20"
-            />
-          </FieldGroup>
-          <div className="border-t border-border/40" />
-          <FieldGroup
-            label="Ignored Checks"
-            description="Check names to ignore completely. One per line."
-          >
-            <Textarea
-              value={ignoredChecks}
-              onChange={(e) => setIgnoredChecks(e.target.value)}
-              placeholder={"codecov\ncoverage"}
-              rows={4}
-              className="font-mono text-xs bg-muted/30 border-border/60 focus:border-primary/40 focus:ring-primary/20"
-            />
-          </FieldGroup>
-        </div>
+      <Section title="Status Checks">
+        {detail.statusChecks.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+            <CheckCircle className="h-6 w-6 mb-2 opacity-30" />
+            <p className="text-xs">No status checks discovered</p>
+            <p className="mt-1 text-[11px] text-muted-foreground/70">
+              The poller adds checks here after observing open pull requests.
+            </p>
+          </div>
+        ) : (
+          <div className="divide-y divide-border/40 overflow-hidden rounded-md border border-border/40">
+            {detail.statusChecks.map((check) => {
+              const checked = statusCheckSelections[check.name] ?? false;
+              return (
+                <label
+                  key={check.name}
+                  className="flex min-h-12 cursor-pointer items-center gap-3 px-3 py-2.5 transition-colors hover:bg-primary/[0.03]"
+                >
+                  <Checkbox
+                    checked={checked}
+                    onCheckedChange={(nextChecked) =>
+                      setStatusCheckSelections((prev) => ({
+                        ...prev,
+                        [check.name]: nextChecked,
+                      }))
+                    }
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate font-mono text-xs text-foreground">
+                      {check.name}
+                    </div>
+                    <div className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+                      {check.source === "check_run"
+                        ? "Checks API"
+                        : "Commit Status"}
+                    </div>
+                  </div>
+                  {checked && (
+                    <Badge
+                      variant="secondary"
+                      className="bg-emerald-500/10 text-[10px] uppercase tracking-wider text-emerald-400 ring-1 ring-inset ring-emerald-500/20"
+                    >
+                      Fixable
+                    </Badge>
+                  )}
+                </label>
+              );
+            })}
+          </div>
+        )}
       </Section>
 
       {/* Specialized reviewers */}
