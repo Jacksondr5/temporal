@@ -1,6 +1,5 @@
 import { ServiceError, WorkflowNotFoundError } from '@temporalio/client';
-import { TemporalFailure } from '@temporalio/common';
-import { WorkflowTaskFailedCause } from '@temporalio/proto/lib/temporal/api/enums/v1';
+import { temporal } from '@temporalio/proto';
 import {
   signalPullRequestActivity,
   signalPullRequestTerminalState,
@@ -22,6 +21,9 @@ export interface PollerRunSummary {
 const MANUAL_EVENT_CURSOR_REPO = '__manual__';
 const MANUAL_EVENT_CURSOR_KEY = 'last_manual_event_id';
 const MANUAL_EVENT_BATCH_SIZE = 100;
+const PENDING_SIGNALS_LIMIT_EXCEEDED =
+  temporal.api.enums.v1.WorkflowTaskFailedCause
+    .WORKFLOW_TASK_FAILED_CAUSE_PENDING_SIGNALS_LIMIT_EXCEEDED;
 
 function buildTerminalSignalFallbackSummary(
   lifecycleState: 'closed' | 'merged',
@@ -31,18 +33,52 @@ function buildTerminalSignalFallbackSummary(
     : 'PR closed. Terminal state recorded without a live workflow.';
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function hasPendingSignalsLimitCause(value: unknown): boolean {
+  if (value === PENDING_SIGNALS_LIMIT_EXCEEDED) {
+    return true;
+  }
+
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  return (
+    hasPendingSignalsLimitCause(value.cause) ||
+    hasPendingSignalsLimitCause(value.forceCause)
+  );
+}
+
+function hasPendingSignalsLimitMessage(value: unknown): boolean {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  const message =
+    typeof value.message === 'string'
+      ? value.message
+      : typeof value.details === 'string'
+        ? value.details
+        : '';
+
+  return (
+    message.includes('PENDING_SIGNALS_LIMIT_EXCEEDED') ||
+    message.toLowerCase().includes('pending signals limit')
+  );
+}
+
 function isSignalEventLimitError(error: unknown): boolean {
   if (!(error instanceof ServiceError)) {
     return false;
   }
 
-  if (!(error.cause instanceof TemporalFailure)) {
-    return false;
-  }
-
   return (
-    (error.cause as TemporalFailure & { cause?: unknown }).cause ===
-    WorkflowTaskFailedCause.PENDING_SIGNALS_LIMIT_EXCEEDED
+    hasPendingSignalsLimitCause(error.cause) ||
+    hasPendingSignalsLimitMessage(error) ||
+    hasPendingSignalsLimitMessage(error.cause)
   );
 }
 
