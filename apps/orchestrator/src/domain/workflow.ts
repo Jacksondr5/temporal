@@ -39,6 +39,7 @@ export interface PrReviewWorkflowInput {
   pr: GitHubPrEvent['pr'];
   triggeredBy: string;
   maxReconciliationPasses?: number;
+  resumedState?: PrReviewWorkflowState;
 }
 
 export interface PrReviewWorkflowSignal {
