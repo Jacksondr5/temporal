@@ -87,12 +87,15 @@ export const upsertObservedBatch = mutation({
   handler: async (ctx, args) => {
     let inserted = 0;
     let updated = 0;
+    const uniqueChecks = Array.from(
+      new Map(args.checks.map((check) => [check.name, check])).values(),
+    );
 
     const existingByName = new Map(
       (await collectAllByRepoAndName(ctx, args.repoSlug)).map((row) => [row.name, row]),
     );
 
-    for (const check of args.checks) {
+    for (const check of uniqueChecks) {
       const existing = existingByName.get(check.name);
 
       if (!existing) {
