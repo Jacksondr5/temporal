@@ -21,10 +21,6 @@ export default defineSchema({
 
   repoPolicies: defineTable({
     repoSlug: v.string(),
-    // Deprecated. Status-check policy now lives in repoStatusChecks.
-    fixableChecks: v.optional(v.array(v.string())),
-    // Deprecated. Status-check policy now lives in repoStatusChecks.
-    ignoredChecks: v.optional(v.array(v.string())),
     specializedReviewers: v.array(reviewerDefinitionValidator),
   }).index('by_repo_slug', ['repoSlug']),
 

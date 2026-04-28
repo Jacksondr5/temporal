@@ -5,6 +5,7 @@ import type {
 } from '../domain/agentRuntime.js';
 import { createAgentRuntimeClient } from '../integrations/agentRuntime.js';
 import { createWorkspaceManager } from '../integrations/workspace.js';
+import { withActivityHeartbeat } from './withActivityHeartbeat.js';
 
 export async function runFixChecksAgent(
   input: FixChecksAgentRunInput,
@@ -24,5 +25,8 @@ export async function runFixChecksAgent(
     workspaceManager,
   });
 
-  return await runtime.runFixChecksBatch(input);
+  return await withActivityHeartbeat(
+    'runFixChecksAgent',
+    async () => await runtime.runFixChecksBatch(input),
+  );
 }

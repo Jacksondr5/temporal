@@ -1,51 +1,6 @@
 import { v } from "convex/values";
 import { query } from "./_generated/server";
-
-async function countByPagination<T>(queryBuilder: {
-  paginate: (opts: { cursor: string | null; numItems: number }) => Promise<{
-    page: T[];
-    isDone: boolean;
-    continueCursor: string;
-  }>;
-}) {
-  const pageSize = 250;
-  let cursor: string | null = null;
-  let total = 0;
-
-  while (true) {
-    const page = await queryBuilder.paginate({ cursor, numItems: pageSize });
-    total += page.page.length;
-    if (page.isDone) {
-      break;
-    }
-    cursor = page.continueCursor;
-  }
-
-  return total;
-}
-
-async function listAllByPagination<T>(queryBuilder: {
-  paginate: (opts: { cursor: string | null; numItems: number }) => Promise<{
-    page: T[];
-    isDone: boolean;
-    continueCursor: string;
-  }>;
-}) {
-  const pageSize = 250;
-  let cursor: string | null = null;
-  const pages: T[][] = [];
-
-  while (true) {
-    const page = await queryBuilder.paginate({ cursor, numItems: pageSize });
-    pages.push(page.page);
-    if (page.isDone) {
-      break;
-    }
-    cursor = page.continueCursor;
-  }
-
-  return pages.flat();
-}
+import { paginationOptsValidator } from "convex/server";
 
 /**
  * UI-optimized read-model queries for the operator dashboard.
@@ -104,49 +59,50 @@ export const getPullRequestDetail = query({
 
     if (!pr) return null;
 
-    const [threads, runs, reviewerRuns, artifacts, errors, events] = await Promise.all([
-      ctx.db
-        .query("reviewThreads")
-        .withIndex("by_repo_slug_and_pr_number_and_thread_key", (q) =>
-          q.eq("repoSlug", args.repoSlug).eq("prNumber", args.prNumber),
-        )
-        .take(200),
-      ctx.db
-        .query("prRuns")
-        .withIndex("by_repo_slug_and_pr_number_and_started_at", (q) =>
-          q.eq("repoSlug", args.repoSlug).eq("prNumber", args.prNumber),
-        )
-        .order("desc")
-        .take(50),
-      ctx.db
-        .query("reviewerRuns")
-        .withIndex("by_repo_slug_and_pr_number_and_created_at", (q) =>
-          q.eq("repoSlug", args.repoSlug).eq("prNumber", args.prNumber),
-        )
-        .order("desc")
-        .take(50),
-      ctx.db
-        .query("artifacts")
-        .withIndex("by_repo_slug_and_pr_number_and_created_at", (q) =>
-          q.eq("repoSlug", args.repoSlug).eq("prNumber", args.prNumber),
-        )
-        .order("desc")
-        .take(100),
-      ctx.db
-        .query("workflowErrors")
-        .withIndex("by_repo_slug_and_pr_number_and_last_seen_at", (q) =>
-          q.eq("repoSlug", args.repoSlug).eq("prNumber", args.prNumber),
-        )
-        .order("desc")
-        .take(50),
-      ctx.db
-        .query("githubEvents")
-        .withIndex("by_repo_slug_and_pr_number_and_observed_at", (q) =>
-          q.eq("repoSlug", args.repoSlug).eq("prNumber", args.prNumber),
-        )
-        .order("desc")
-        .take(100),
-    ]);
+    const [threads, runs, reviewerRuns, artifacts, errors, events] =
+      await Promise.all([
+        ctx.db
+          .query("reviewThreads")
+          .withIndex("by_repo_slug_and_pr_number_and_thread_key", (q) =>
+            q.eq("repoSlug", args.repoSlug).eq("prNumber", args.prNumber),
+          )
+          .take(200),
+        ctx.db
+          .query("prRuns")
+          .withIndex("by_repo_slug_and_pr_number_and_started_at", (q) =>
+            q.eq("repoSlug", args.repoSlug).eq("prNumber", args.prNumber),
+          )
+          .order("desc")
+          .take(50),
+        ctx.db
+          .query("reviewerRuns")
+          .withIndex("by_repo_slug_and_pr_number_and_created_at", (q) =>
+            q.eq("repoSlug", args.repoSlug).eq("prNumber", args.prNumber),
+          )
+          .order("desc")
+          .take(50),
+        ctx.db
+          .query("artifacts")
+          .withIndex("by_repo_slug_and_pr_number_and_created_at", (q) =>
+            q.eq("repoSlug", args.repoSlug).eq("prNumber", args.prNumber),
+          )
+          .order("desc")
+          .take(100),
+        ctx.db
+          .query("workflowErrors")
+          .withIndex("by_repo_slug_and_pr_number_and_last_seen_at", (q) =>
+            q.eq("repoSlug", args.repoSlug).eq("prNumber", args.prNumber),
+          )
+          .order("desc")
+          .take(50),
+        ctx.db
+          .query("githubEvents")
+          .withIndex("by_repo_slug_and_pr_number_and_observed_at", (q) =>
+            q.eq("repoSlug", args.repoSlug).eq("prNumber", args.prNumber),
+          )
+          .order("desc")
+          .take(100),
+      ]);
 
     // Enrich threads with their latest decisions
     const threadsWithDecisions = await Promise.all(
@@ -202,36 +158,58 @@ export const listReposWithPolicies = query({
           .withIndex("by_repo_slug", (q) => q.eq("repoSlug", repo.slug))
           .unique();
 
-        const [enabledStatusCheckCount, statusCheckCount] = await Promise.all([
-          countByPagination(
-            ctx.db
-              .query("repoStatusChecks")
-              .withIndex("by_repo_slug_and_enabled", (q) =>
-                q.eq("repoSlug", repo.slug).eq("enabled", true),
-              ),
-          ),
-          countByPagination(
-            ctx.db
-              .query("repoStatusChecks")
-              .withIndex("by_repo_slug_and_name", (q) =>
-                q.eq("repoSlug", repo.slug),
-              ),
-          ),
-        ]);
+        const countAll = async (
+          buildQuery: () => {
+            paginate: (opts: { numItems: number; cursor: string | null }) => Promise<{
+              page: unknown[];
+              isDone: boolean;
+              continueCursor: string;
+            }>;
+          },
+        ) => {
+          let count = 0;
+          let cursor: string | null = null;
+          let isDone = false;
+          while (!isDone) {
+            const page = await buildQuery().paginate({ numItems: 256, cursor });
+            count += page.page.length;
+            cursor = page.continueCursor;
+            isDone = page.isDone;
+          }
+          return count;
+        };
 
-        const prCount = await ctx.db
-          .query("pullRequests")
-          .withIndex("by_repo_slug_and_pr_number", (q) =>
-            q.eq("repoSlug", repo.slug),
-          )
-          .take(200);
+        const [enabledStatusCheckCount, statusCheckCount, activePrCount] =
+          await Promise.all([
+            countAll(() =>
+              ctx.db
+                .query("repoStatusChecks")
+                .withIndex("by_repo_slug_and_enabled", (q) =>
+                  q.eq("repoSlug", repo.slug).eq("enabled", true),
+                ),
+            ),
+            countAll(() =>
+              ctx.db
+                .query("repoStatusChecks")
+                .withIndex("by_repo_slug_and_name", (q) =>
+                  q.eq("repoSlug", repo.slug),
+                ),
+            ),
+            countAll(() =>
+              ctx.db
+                .query("pullRequests")
+                .withIndex("by_repo_slug_and_pr_number", (q) =>
+                  q.eq("repoSlug", repo.slug),
+                ),
+            ),
+          ]);
 
         return {
           ...repo,
           policy,
           statusCheckCount,
           enabledStatusCheckCount,
-          activePrCount: prCount.length,
+          activePrCount,
         };
       }),
     );
@@ -239,7 +217,10 @@ export const listReposWithPolicies = query({
 });
 
 export const getRepoPolicyDetail = query({
-  args: { repoSlug: v.string() },
+  args: {
+    repoSlug: v.string(),
+    paginationOpts: v.optional(paginationOptsValidator),
+  },
   handler: async (ctx, args) => {
     const repo = await ctx.db
       .query("repos")
@@ -251,12 +232,19 @@ export const getRepoPolicyDetail = query({
       .withIndex("by_repo_slug", (q) => q.eq("repoSlug", args.repoSlug))
       .unique();
 
-    const statusChecks = await listAllByPagination(
-      ctx.db
-        .query("repoStatusChecks")
-        .withIndex("by_repo_slug_and_name", (q) => q.eq("repoSlug", args.repoSlug)),
-    );
+    const statusChecksPage = await ctx.db
+      .query("repoStatusChecks")
+      .withIndex("by_repo_slug_and_name", (q) =>
+        q.eq("repoSlug", args.repoSlug),
+      )
+      .paginate(args.paginationOpts ?? { numItems: 500, cursor: null });
 
-    return { repo, policy, statusChecks };
+    return {
+      repo,
+      policy,
+      statusChecks: statusChecksPage.page,
+      statusChecksIsDone: statusChecksPage.isDone,
+      statusChecksContinueCursor: statusChecksPage.continueCursor,
+    };
   },
 });

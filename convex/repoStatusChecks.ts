@@ -1,76 +1,61 @@
-import { v } from 'convex/values';
-import { mutation, query } from './_generated/server';
-import type { MutationCtx } from './_generated/server';
+import { v } from "convex/values";
+import { mutation, query } from "./_generated/server";
+import type { MutationCtx } from "./_generated/server";
+import { paginationOptsValidator } from "convex/server";
+import type { Doc } from "./_generated/dataModel";
 
 const statusCheckSourceValidator = v.union(
-  v.literal('check_run'),
-  v.literal('commit_status'),
+  v.literal("check_run"),
+  v.literal("commit_status"),
 );
 
 async function collectAllByRepoAndName(ctx: MutationCtx, repoSlug: string) {
-  const pageSize = 250;
+  const checks = new Map<string, Doc<"repoStatusChecks">>();
   let cursor: string | null = null;
-  const rows = [];
+  let isDone = false;
 
-  while (true) {
+  while (!isDone) {
     const page = await ctx.db
-      .query('repoStatusChecks')
-      .withIndex('by_repo_slug_and_name', (q) => q.eq('repoSlug', repoSlug))
-      .paginate({
-        cursor,
-        numItems: pageSize,
-      });
-
-    rows.push(...page.page);
-    if (page.isDone) {
-      break;
+      .query("repoStatusChecks")
+      .withIndex("by_repo_slug_and_name", (q) => q.eq("repoSlug", repoSlug))
+      .paginate({ numItems: 256, cursor });
+    for (const row of page.page) {
+      checks.set(row.name, row);
     }
     cursor = page.continueCursor;
+    isDone = page.isDone;
   }
 
-  return rows;
+  return checks;
 }
 
 export const listByRepo = query({
   args: {
     repoSlug: v.string(),
+    paginationOpts: paginationOptsValidator,
   },
   handler: async (ctx, args) => {
     return await ctx.db
-      .query('repoStatusChecks')
-      .withIndex('by_repo_slug_and_name', (q) => q.eq('repoSlug', args.repoSlug))
-      .take(500);
+      .query("repoStatusChecks")
+      .withIndex("by_repo_slug_and_name", (q) =>
+        q.eq("repoSlug", args.repoSlug),
+      )
+      .paginate(args.paginationOpts);
   },
 });
 
 export const listEnabledByRepo = query({
   args: {
     repoSlug: v.string(),
+    paginationOpts: paginationOptsValidator,
   },
   handler: async (ctx, args) => {
-    const pageSize = 250;
-    let cursor: string | null = null;
-    const pages = [];
-
-    while (true) {
-      const page = await ctx.db
-        .query('repoStatusChecks')
-        .withIndex('by_repo_slug_and_enabled', (q) =>
-          q.eq('repoSlug', args.repoSlug).eq('enabled', true),
-        )
-        .paginate({
-          cursor,
-          numItems: pageSize,
-        });
-
-      pages.push(page.page);
-      if (page.isDone) {
-        break;
-      }
-      cursor = page.continueCursor;
-    }
-
-    return pages.flat();
+    return await ctx.db
+      .query("repoStatusChecks")
+      .withIndex("by_repo_slug_and_enabled", (q) =>
+        q.eq("repoSlug", args.repoSlug).eq("enabled", true),
+      )
+      .paginate(args.paginationOpts);
   },
 });
 
@@ -91,15 +76,13 @@ export const upsertObservedBatch = mutation({
       new Map(args.checks.map((check) => [check.name, check])).values(),
     );
 
-    const existingByName = new Map(
-      (await collectAllByRepoAndName(ctx, args.repoSlug)).map((row) => [row.name, row]),
-    );
+    const existingByName = await collectAllByRepoAndName(ctx, args.repoSlug);
 
     for (const check of uniqueChecks) {
       const existing = existingByName.get(check.name);
 
       if (!existing) {
-        await ctx.db.insert('repoStatusChecks', {
+        await ctx.db.insert("repoStatusChecks", {
           repoSlug: args.repoSlug,
           name: check.name,
           source: check.source,
@@ -129,9 +112,9 @@ export const setEnabled = mutation({
   },
   handler: async (ctx, args) => {
     const existing = await ctx.db
-      .query('repoStatusChecks')
-      .withIndex('by_repo_slug_and_name', (q) =>
-        q.eq('repoSlug', args.repoSlug).eq('name', args.name),
+      .query("repoStatusChecks")
+      .withIndex("by_repo_slug_and_name", (q) =>
+        q.eq("repoSlug", args.repoSlug).eq("name", args.name),
       )
       .unique();
 

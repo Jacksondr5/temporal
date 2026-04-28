@@ -5,6 +5,7 @@ import type {
 } from '../domain/agentRuntime.js';
 import { createAgentRuntimeClient } from '../integrations/agentRuntime.js';
 import { createWorkspaceManager } from '../integrations/workspace.js';
+import { withActivityHeartbeat } from './withActivityHeartbeat.js';
 
 export async function runCodeRabbitAgent(
   input: CodeRabbitAgentRunInput,
@@ -24,5 +25,8 @@ export async function runCodeRabbitAgent(
     workspaceManager,
   });
 
-  return await runtime.runCodeRabbitBatch(input);
+  return await withActivityHeartbeat(
+    'runCodeRabbitAgent',
+    async () => await runtime.runCodeRabbitBatch(input),
+  );
 }

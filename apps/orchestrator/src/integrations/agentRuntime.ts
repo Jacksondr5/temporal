@@ -34,6 +34,7 @@ import {
 } from '../domain/agentRuntime.js';
 import type { GitHubCheckRun } from '../domain/github.js';
 import type { CodeRabbitReviewItem } from '../domain/review.js';
+import { buildGitHubCredentialEnv } from './gitAuthEnv.js';
 import type { WorkspaceManager } from './workspace.js';
 
 const execFileAsync = promisify(execFile);
@@ -152,9 +153,11 @@ function buildGitOperationEnvironment(
   codex: CodexRuntimeConfig,
 ): Record<string, string> {
   const env = buildBaseEnvironment(gitIdentity, codex);
-  env.GITHUB_TOKEN = github.token;
-  env.GH_TOKEN = github.token;
-  return env;
+  env.GIT_TERMINAL_PROMPT = '0';
+  return {
+    ...env,
+    ...(buildGitHubCredentialEnv(github.token) as Record<string, string>),
+  };
 }
 
 async function publishCommittedHead(input: {
@@ -835,13 +838,13 @@ export function createAgentRuntimeClient(options: {
         await pushCurrentHead({
           workspacePath: workspace.path,
           branchName: input.snapshot.pr.branchName,
-          env: agentEnv,
+          env: gitEnv,
         });
         const observedGitState = await resolveObservedPushedHead({
           workspacePath: workspace.path,
           branchName: input.snapshot.pr.branchName,
           startingHeadSha: input.snapshot.pr.headSha,
-          env: agentEnv,
+          env: gitEnv,
         });
         const observedCommitSha = observedGitState.detectedCommitSha;
 
