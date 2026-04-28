@@ -37,7 +37,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
-function hasPendingSignalsLimitCause(value: unknown): boolean {
+function hasPendingSignalsLimitCause(
+  value: unknown,
+  seen = new Set<unknown>(),
+): boolean {
   if (value === PENDING_SIGNALS_LIMIT_EXCEEDED) {
     return true;
   }
@@ -46,9 +49,14 @@ function hasPendingSignalsLimitCause(value: unknown): boolean {
     return false;
   }
 
+  if (seen.has(value)) {
+    return false;
+  }
+  seen.add(value);
+
   return (
-    hasPendingSignalsLimitCause(value.cause) ||
-    hasPendingSignalsLimitCause(value.forceCause)
+    hasPendingSignalsLimitCause(value.cause, seen) ||
+    hasPendingSignalsLimitCause(value.forceCause, seen)
   );
 }
 
@@ -57,16 +65,14 @@ function hasPendingSignalsLimitMessage(value: unknown): boolean {
     return false;
   }
 
-  const message =
-    typeof value.message === 'string'
-      ? value.message
-      : typeof value.details === 'string'
-        ? value.details
-        : '';
+  const candidates = [value.message, value.details].filter(
+    (entry): entry is string => typeof entry === 'string',
+  );
 
-  return (
-    message.includes('PENDING_SIGNALS_LIMIT_EXCEEDED') ||
-    message.toLowerCase().includes('pending signals limit')
+  return candidates.some(
+    (message) =>
+      message.includes('PENDING_SIGNALS_LIMIT_EXCEEDED') ||
+      message.toLowerCase().includes('pending signals limit'),
   );
 }
 

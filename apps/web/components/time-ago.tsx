@@ -38,11 +38,24 @@ export function TimeAgo({
   const [, setTick] = useState(0);
 
   useEffect(() => {
-    const interval = setInterval(() => {
+    if (!date) {
+      return;
+    }
+
+    const timestamp = new Date(date).getTime();
+    if (!Number.isFinite(timestamp)) {
+      return;
+    }
+
+    if (Date.now() - timestamp >= 7 * 24 * 60 * 60 * 1000) {
+      return;
+    }
+
+    const interval = window.setInterval(() => {
       setTick((tick) => tick + 1);
     }, 15_000);
-    return () => clearInterval(interval);
-  }, []);
+    return () => window.clearInterval(interval);
+  }, [date]);
 
   const text = formatTimeAgo(date);
   const recent = isRecent(date);

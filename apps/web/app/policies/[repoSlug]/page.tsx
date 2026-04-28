@@ -3,8 +3,9 @@
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@convex/_generated/api";
 import type { Doc } from "@convex/_generated/dataModel";
-import { use, useState, useCallback } from "react";
+import { useState, useCallback } from "react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
 import { Label } from "../../../components/ui/label";
@@ -34,12 +35,8 @@ interface RepoPolicyDetail {
   policy: Doc<"repoPolicies"> | null;
 }
 
-export default function PolicyEditPage({
-  params,
-}: {
-  params: Promise<{ repoSlug: string }>;
-}) {
-  const { repoSlug } = use(params);
+export default function PolicyEditPage() {
+  const { repoSlug } = useParams<{ repoSlug: string }>();
   const decodedSlug = decodeURIComponent(repoSlug);
 
   const detail = useQuery(api.ui.getRepoPolicyDetail, {
