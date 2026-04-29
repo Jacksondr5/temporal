@@ -373,7 +373,8 @@ Per `docs/product/operator-ui-redesign.md` → "Component Patterns" →
 - [ ] "Needs attention" = `lifecycleState === 'open' && (hasBlockingError ||
       (dirty && (Date.now() - lastReconciledAt) > 5 * 60 * 1000))`.
 - [ ] Sort: live PRs (per `latestRunStatus === 'running'`) at top, then
-      `lastReconciledAt` desc within a repo group, then by repo.
+      `lastReconciledAt` desc, then by repo as a tiebreaker (no repo
+      grouping; matches `docs/product/operator-ui-redesign.md`).
 - [ ] Row uses `<StatusRail />` left edge with motion per the doc's table.
 - [ ] Title line: `repoSlug #prNumber` in sans, then PR title in
       narrative mono.

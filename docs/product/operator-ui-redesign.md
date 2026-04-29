@@ -286,7 +286,7 @@ implementation plan that follows this document.
 
 Replaces the current 7-column grid.
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────────────┐
 │ ▌ vercel/next.js #92413  feat: streaming RSC                            │
 │ ▌                                                                        │
@@ -306,7 +306,7 @@ Replaces the current 7-column grid.
 
 ### PR detail header — Operator
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────────────┐
 │  vercel/next.js #92413                          [Re-evaluate now]       │
 │  feat: streaming RSC                            [Inspect ↗]             │
@@ -340,7 +340,7 @@ Reviewers", "Artifacts", "PR Events".
 A single vertical timeline with a left spine, dots in canonical status
 shape/color, and cards on the right. Filter chips above:
 
-```
+```text
 Filters:  [All]  [Agent runs]  [Reviewers]  [Errors]  [GitHub]    🔍 Search
 ─────────────────────────────────────────────────────────────────────
 │  ◉  4m ago    Working — fixing failing checks
@@ -388,7 +388,7 @@ Filters:  [All]  [Agent runs]  [Reviewers]  [Errors]  [GitHub]    🔍 Search
 The visual primitive that makes Principle 11 ("Commits are first-class")
 concrete. Used wherever a commit needs to be referenced inline.
 
-```
+```text
 ┌──────────────────────────────────────────────────────────┐
 │  ⎇  Pushed commit  7c2f4e1a  ↗                           │
 │     fix(rsc): replace manual debounce with useDeferred…  │
@@ -422,7 +422,7 @@ the activity stream on PR detail. It pulls the existing summary fields
 already on `reviewerRuns` (`reviewerId`, `status`, `summary`, `matchedFiles`,
 finding/handoff counts from `detailsJson`).
 
-```
+```text
 Reviewers on this SHA:
   ■ security      ✓ no findings
   ■ perf          ✓ no findings
