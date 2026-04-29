@@ -33,6 +33,11 @@ RUN pnpm install --frozen-lockfile --prod --filter orchestrator...
 FROM node:22-bookworm-slim AS runtime
 
 ENV NODE_ENV=production
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+
+RUN corepack enable \
+  && corepack prepare pnpm@10.16.1 --activate
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends ca-certificates curl git \

@@ -1,4 +1,4 @@
-import { mkdir, readFile, stat } from 'node:fs/promises';
+import { mkdir, readFile, readdir, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -57,13 +57,28 @@ async function runGit(
   });
 }
 
-async function isCleanGitWorktree(path: string): Promise<boolean> {
+async function isEmptyDirectory(path: string): Promise<boolean> {
+  const pathStat = await stat(path);
+  if (!pathStat.isDirectory()) {
+    return false;
+  }
+
+  const entries = await readdir(path);
+  return entries.length === 0;
+}
+
+async function isGitWorktree(path: string): Promise<boolean> {
   try {
-    const { stdout } = await runGit(['status', '--porcelain'], path);
-    return stdout.trim().length === 0;
+    const { stdout } = await runGit(['rev-parse', '--is-inside-work-tree'], path);
+    return stdout.trim() === 'true';
   } catch {
     return false;
   }
+}
+
+async function isCleanGitWorktree(path: string): Promise<boolean> {
+  const { stdout } = await runGit(['status', '--porcelain'], path);
+  return stdout.trim().length === 0;
 }
 
 export async function ensureReviewerPacksRepo(input: {
@@ -75,7 +90,7 @@ export async function ensureReviewerPacksRepo(input: {
 }> {
   const exists = await pathExists(input.repoPath);
 
-  if (!exists) {
+  if (!exists || (await isEmptyDirectory(input.repoPath))) {
     await mkdir(join(input.repoPath, '..'), { recursive: true });
     await runGit(['clone', input.repoUrl, input.repoPath]);
 
@@ -83,6 +98,16 @@ export async function ensureReviewerPacksRepo(input: {
       repoPath: input.repoPath,
       repoCommitSha: await getGitHead(input.repoPath),
     };
+  }
+
+  if (!(await isGitWorktree(input.repoPath))) {
+    throw new Error(
+      [
+        'Reviewer packs repo path exists but is not a Git worktree.',
+        `path=${input.repoPath}`,
+        'Remove the directory, choose an empty path, or point REVIEWER_PACKS_REPO_PATH at a valid checkout.',
+      ].join(' '),
+    );
   }
 
   const clean = await isCleanGitWorktree(input.repoPath);
