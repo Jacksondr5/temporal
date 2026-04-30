@@ -138,6 +138,7 @@ export interface FailedRunDetails {
   kind: "failed";
   errorType: string;
   errorMessage: string;
+  errorStack: string | null;
   startingHeadSha: string | null;
   baseBranchName: string | null;
   baseSha: string | null;
@@ -210,9 +211,7 @@ function parseProviderMetadata(
   return pm as Record<string, unknown>;
 }
 
-function parseReviewerPack(
-  raw: Record<string, unknown>,
-): ReviewerPack | null {
+function parseReviewerPack(raw: Record<string, unknown>): ReviewerPack | null {
   const rp = raw.reviewerPack;
   if (!rp || typeof rp !== "object") return null;
   const pack = rp as Record<string, unknown>;
@@ -417,6 +416,7 @@ export function parseRunDetails(detailsJson: string): RunDetails {
       kind: "failed",
       errorType: raw.errorType,
       errorMessage: (raw.errorMessage as string) ?? "",
+      errorStack: (raw.errorStack as string) ?? null,
       startingHeadSha: (raw.startingHeadSha as string) ?? null,
       baseBranchName: (raw.baseBranchName as string) ?? null,
       baseSha: (raw.baseSha as string) ?? null,

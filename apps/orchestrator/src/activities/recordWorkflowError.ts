@@ -7,6 +7,7 @@ export async function recordWorkflowError(input: {
   workflowId: string;
   errorType: string;
   errorMessage: string;
+  errorStack: string | null;
   phase: string | null;
   retryable: boolean;
   blocked: boolean;

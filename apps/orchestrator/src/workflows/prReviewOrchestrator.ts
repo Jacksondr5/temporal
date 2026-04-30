@@ -73,14 +73,13 @@ const {
   persistCodeRabbitExecution,
   runSpecializedReviewerAgent,
   persistSpecializedReviewerExecution,
-} =
-  proxyActivities<typeof activities>({
-    startToCloseTimeout: '30 minutes',
-    heartbeatTimeout: '2 minutes',
-    retry: {
-      maximumAttempts: 1,
-    },
-  });
+} = proxyActivities<typeof activities>({
+  startToCloseTimeout: '30 minutes',
+  heartbeatTimeout: '2 minutes',
+  retry: {
+    maximumAttempts: 1,
+  },
+});
 
 function toRunDetailsJson(details: Record<string, unknown>): string {
   return JSON.stringify(details);
@@ -109,9 +108,7 @@ function toMergeConflictRunDetails(
   });
 }
 
-function toFixChecksRunDetails(
-  execution: FixChecksAgentExecution,
-): string {
+function toFixChecksRunDetails(execution: FixChecksAgentExecution): string {
   return toRunDetailsJson({
     provider: execution.provider,
     status: execution.status,
@@ -128,9 +125,7 @@ function toFixChecksRunDetails(
   });
 }
 
-function toCodeRabbitRunDetails(
-  execution: CodeRabbitAgentExecution,
-): string {
+function toCodeRabbitRunDetails(execution: CodeRabbitAgentExecution): string {
   return toRunDetailsJson({
     provider: execution.provider,
     status: execution.status,
@@ -214,7 +209,13 @@ function toErrorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback;
 }
 
-function buildTerminalSummary(lifecycleState: PullRequestLifecycleState): string {
+function toErrorStack(error: unknown): string | null {
+  return error instanceof Error ? (error.stack ?? null) : null;
+}
+
+function buildTerminalSummary(
+  lifecycleState: PullRequestLifecycleState,
+): string {
   return lifecycleState === 'merged'
     ? 'PR merged. Workflow concluded and workspace deleted.'
     : 'PR closed. Workflow concluded and workspace deleted.';
@@ -254,7 +255,7 @@ const CONTINUE_AS_NEW_HISTORY_LENGTH = 250;
 export async function prReviewOrchestratorWorkflow(
   input: PrReviewWorkflowInput,
 ): Promise<PrReviewWorkflowState> {
-  let state = input.resumedState ?? await initializePrReviewWorkflow(input);
+  let state = input.resumedState ?? (await initializePrReviewWorkflow(input));
   let terminalSignal: PrReviewWorkflowTerminalSignal | null = null;
   const activityInput: PrReviewWorkflowInput = {
     pr: input.pr,
@@ -265,13 +266,16 @@ export async function prReviewOrchestratorWorkflow(
   setHandler(prActivityObservedSignal, (signal: PrReviewWorkflowSignal) => {
     state = recordWorkflowSignal(state, signal);
   });
-  setHandler(prWorkflowShutdownSignal, (signal: PrReviewWorkflowTerminalSignal) => {
-    terminalSignal = signal;
-    state = {
-      ...state,
-      latestKnownHeadSha: signal.headSha,
-    };
-  });
+  setHandler(
+    prWorkflowShutdownSignal,
+    (signal: PrReviewWorkflowTerminalSignal) => {
+      terminalSignal = signal;
+      state = {
+        ...state,
+        latestKnownHeadSha: signal.headSha,
+      };
+    },
+  );
   setHandler(prWorkflowStateQuery, () => state);
 
   const getTerminalSignal = (): PrReviewWorkflowTerminalSignal | null =>
@@ -393,7 +397,9 @@ export async function prReviewOrchestratorWorkflow(
           phase: 'resolve_merge_conflicts',
           status: 'skipped',
           targetHeadSha: snapshot.pr.headSha,
-          summary: buildTerminalSkipSummary(receivedTerminalSignal.lifecycleState),
+          summary: buildTerminalSkipSummary(
+            receivedTerminalSignal.lifecycleState,
+          ),
           detailsJson: toRunDetailsJson({
             lifecycleState: receivedTerminalSignal.lifecycleState,
             skippedBeforeStart: true,
@@ -410,8 +416,14 @@ export async function prReviewOrchestratorWorkflow(
           baseSha,
         });
 
-        if (execution.status === 'completed' && execution.result?.observedCommitSha) {
-          state = markWorkflowDirtyForHead(state, execution.result.observedCommitSha);
+        if (
+          execution.status === 'completed' &&
+          execution.result?.observedCommitSha
+        ) {
+          state = markWorkflowDirtyForHead(
+            state,
+            execution.result.observedCommitSha,
+          );
         }
 
         state = {
@@ -453,6 +465,7 @@ export async function prReviewOrchestratorWorkflow(
                 commentError,
                 'Unknown merge conflict block comment failure.',
               ),
+              errorStack: toErrorStack(commentError),
               phase: 'resolving_merge_conflicts',
               retryable: true,
               blocked: true,
@@ -464,12 +477,14 @@ export async function prReviewOrchestratorWorkflow(
           error,
           'Unknown merge conflict resolution failure.',
         );
+        const errorStack = toErrorStack(error);
         await recordWorkflowError({
           repoSlug,
           prNumber: snapshot.pr.number,
           workflowId,
           errorType: 'run_merge_conflict_agent_failed',
           errorMessage: message,
+          errorStack,
           phase: 'resolving_merge_conflicts',
           retryable: false,
           blocked: true,
@@ -486,6 +501,7 @@ export async function prReviewOrchestratorWorkflow(
           detailsJson: toRunDetailsJson({
             errorType: 'run_merge_conflict_agent_failed',
             errorMessage: message,
+            errorStack,
             startingHeadSha: snapshot.pr.headSha,
             baseBranchName,
             baseSha,
@@ -513,6 +529,7 @@ export async function prReviewOrchestratorWorkflow(
               commentError,
               'Unknown merge conflict block comment failure.',
             ),
+            errorStack: toErrorStack(commentError),
             phase: 'resolving_merge_conflicts',
             retryable: true,
             blocked: true,
@@ -559,7 +576,9 @@ export async function prReviewOrchestratorWorkflow(
           phase: 'fix_checks',
           status: 'skipped',
           targetHeadSha: snapshot.pr.headSha,
-          summary: buildTerminalSkipSummary(receivedTerminalSignal.lifecycleState),
+          summary: buildTerminalSkipSummary(
+            receivedTerminalSignal.lifecycleState,
+          ),
           detailsJson: toRunDetailsJson({
             lifecycleState: receivedTerminalSignal.lifecycleState,
             skippedBeforeStart: true,
@@ -585,13 +604,17 @@ export async function prReviewOrchestratorWorkflow(
           }
         } catch (error) {
           const message =
-            error instanceof Error ? error.message : 'Unknown fix-check persistence failure.';
+            error instanceof Error
+              ? error.message
+              : 'Unknown fix-check persistence failure.';
+          const errorStack = toErrorStack(error);
           await recordWorkflowError({
             repoSlug,
             prNumber: snapshot.pr.number,
             workflowId,
             errorType: 'persist_fix_checks_execution_failed',
             errorMessage: message,
+            errorStack,
             phase: 'fixing_checks',
             retryable: false,
             blocked: true,
@@ -602,8 +625,14 @@ export async function prReviewOrchestratorWorkflow(
           };
         }
 
-        if (execution.status === 'completed' && execution.result?.observedCommitSha) {
-          state = markWorkflowDirtyForHead(state, execution.result.observedCommitSha);
+        if (
+          execution.status === 'completed' &&
+          execution.result?.observedCommitSha
+        ) {
+          state = markWorkflowDirtyForHead(
+            state,
+            execution.result.observedCommitSha,
+          );
         }
 
         state = {
@@ -624,13 +653,17 @@ export async function prReviewOrchestratorWorkflow(
         });
       } catch (error) {
         const message =
-          error instanceof Error ? error.message : 'Unknown fix-check execution failure.';
+          error instanceof Error
+            ? error.message
+            : 'Unknown fix-check execution failure.';
+        const errorStack = toErrorStack(error);
         await recordWorkflowError({
           repoSlug,
           prNumber: snapshot.pr.number,
           workflowId,
           errorType: 'run_fix_checks_agent_failed',
           errorMessage: message,
+          errorStack,
           phase: 'fixing_checks',
           retryable: false,
           blocked: true,
@@ -647,6 +680,7 @@ export async function prReviewOrchestratorWorkflow(
           detailsJson: toRunDetailsJson({
             errorType: 'run_fix_checks_agent_failed',
             errorMessage: message,
+            errorStack,
             startingHeadSha: snapshot.pr.headSha,
             checkNames: targetChecks.map((check) => check.name),
           }),
@@ -693,11 +727,15 @@ export async function prReviewOrchestratorWorkflow(
           phase: 'handle_code_rabbit',
           status: 'skipped',
           targetHeadSha: snapshot.pr.headSha,
-          summary: buildTerminalSkipSummary(receivedTerminalSignal.lifecycleState),
+          summary: buildTerminalSkipSummary(
+            receivedTerminalSignal.lifecycleState,
+          ),
           detailsJson: toRunDetailsJson({
             lifecycleState: receivedTerminalSignal.lifecycleState,
             skippedBeforeStart: true,
-            threadKeys: reconciliation.action.items.map((item) => item.threadKey),
+            threadKeys: reconciliation.action.items.map(
+              (item) => item.threadKey,
+            ),
           }),
         });
         state = await performTerminalCleanup();
@@ -723,13 +761,17 @@ export async function prReviewOrchestratorWorkflow(
           }
         } catch (error) {
           const message =
-            error instanceof Error ? error.message : 'Unknown persistence failure.';
+            error instanceof Error
+              ? error.message
+              : 'Unknown persistence failure.';
+          const errorStack = toErrorStack(error);
           await recordWorkflowError({
             repoSlug,
             prNumber: snapshot.pr.number,
             workflowId,
             errorType: 'persist_code_rabbit_execution_failed',
             errorMessage: message,
+            errorStack,
             phase: 'handling_code_rabbit',
             retryable: false,
             blocked: true,
@@ -740,8 +782,14 @@ export async function prReviewOrchestratorWorkflow(
           };
         }
 
-        if (execution.status === 'completed' && execution.result?.observedCommitSha) {
-          state = markWorkflowDirtyForHead(state, execution.result.observedCommitSha);
+        if (
+          execution.status === 'completed' &&
+          execution.result?.observedCommitSha
+        ) {
+          state = markWorkflowDirtyForHead(
+            state,
+            execution.result.observedCommitSha,
+          );
         }
 
         state = {
@@ -762,13 +810,17 @@ export async function prReviewOrchestratorWorkflow(
         });
       } catch (error) {
         const message =
-          error instanceof Error ? error.message : 'Unknown Code Rabbit execution failure.';
+          error instanceof Error
+            ? error.message
+            : 'Unknown Code Rabbit execution failure.';
+        const errorStack = toErrorStack(error);
         await recordWorkflowError({
           repoSlug,
           prNumber: snapshot.pr.number,
           workflowId,
           errorType: 'run_code_rabbit_agent_failed',
           errorMessage: message,
+          errorStack,
           phase: 'handling_code_rabbit',
           retryable: false,
           blocked: true,
@@ -785,8 +837,11 @@ export async function prReviewOrchestratorWorkflow(
           detailsJson: toRunDetailsJson({
             errorType: 'run_code_rabbit_agent_failed',
             errorMessage: message,
+            errorStack,
             startingHeadSha: snapshot.pr.headSha,
-            threadKeys: reconciliation.action.items.map((item) => item.threadKey),
+            threadKeys: reconciliation.action.items.map(
+              (item) => item.threadKey,
+            ),
           }),
         });
 
@@ -800,7 +855,9 @@ export async function prReviewOrchestratorWorkflow(
     if (reconciliation.action.type === 'run_specialized_reviewers') {
       const workflowId = formatPrWorkflowId(snapshot.pr);
       const repoSlug = `${snapshot.pr.repository.owner}/${snapshot.pr.repository.name}`;
-      const existingReviewerRuns = await listReviewerRunsForPullRequest(snapshot.pr);
+      const existingReviewerRuns = await listReviewerRunsForPullRequest(
+        snapshot.pr,
+      );
       if (terminalSignal !== null) {
         state = await performTerminalCleanup();
         return state;
@@ -811,19 +868,22 @@ export async function prReviewOrchestratorWorkflow(
         handoffItems: SpecializedReviewerHandoffItem[];
       }> = [];
 
-      const reviewersToRun = reconciliation.action.reviewers.filter((reviewer) => {
-        const priorSuccessfulRuns = existingReviewerRuns.filter(
-          (run) => run.reviewerId === reviewer.id && run.status === 'completed',
-        );
+      const reviewersToRun = reconciliation.action.reviewers.filter(
+        (reviewer) => {
+          const priorSuccessfulRuns = existingReviewerRuns.filter(
+            (run) =>
+              run.reviewerId === reviewer.id && run.status === 'completed',
+          );
 
-        if (reviewer.runPolicy === 'once_per_pr') {
-          return priorSuccessfulRuns.length === 0;
-        }
+          if (reviewer.runPolicy === 'once_per_pr') {
+            return priorSuccessfulRuns.length === 0;
+          }
 
-        return !priorSuccessfulRuns.some(
-          (run) => run.targetHeadSha === snapshot.pr.headSha,
-        );
-      });
+          return !priorSuccessfulRuns.some(
+            (run) => run.targetHeadSha === snapshot.pr.headSha,
+          );
+        },
+      );
 
       for (let index = 0; index < reviewersToRun.length; index += 1) {
         const reviewer = reviewersToRun[index];
@@ -883,7 +943,9 @@ export async function prReviewOrchestratorWorkflow(
             phase: 'run_specialized_reviewers',
             status: 'skipped',
             targetHeadSha: snapshot.pr.headSha,
-            summary: buildTerminalSkipSummary(receivedTerminalSignal.lifecycleState),
+            summary: buildTerminalSkipSummary(
+              receivedTerminalSignal.lifecycleState,
+            ),
             detailsJson: toRunDetailsJson({
               lifecycleState: receivedTerminalSignal.lifecycleState,
               reviewerId: reviewer.id,
@@ -920,12 +982,14 @@ export async function prReviewOrchestratorWorkflow(
               error instanceof Error
                 ? error.message
                 : 'Unknown specialized reviewer persistence failure.';
+            const errorStack = toErrorStack(error);
             await recordWorkflowError({
               repoSlug,
               prNumber: snapshot.pr.number,
               workflowId,
               errorType: 'persist_specialized_reviewer_execution_failed',
               errorMessage: message,
+              errorStack,
               phase: 'running_special_reviewers',
               retryable: false,
               blocked: true,
@@ -976,8 +1040,14 @@ export async function prReviewOrchestratorWorkflow(
             });
           }
 
-          if (execution.status === 'completed' && execution.result?.observedCommitSha) {
-            state = markWorkflowDirtyForHead(state, execution.result.observedCommitSha);
+          if (
+            execution.status === 'completed' &&
+            execution.result?.observedCommitSha
+          ) {
+            state = markWorkflowDirtyForHead(
+              state,
+              execution.result.observedCommitSha,
+            );
             break;
           }
 
@@ -990,12 +1060,14 @@ export async function prReviewOrchestratorWorkflow(
             error instanceof Error
               ? error.message
               : 'Unknown specialized reviewer execution failure.';
+          const errorStack = toErrorStack(error);
           await recordWorkflowError({
             repoSlug,
             prNumber: snapshot.pr.number,
             workflowId,
             errorType: 'run_specialized_reviewer_failed',
             errorMessage: message,
+            errorStack,
             phase: 'running_special_reviewers',
             retryable: false,
             blocked: true,
@@ -1013,6 +1085,7 @@ export async function prReviewOrchestratorWorkflow(
               reviewerId: reviewer.id,
               errorType: 'run_specialized_reviewer_failed',
               errorMessage: message,
+              errorStack,
               matchedFiles,
             }),
           });

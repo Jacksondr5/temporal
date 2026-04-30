@@ -21,6 +21,7 @@ export const upsert = mutation({
     repoSlug: v.string(),
     prNumber: v.number(),
     workflowId: v.string(),
+    title: v.string(),
     branchName: v.string(),
     headSha: v.string(),
     lifecycleState: v.optional(
@@ -62,6 +63,7 @@ export const upsertDiscovered = mutation({
     repoSlug: v.string(),
     prNumber: v.number(),
     workflowId: v.string(),
+    title: v.string(),
     branchName: v.string(),
     headSha: v.string(),
   },
@@ -76,6 +78,7 @@ export const upsertDiscovered = mutation({
     if (existing) {
       await ctx.db.patch(existing._id, {
         workflowId: args.workflowId,
+        title: args.title,
         branchName: args.branchName,
         headSha: args.headSha,
         lifecycleState: 'open',
