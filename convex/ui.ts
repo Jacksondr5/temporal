@@ -223,8 +223,15 @@ type ActivityStreamEvent =
     };
 
 type ActivityStreamSourceSlice<TEvent extends ActivityStreamEvent> = {
-  events: TEvent[];
-  exhausted: boolean;
+  eventType: ActivityStreamEventType;
+  startOffset: number;
+  fetchedDocCount: number;
+  requestedDocCount: number;
+  events: Array<
+    TEvent & {
+      sourceDocIndex: number;
+    }
+  >;
 };
 
 function parseActivityStreamCursor(
@@ -236,7 +243,12 @@ function parseActivityStreamCursor(
 
   try {
     const parsed = JSON.parse(cursor) as Partial<ActivityStreamContinueCursor>;
-    if (parsed.version !== 2 || typeof parsed.sources !== "object") {
+    if (
+      parsed.version !== 2 ||
+      parsed.sources === null ||
+      typeof parsed.sources !== "object" ||
+      Array.isArray(parsed.sources)
+    ) {
       return null;
     }
 
@@ -338,10 +350,7 @@ export const listActivityStreamEvents = query({
   handler: async (ctx, args) => {
     const cursor = parseActivityStreamCursor(args.paginationOpts.cursor);
     const sourceState = cursor?.sources ?? {};
-    const events: ActivityStreamEvent[] = [];
-    const nextSourceState: Partial<
-      Record<ActivityStreamEventType, ActivityStreamSourceState>
-    > = {};
+    const sourceSlices: Array<ActivityStreamSourceSlice<ActivityStreamEvent>> = [];
 
     const getSourceSlice = <TDoc, TEvent extends ActivityStreamEvent>(
       docs: readonly TDoc[],
@@ -352,39 +361,47 @@ export const listActivityStreamEvents = query({
     ): ActivityStreamSourceSlice<TEvent> => {
       const state = sourceState[eventType] ?? { offset: 0, exhausted: false };
       if (state.exhausted) {
-        nextSourceState[eventType] = { offset: state.offset, exhausted: true };
-        return { events: [], exhausted: true };
+        return {
+          eventType,
+          startOffset: state.offset,
+          fetchedDocCount,
+          requestedDocCount,
+          events: [],
+        };
       }
 
       const start = state.offset;
       if (start >= fetchedDocCount) {
-        const exhausted = fetchedDocCount < requestedDocCount;
-        nextSourceState[eventType] = { offset: start, exhausted };
-        return { events: [], exhausted };
+        return {
+          eventType,
+          startOffset: start,
+          fetchedDocCount,
+          requestedDocCount,
+          events: [],
+        };
       }
 
-      const eventsForPage: TEvent[] = [];
-      let scanned = 0;
+      const eventsForPage: Array<TEvent & { sourceDocIndex: number }> = [];
       for (let i = start; i < docs.length; i += 1) {
-        scanned += 1;
         const event = toEvent(docs[i]);
         if (event === null) {
           continue;
         }
-        eventsForPage.push(event);
+        eventsForPage.push({
+          ...event,
+          sourceDocIndex: i,
+        });
         if (eventsForPage.length >= ACTIVITY_STREAM_PAGE_SIZE) {
           break;
         }
       }
-
-      const nextOffset = start + scanned;
-      const exhausted =
-        eventsForPage.length < ACTIVITY_STREAM_PAGE_SIZE &&
-        fetchedDocCount < requestedDocCount &&
-        nextOffset >= fetchedDocCount;
-      nextSourceState[eventType] = { offset: nextOffset, exhausted };
-
-      return { events: eventsForPage, exhausted };
+      return {
+        eventType,
+        startOffset: start,
+        fetchedDocCount,
+        requestedDocCount,
+        events: eventsForPage,
+      };
     };
 
     // This query merges several independently indexed sources. Convex permits
@@ -405,7 +422,8 @@ export const listActivityStreamEvents = query({
           ),
         );
 
-      const sourceSlice = getSourceSlice(
+      sourceSlices.push(
+        getSourceSlice(
         runs,
         "agent_run",
         (run) => {
@@ -425,13 +443,8 @@ export const listActivityStreamEvents = query({
           agentRunOffset + ACTIVITY_STREAM_PAGE_SIZE + 1,
           ACTIVITY_STREAM_SOURCE_BATCH_SIZE,
         ),
+      ),
       );
-      events.push(...sourceSlice.events);
-    } else {
-      nextSourceState.agent_run = sourceState.agent_run ?? {
-        offset: 0,
-        exhausted: true,
-      };
     }
 
     if (includeActivitySource(args.filter, "reviewer_run")) {
@@ -449,7 +462,8 @@ export const listActivityStreamEvents = query({
           ),
         );
 
-      const sourceSlice = getSourceSlice(
+      sourceSlices.push(
+        getSourceSlice(
         reviewerRuns,
         "reviewer_run",
         (run) => ({
@@ -463,13 +477,8 @@ export const listActivityStreamEvents = query({
           reviewerRunOffset + ACTIVITY_STREAM_PAGE_SIZE + 1,
           ACTIVITY_STREAM_SOURCE_BATCH_SIZE,
         ),
+      ),
       );
-      events.push(...sourceSlice.events);
-    } else {
-      nextSourceState.reviewer_run = sourceState.reviewer_run ?? {
-        offset: 0,
-        exhausted: true,
-      };
     }
 
     if (includeActivitySource(args.filter, "workflow_error")) {
@@ -487,7 +496,8 @@ export const listActivityStreamEvents = query({
           ),
         );
 
-      const sourceSlice = getSourceSlice(
+      sourceSlices.push(
+        getSourceSlice(
         errors,
         "workflow_error",
         (error) => ({
@@ -508,13 +518,8 @@ export const listActivityStreamEvents = query({
           workflowErrorOffset + ACTIVITY_STREAM_PAGE_SIZE + 1,
           ACTIVITY_STREAM_SOURCE_BATCH_SIZE,
         ),
+      ),
       );
-      events.push(...sourceSlice.events);
-    } else {
-      nextSourceState.workflow_error = sourceState.workflow_error ?? {
-        offset: 0,
-        exhausted: true,
-      };
     }
 
     if (includeActivitySource(args.filter, "github_event")) {
@@ -532,42 +537,87 @@ export const listActivityStreamEvents = query({
           ),
         );
 
-      const sourceSlice = getSourceSlice(
-        githubEvents,
-        "github_event",
-        (event) => {
-          if (!includeGitHubEventInMode(event, args.mode)) {
-            return null;
-          }
-          return {
-            eventType: "github_event" as const,
-            eventTime: event.observedAt,
-            source: event,
-            cursor: buildActivityStreamCursor(
-              event.observedAt,
-              "github_event",
-              event._id,
-            ),
-          };
-        },
-        githubEvents.length,
-        Math.max(
-          githubEventOffset + ACTIVITY_STREAM_PAGE_SIZE + 1,
-          ACTIVITY_STREAM_SOURCE_BATCH_SIZE,
+      sourceSlices.push(
+        getSourceSlice(
+          githubEvents,
+          "github_event",
+          (event) => {
+            if (!includeGitHubEventInMode(event, args.mode)) {
+              return null;
+            }
+            return {
+              eventType: "github_event" as const,
+              eventTime: event.observedAt,
+              source: event,
+              cursor: buildActivityStreamCursor(
+                event.observedAt,
+                "github_event",
+                event._id,
+              ),
+            };
+          },
+          githubEvents.length,
+          Math.max(
+            githubEventOffset + ACTIVITY_STREAM_PAGE_SIZE + 1,
+            ACTIVITY_STREAM_SOURCE_BATCH_SIZE,
+          ),
         ),
       );
-      events.push(...sourceSlice.events);
-    } else {
-      nextSourceState.github_event = sourceState.github_event ?? {
-        offset: 0,
-        exhausted: true,
-      };
     }
 
-    const sorted = events.sort((left, right) =>
-      compareActivityStreamCursors(left.cursor, right.cursor),
-    );
+    const sorted = sourceSlices
+      .flatMap((slice) => slice.events)
+      .sort((left, right) =>
+        compareActivityStreamCursors(left.cursor, right.cursor),
+      );
     const page = sorted.slice(0, ACTIVITY_STREAM_PAGE_SIZE);
+    const maxReturnedIndexByType: Partial<Record<ActivityStreamEventType, number>> =
+      {};
+    for (const event of page) {
+      const currentMax = maxReturnedIndexByType[event.eventType];
+      if (currentMax === undefined || event.sourceDocIndex > currentMax) {
+        maxReturnedIndexByType[event.eventType] = event.sourceDocIndex;
+      }
+    }
+
+    const nextSourceState: Partial<
+      Record<ActivityStreamEventType, ActivityStreamSourceState>
+    > = {};
+    for (const eventType of [
+      "agent_run",
+      "reviewer_run",
+      "workflow_error",
+      "github_event",
+    ] as const) {
+      if (!includeActivitySource(args.filter, eventType)) {
+        nextSourceState[eventType] = sourceState[eventType] ?? {
+          offset: 0,
+          exhausted: true,
+        };
+        continue;
+      }
+
+      const previousState = sourceState[eventType] ?? { offset: 0, exhausted: false };
+      if (previousState.exhausted) {
+        nextSourceState[eventType] = previousState;
+        continue;
+      }
+
+      const sourceSlice = sourceSlices.find((slice) => slice.eventType === eventType);
+      if (sourceSlice === undefined) {
+        nextSourceState[eventType] = previousState;
+        continue;
+      }
+
+      const maxReturnedIndex = maxReturnedIndexByType[eventType];
+      const nextOffset =
+        maxReturnedIndex === undefined ? previousState.offset : maxReturnedIndex + 1;
+      const exhausted =
+        nextOffset >= sourceSlice.fetchedDocCount &&
+        sourceSlice.fetchedDocCount < sourceSlice.requestedDocCount;
+      nextSourceState[eventType] = { offset: nextOffset, exhausted };
+    }
+
     const isDone = Object.values(nextSourceState).every((state) => state.exhausted);
     const continueCursor = isDone
       ? ""
@@ -577,7 +627,7 @@ export const listActivityStreamEvents = query({
         } satisfies ActivityStreamContinueCursor);
 
     return {
-      page: page.map(({ cursor: _cursor, ...event }) => event),
+      page: page.map(({ cursor: _cursor, sourceDocIndex: _index, ...event }) => event),
       isDone,
       continueCursor,
     };
