@@ -8,6 +8,13 @@ import { TooltipProvider } from "../components/ui/tooltip";
 // All pages use real-time Convex subscriptions; skip static prerendering.
 export const dynamic = "force-dynamic";
 
+// Geist Sans stays as the UI typeface. Geist Mono is no longer the canonical
+// monospace family — Monaspace Neon (technical) and Monaspace Argon
+// (narrative) take that role and are loaded via @font-face in globals.css
+// from self-hosted woff2 files in /public/fonts. Geist Mono is kept loaded
+// for now so any inline `font-mono` usage that still resolves through the
+// Next font variable continues to render until those call sites migrate to
+// the new mono utilities.
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -34,7 +41,7 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} dark h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col dot-grid">
+      <body className="min-h-full flex flex-col">
         <ConvexClientProvider>
           <TooltipProvider>
             <Nav />
