@@ -227,6 +227,7 @@ type ActivityStreamSourceSlice<TEvent extends ActivityStreamEvent> = {
   startOffset: number;
   fetchedDocCount: number;
   requestedDocCount: number;
+  scannedThroughOffset: number;
   events: Array<
     TEvent & {
       sourceDocIndex: number;
@@ -366,6 +367,7 @@ export const listActivityStreamEvents = query({
           startOffset: state.offset,
           fetchedDocCount,
           requestedDocCount,
+          scannedThroughOffset: state.offset,
           events: [],
         };
       }
@@ -377,12 +379,15 @@ export const listActivityStreamEvents = query({
           startOffset: start,
           fetchedDocCount,
           requestedDocCount,
+          scannedThroughOffset: start,
           events: [],
         };
       }
 
       const eventsForPage: Array<TEvent & { sourceDocIndex: number }> = [];
+      let scannedThroughOffset = start;
       for (let i = start; i < docs.length; i += 1) {
+        scannedThroughOffset = i + 1;
         const event = toEvent(docs[i]);
         if (event === null) {
           continue;
@@ -400,6 +405,7 @@ export const listActivityStreamEvents = query({
         startOffset: start,
         fetchedDocCount,
         requestedDocCount,
+        scannedThroughOffset,
         events: eventsForPage,
       };
     };
@@ -611,7 +617,11 @@ export const listActivityStreamEvents = query({
 
       const maxReturnedIndex = maxReturnedIndexByType[eventType];
       const nextOffset =
-        maxReturnedIndex === undefined ? previousState.offset : maxReturnedIndex + 1;
+        maxReturnedIndex !== undefined
+          ? maxReturnedIndex + 1
+          : sourceSlice.events.length === 0
+            ? sourceSlice.scannedThroughOffset
+            : previousState.offset;
       const exhausted =
         nextOffset >= sourceSlice.fetchedDocCount &&
         sourceSlice.fetchedDocCount < sourceSlice.requestedDocCount;
