@@ -186,6 +186,12 @@ export interface ConvexClient {
     externalId: string;
     correlationKey: string;
     summary: string | null;
+    commitMessage?: string | null;
+    commitStats?: {
+      additions: number;
+      deletions: number;
+      files: number;
+    } | null;
   }): Promise<unknown>;
   insertWorkflowError(input: {
     repoSlug: string;
@@ -467,6 +473,8 @@ export function createConvexClient(config: ConvexRuntimeConfig): ConvexClient {
         externalId: input.externalId,
         correlationKey: input.correlationKey,
         summary: input.summary,
+        commitMessage: input.commitMessage ?? null,
+        commitStats: input.commitStats ?? null,
         createdAt: new Date().toISOString(),
       }),
     insertWorkflowError: async (input) =>

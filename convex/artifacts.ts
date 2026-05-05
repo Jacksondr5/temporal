@@ -23,6 +23,15 @@ export const upsert = mutation({
     externalId: v.string(),
     correlationKey: v.string(),
     summary: v.union(v.string(), v.null()),
+    commitMessage: v.union(v.string(), v.null()),
+    commitStats: v.union(
+      v.object({
+        additions: v.number(),
+        deletions: v.number(),
+        files: v.number(),
+      }),
+      v.null(),
+    ),
     createdAt: v.string(),
   },
   handler: async (ctx, args) => {

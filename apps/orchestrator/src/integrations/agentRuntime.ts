@@ -13,6 +13,7 @@ import type {
   CodeRabbitBatchAgentOutput,
   CodeRabbitAgentExecution,
   CodeRabbitAgentRunInput,
+  CommitMetadata,
   FixChecksBatchAgentOutput,
   FixChecksAgentExecution,
   FixChecksAgentRunInput,
@@ -121,6 +122,45 @@ async function pushCurrentHead(input: {
   await runGit(['push', 'origin', `HEAD:${input.branchName}`], input.workspacePath, input.env);
 }
 
+function parseGitShortstat(output: string): CommitMetadata['commitStats'] {
+  const statsLine = output
+    .split('\n')
+    .map((line) => line.trim())
+    .find((line) => line.length > 0);
+
+  if (statsLine === undefined) {
+    return { additions: 0, deletions: 0, files: 0 };
+  }
+
+  return {
+    additions: Number.parseInt(statsLine.match(/(\d+)\s+insertions?\(\+\)/)?.[1] ?? '0', 10),
+    deletions: Number.parseInt(statsLine.match(/(\d+)\s+deletions?\(-\)/)?.[1] ?? '0', 10),
+    files: Number.parseInt(statsLine.match(/(\d+)\s+files?\s+changed/)?.[1] ?? '0', 10),
+  };
+}
+
+async function readCommitMetadata(input: {
+  workspacePath: string;
+  commitSha: string;
+  env?: NodeJS.ProcessEnv;
+}): Promise<CommitMetadata> {
+  const commitMessage = (
+    await runGit(['log', '-1', '--pretty=%B', input.commitSha], input.workspacePath, input.env)
+  ).stdout.trim();
+  const shortstat = (
+    await runGit(
+      ['log', '-1', '--shortstat', '--pretty=format:', input.commitSha],
+      input.workspacePath,
+      input.env,
+    )
+  ).stdout;
+
+  return {
+    commitMessage: commitMessage.length > 0 ? commitMessage : null,
+    commitStats: parseGitShortstat(shortstat),
+  };
+}
+
 function buildBaseEnvironment(
   gitIdentity: GitIdentityRuntimeConfig,
   codex: CodexRuntimeConfig,
@@ -170,6 +210,8 @@ async function publishCommittedHead(input: {
   detectedCommitSha: string | null;
   localHeadAfter: string;
   remoteHeadAfter: string;
+  commitMessage: string | null;
+  commitStats: CommitMetadata['commitStats'];
 }> {
   const localHeadBeforePush = (
     await runGit(['rev-parse', 'HEAD'], input.workspacePath, input.env)
@@ -243,7 +285,22 @@ async function publishCommittedHead(input: {
     }
   }
 
-  return observed;
+  if (!input.didCommitCode || observed.detectedCommitSha === null) {
+    return {
+      ...observed,
+      commitMessage: null,
+      commitStats: null,
+    };
+  }
+
+  return {
+    ...observed,
+    ...(await readCommitMetadata({
+      workspacePath: input.workspacePath,
+      commitSha: observed.detectedCommitSha,
+      env: input.env,
+    })),
+  };
 }
 
 async function listUnmergedPaths(workspacePath: string): Promise<string[]> {
@@ -1092,6 +1149,8 @@ export function createAgentRuntimeClient(options: {
         result: {
           ...object,
           observedCommitSha,
+          commitMessage: observedGitState.commitMessage,
+          commitStats: observedGitState.commitStats,
         },
       };
     },
@@ -1198,6 +1257,8 @@ export function createAgentRuntimeClient(options: {
         result: {
           ...object,
           observedCommitSha,
+          commitMessage: observedGitState.commitMessage,
+          commitStats: observedGitState.commitStats,
         },
       };
     },
@@ -1290,6 +1351,8 @@ export function createAgentRuntimeClient(options: {
         result: {
           ...object,
           observedCommitSha,
+          commitMessage: observedGitState.commitMessage,
+          commitStats: observedGitState.commitStats,
         },
       };
     },

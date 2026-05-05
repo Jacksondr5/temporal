@@ -27,5 +27,7 @@ export async function persistFixChecksExecution(input: {
     externalId: commitSha,
     correlationKey: `${repoSlug}:pr:${input.pr.number}:fix-checks:${commitSha}`,
     summary: input.execution.result.overallSummary,
+    commitMessage: input.execution.result.commitMessage,
+    commitStats: input.execution.result.commitStats,
   });
 }

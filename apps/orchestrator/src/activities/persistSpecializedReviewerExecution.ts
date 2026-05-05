@@ -28,5 +28,7 @@ export async function persistSpecializedReviewerExecution(input: {
     externalId: commitSha,
     correlationKey: `${repoSlug}:pr:${input.pr.number}:specialized-reviewer:${input.reviewerId}:${commitSha}`,
     summary: input.execution.result.overallSummary,
+    commitMessage: input.execution.result.commitMessage,
+    commitStats: input.execution.result.commitStats,
   });
 }

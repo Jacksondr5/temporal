@@ -25,6 +25,8 @@ export async function persistCodeRabbitExecution(input: {
       externalId: commitSha,
       correlationKey: `${repoSlug}:pr:${input.pr.number}:commit:${commitSha}`,
       summary: input.execution.result.overallSummary,
+      commitMessage: input.execution.result.commitMessage,
+      commitStats: input.execution.result.commitStats,
     });
   }
 

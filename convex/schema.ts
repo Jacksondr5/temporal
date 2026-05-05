@@ -227,6 +227,17 @@ export default defineSchema({
     externalId: v.string(),
     correlationKey: v.string(),
     summary: v.union(v.string(), v.null()),
+    commitMessage: v.optional(v.union(v.string(), v.null())),
+    commitStats: v.optional(
+      v.union(
+        v.object({
+          additions: v.number(),
+          deletions: v.number(),
+          files: v.number(),
+        }),
+        v.null(),
+      ),
+    ),
     createdAt: v.string(),
   })
     .index('by_correlation_key', ['correlationKey'])
