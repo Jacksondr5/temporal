@@ -263,6 +263,54 @@
   animation: status-pulse 2s ease-in-out infinite;
 }
 
+/* ──────────────────────────────────────────────────────────────────────────
+   Status rail motion. Per docs/product/operator-ui-redesign.md →
+   "Motion language", a row's left rail communicates aliveness:
+     - sweep  : continuous indeterminate sweep along the rail (running/live).
+     - breath : 4s slow opacity breath (stale/caution).
+     - pulse  : 2.4s slow opacity pulse (pending/queued).
+   The rail itself stays a solid color; the sweep is a brighter overlay band
+   driven by the same keyframe, so the parent provides the canonical color
+   and the overlay inherits it via `currentColor`/Tailwind tokens.
+   ────────────────────────────────────────────────────────────────────── */
+@keyframes status-rail-sweep {
+  0% {
+    transform: translateY(-110%);
+  }
+  100% {
+    transform: translateY(420%);
+  }
+}
+.animate-rail-sweep {
+  animation: status-rail-sweep 1.6s linear infinite;
+}
+
+@keyframes status-rail-breath {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+.animate-rail-breath {
+  animation: status-rail-breath 4s ease-in-out infinite;
+}
+
+@keyframes status-rail-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+.animate-rail-pulse {
+  animation: status-rail-pulse 2.4s ease-in-out infinite;
+}
+
 /* Subtle shimmer for loading states. */
 @keyframes shimmer {
   0% {
