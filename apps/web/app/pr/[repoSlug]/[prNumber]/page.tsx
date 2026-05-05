@@ -4,29 +4,23 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
 import { use, useState } from "react";
 import Link from "next/link";
-import {
-  PhaseBadge,
-  DirtyBadge,
-  DispositionBadge,
-  LifecycleBadge,
-} from "../../../../components/status-badge";
+import { DispositionBadge } from "../../../../components/status-badge";
 import { TimeAgo } from "../../../../components/time-ago";
-import { RunTimeline, ReviewerRunList } from "../../../../components/run-detail";
+import {
+  RunTimeline,
+  ReviewerRunList,
+} from "../../../../components/run-detail";
+import { PrHeaderOperator } from "../../../../components/pr-header-operator";
 import {
   ArrowLeft,
   GitCommit,
   MessageSquare,
   Ticket,
   FileCode,
-  AlertTriangle,
   Zap,
   GitPullRequest,
-  ExternalLink,
   Eye,
-  Info,
-  RotateCw,
 } from "lucide-react";
-import { Button } from "../../../../components/ui/button";
 
 const MANUAL_EVENT_CLAIM_STALE_MS = 5 * 60 * 1000;
 
@@ -44,10 +38,11 @@ export default function PullRequestDetailPage({
     prNumber,
   });
   const enqueueManualReevaluate = useMutation(api.githubEvents.enqueueManual);
-  const [isSubmittingManualRequest, setIsSubmittingManualRequest] = useState(false);
-  const [manualRequestError, setManualRequestError] = useState<string | null>(null);
-
-  const githubUrl = `https://github.com/${decodedSlug}/pull/${prNumber}`;
+  const [isSubmittingManualRequest, setIsSubmittingManualRequest] =
+    useState(false);
+  const [manualRequestError, setManualRequestError] = useState<string | null>(
+    null,
+  );
 
   if (detail === undefined) {
     return (
@@ -80,12 +75,13 @@ export default function PullRequestDetailPage({
   }
 
   const { pr, threads, runs, reviewerRuns, artifacts, errors, events } = detail;
-  const latestManualEvent = events.find((event) => event.kind === "manual") ?? null;
-  const isTerminal = pr.lifecycleState !== "open";
+  const latestManualEvent =
+    events.find((event) => event.kind === "manual") ?? null;
   const nowMs = Date.now();
   const manualClaimIsFresh =
     latestManualEvent?.claimedAt != null &&
-    nowMs - new Date(latestManualEvent.claimedAt).getTime() < MANUAL_EVENT_CLAIM_STALE_MS;
+    nowMs - new Date(latestManualEvent.claimedAt).getTime() <
+      MANUAL_EVENT_CLAIM_STALE_MS;
   const manualRequestState =
     latestManualEvent === null
       ? null
@@ -94,17 +90,16 @@ export default function PullRequestDetailPage({
         : manualClaimIsFresh
           ? "dispatching"
           : "queued";
-  const manualRequestPending = manualRequestState === "queued" || manualRequestState === "dispatching";
-  const manualRequestLabel =
-    manualRequestState === "dispatching" || manualRequestState === "queued"
-      ? "Re-evaluate queued"
-      : "Re-evaluate now";
   const manualRequestStatusTime =
     manualRequestState === "picked_up"
-      ? latestManualEvent?.processedAt ?? latestManualEvent?.observedAt ?? null
+      ? (latestManualEvent?.processedAt ??
+        latestManualEvent?.observedAt ??
+        null)
       : manualRequestState === "dispatching"
-        ? latestManualEvent?.claimedAt ?? latestManualEvent?.observedAt ?? null
-        : latestManualEvent?.observedAt ?? null;
+        ? (latestManualEvent?.claimedAt ??
+          latestManualEvent?.observedAt ??
+          null)
+        : (latestManualEvent?.observedAt ?? null);
 
   async function handleManualReevaluate(): Promise<void> {
     if (isSubmittingManualRequest) {
@@ -121,148 +116,50 @@ export default function PullRequestDetailPage({
       });
     } catch (error) {
       setManualRequestError(
-        error instanceof Error ? error.message : "Failed to queue re-evaluate request.",
+        error instanceof Error
+          ? error.message
+          : "Failed to queue re-evaluate request.",
       );
     } finally {
       setIsSubmittingManualRequest(false);
     }
   }
 
-  // Derive latest reconciliation context for the status strip
-  const latestRun = runs[0] ?? null;
-  const latestAction = latestRun
-    ? latestRun.phase === "noop"
-      ? "noop — PR settled"
-      : `${latestRun.phase} (${latestRun.status})`
-    : null;
+  // The header's "Latest run" signal surfaces the most recent non-noop run.
+  // Noops are filtered out at the Operator boundary per the redesign doc
+  // ("Activity stream sub-design") so they never reach the operator UI.
+  const latestNonNoopRun = runs.find((run) => run.phase !== "noop") ?? null;
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <Link
-          href="/"
-          className="inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-primary transition-colors mb-3"
-        >
-          <ArrowLeft className="h-3 w-3" /> All PRs
-        </Link>
-        <div className="flex items-center gap-3">
-          <h1 className="text-xl font-semibold tracking-tight">
-            <span className="text-muted-foreground">{decodedSlug}</span>{" "}
-            <span className="text-primary">#{prNumber}</span>
-          </h1>
-          <a
-            href={githubUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-medium text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors ring-1 ring-border/60 hover:ring-primary/30"
-          >
-            <ExternalLink className="h-3 w-3" />
-            GitHub
-          </a>
-          <Button
-            type="button"
-            variant={manualRequestPending ? "secondary" : "outline"}
-            size="sm"
-            disabled={isSubmittingManualRequest || manualRequestPending || isTerminal}
-            onClick={handleManualReevaluate}
-          >
-            <RotateCw
-              className={isSubmittingManualRequest ? "animate-spin" : undefined}
-            />
-            {isSubmittingManualRequest
-              ? "Queueing..."
-              : isTerminal
-                ? `PR ${pr.lifecycleState}`
-                : manualRequestLabel}
-          </Button>
-        </div>
-        <div className="mt-1.5 flex items-center gap-3 text-xs text-muted-foreground font-mono">
-          <LifecycleBadge lifecycleState={pr.lifecycleState} />
-          <span>
-            branch:{" "}
-            <span className="text-foreground/80">{pr.branchName}</span>
-          </span>
-          <span className="text-border">|</span>
-          <span>
-            HEAD:{" "}
-            <span className="text-foreground/80">
-              {pr.headSha.slice(0, 8)}
-            </span>
-          </span>
-        </div>
-        {(latestManualEvent || manualRequestError) && (
-          <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-            {latestManualEvent && (
-              <span>
-                Manual request:{" "}
-                <span className="text-foreground/80">
-                  {manualRequestState === "picked_up"
-                    ? "picked up"
-                    : manualRequestState === "dispatching"
-                      ? "dispatching"
-                      : "queued"}{" "}
-                  <TimeAgo date={manualRequestStatusTime} />
-                </span>
-              </span>
-            )}
-            {manualRequestError && (
-              <span className="text-rose-400">{manualRequestError}</span>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* ─── Workflow state strip ─── */}
-      <div className="rounded-lg border border-border/60 bg-card/50 overflow-hidden">
-        <div className="flex flex-wrap items-center gap-3 px-4 py-3">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Zap className="h-3.5 w-3.5" />
-            Phase:
-          </div>
-          <LifecycleBadge lifecycleState={pr.lifecycleState} />
-          <PhaseBadge phase={pr.currentPhase} />
-          <DirtyBadge dirty={pr.dirty} />
-          {pr.blockedReason && (
-            <div className="flex items-center gap-1.5 text-xs text-rose-400">
-              <AlertTriangle className="h-3.5 w-3.5" />
-              {pr.blockedReason}
-            </div>
-          )}
-          {pr.statusSummary && (
-            <span className="text-xs text-muted-foreground">
-              {pr.statusSummary}
-            </span>
-          )}
-          <div className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
-            Reconciled: <TimeAgo date={pr.lastReconciledAt} />
-          </div>
-        </div>
-        {/* Context row: latest action + dirty explanation */}
-        {(latestAction || pr.dirty) && (
-          <div className="flex items-center gap-2 border-t border-border/40 px-4 py-2 text-[11px] text-muted-foreground/70">
-            <Info className="h-3 w-3 shrink-0" />
-            {latestAction && (
-              <span>
-                Latest action:{" "}
-                <span className="font-mono text-foreground/60">
-                  {latestAction}
-                </span>
-              </span>
-            )}
-            {pr.dirty && latestRun?.phase !== "noop" && (
-              <span className="text-amber-400/60">
-                — dirty flag is set; will re-reconcile on next cycle
-              </span>
-            )}
-            {pr.dirty && latestRun?.phase === "noop" && (
-              <span className="text-amber-400/60">
-                — transient dirty after agent push; should settle shortly
-              </span>
-            )}
-          </div>
-        )}
-      </div>
+      <PrHeaderOperator
+        repoSlug={decodedSlug}
+        prNumber={prNumber}
+        title={pr.title}
+        pr={{
+          currentPhase: pr.currentPhase,
+          dirty: pr.dirty,
+          blockedReason: pr.blockedReason,
+          statusSummary: pr.statusSummary,
+          lifecycleState: pr.lifecycleState,
+        }}
+        latestRun={
+          latestNonNoopRun
+            ? {
+                phase: latestNonNoopRun.phase,
+                status: latestNonNoopRun.status,
+                summary: latestNonNoopRun.summary,
+                startedAt: latestNonNoopRun.startedAt,
+                completedAt: latestNonNoopRun.completedAt,
+              }
+            : null
+        }
+        manualRequestState={manualRequestState}
+        manualRequestStatusTime={manualRequestStatusTime}
+        manualRequestError={manualRequestError}
+        isSubmittingManualRequest={isSubmittingManualRequest}
+        onManualReevaluate={handleManualReevaluate}
+      />
 
       {/* ─── Threads ─── */}
       <SectionHeader
@@ -452,12 +349,12 @@ export default function PullRequestDetailPage({
               {ev.kind === "manual"
                 ? "Manual re-evaluate request"
                 : ev.checkName
-                ? `Check: ${ev.checkName}`
-                : ev.reviewId
-                  ? `Review #${ev.reviewId}`
-                  : ev.commentId
-                    ? `Comment #${ev.commentId}`
-                    : "-"}
+                  ? `Check: ${ev.checkName}`
+                  : ev.reviewId
+                    ? `Review #${ev.reviewId}`
+                    : ev.commentId
+                      ? `Comment #${ev.commentId}`
+                      : "-"}
             </span>,
             <TimeAgo key="time" date={ev.observedAt} />,
           ])}
