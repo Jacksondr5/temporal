@@ -11,6 +11,7 @@ import {
   ReviewerRunList,
 } from "../../../../components/run-detail";
 import { PrHeaderOperator } from "../../../../components/pr-header-operator";
+import { ReviewerSummary } from "../../../../components/reviewer-summary";
 import {
   ArrowLeft,
   GitCommit,
@@ -248,6 +249,15 @@ export default function PullRequestDetailPage({
           ))}
         </div>
       )}
+
+      {/* ─── Reviewer summary for the current SHA ─── */}
+      {/*
+        Sits above the unified activity stream per
+        `docs/product/operator-ui-redesign.md` → "PR detail — Operator". The
+        widget hides itself entirely when no reviewer has run on the current
+        SHA, so the section header is intentionally inside the component.
+      */}
+      <ReviewerSummary headSha={pr.headSha} reviewerRuns={reviewerRuns} />
 
       {/* ─── Runs & Errors (interleaved timeline) ─── */}
       <SectionHeader
