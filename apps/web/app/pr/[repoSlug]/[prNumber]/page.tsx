@@ -2,28 +2,47 @@
 
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { DispositionBadge } from "../../../../components/status-badge";
 import { TimeAgo } from "../../../../components/time-ago";
-import {
-  RunTimeline,
-  ReviewerRunList,
-} from "../../../../components/run-detail";
 import { PrHeaderOperator } from "../../../../components/pr-header-operator";
 import { ReviewerSummary } from "../../../../components/reviewer-summary";
 import {
+  ActivityStream,
+  type ActivityStreamFilter,
+} from "../../../../components/activity-stream";
+import {
   ArrowLeft,
-  GitCommit,
   MessageSquare,
   Ticket,
   FileCode,
-  Zap,
   GitPullRequest,
-  Eye,
 } from "lucide-react";
 
 const MANUAL_EVENT_CLAIM_STALE_MS = 5 * 60 * 1000;
+// How often the page re-evaluates "is the manual claim still fresh?" against
+// the wall clock. 15s matches the `<TimeAgo />` cadence so the transition
+// from "dispatching" to "queued" lines up with the timestamps in the row.
+const MANUAL_FRESHNESS_TICK_MS = 15_000;
+
+/**
+ * Returns a monotonically updating `Date.now()` value, refreshed on the
+ * supplied interval. Encapsulates the impure `Date.now()` read inside a
+ * lazy `useState` initialiser plus a ticking effect, satisfying React 19's
+ * `react-hooks/purity` rule for components that need wall-clock comparisons
+ * at render time. Threaded down to the activity stream so child cards
+ * (e.g. the manual-event card's freshness check) read from one source of
+ * truth instead of each component subscribing to its own ticker.
+ */
+function useNow(intervalMs: number): number {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), intervalMs);
+    return () => window.clearInterval(id);
+  }, [intervalMs]);
+  return now;
+}
 
 export default function PullRequestDetailPage({
   params,
@@ -44,11 +63,32 @@ export default function PullRequestDetailPage({
   const [manualRequestError, setManualRequestError] = useState<string | null>(
     null,
   );
+  const [activityFilter, setActivityFilter] =
+    useState<ActivityStreamFilter>("all");
+  const nowMs = useNow(MANUAL_FRESHNESS_TICK_MS);
 
+  // Pre-compute the commit-artifact list so the activity-stream commit chips
+  // can resolve a SHA → message/stats lookup without re-scanning the full
+  // artifact array per event. Hoisted above the early returns so the hook
+  // order stays stable across `LoadingFirstPage` / `Loaded` renders.
+  const commitArtifacts = useMemo(
+    () =>
+      (detail?.artifacts ?? [])
+        .filter((a) => a.artifactKind === "commit")
+        .map((a) => ({
+          externalId: a.externalId,
+          commitMessage: a.commitMessage ?? null,
+          commitStats: a.commitStats ?? null,
+        })),
+    [detail?.artifacts],
+  );
+
+  // Manual-event derivations are computed before the early returns so the
+  // `useEffect` below (which clears stale "submit failed" errors when the
+  // queued event surfaces) keeps a stable hook order across loading states.
   const events = detail?.events ?? [];
   const latestManualEvent =
     events.find((event) => event.kind === "manual") ?? null;
-  const nowMs = Date.now();
   const manualClaimIsFresh =
     latestManualEvent?.claimedAt != null &&
     nowMs - new Date(latestManualEvent.claimedAt).getTime() <
@@ -108,7 +148,7 @@ export default function PullRequestDetailPage({
     );
   }
 
-  const { pr, threads, runs, reviewerRuns, artifacts, errors } = detail;
+  const { pr, threads, runs, reviewerRuns } = detail;
 
   async function handleManualReevaluate(): Promise<void> {
     if (isSubmittingManualRequest) {
@@ -259,125 +299,20 @@ export default function PullRequestDetailPage({
       */}
       <ReviewerSummary headSha={pr.headSha} reviewerRuns={reviewerRuns} />
 
-      {/* ─── Runs & Errors (interleaved timeline) ─── */}
-      <SectionHeader
-        icon={Zap}
-        title="Reconciliation Timeline"
-        count={runs.length}
-        extra={
-          errors.length > 0
-            ? `${errors.length} error${errors.length === 1 ? "" : "s"}`
-            : undefined
-        }
+      {/* ─── Activity stream ─── */}
+      {/* The activity stream's filter-chip bar serves as the section
+          header per the redesign doc — no separate `<SectionHeader />`
+          here. Replaces today's Reconciliation Timeline, Specialized
+          Reviewers, Artifacts, and PR Events sections. */}
+      <ActivityStream
+        repoSlug={decodedSlug}
+        prNumber={prNumber}
+        mode="operator"
+        now={nowMs}
+        filter={activityFilter}
+        onFilterChange={setActivityFilter}
+        commitArtifacts={commitArtifacts}
       />
-      {runs.length === 0 && errors.length === 0 ? (
-        <EmptyState icon={Zap} text="No reconciliation activity recorded" />
-      ) : (
-        <RunTimeline runs={runs} errors={errors} />
-      )}
-
-      {/* ─── Specialized Reviewer Runs ─── */}
-      <SectionHeader
-        icon={Eye}
-        title="Specialized Reviewers"
-        count={reviewerRuns.length}
-      />
-      {reviewerRuns.length === 0 ? (
-        <EmptyState icon={Eye} text="No specialized reviewer runs recorded" />
-      ) : (
-        <ReviewerRunList runs={reviewerRuns} />
-      )}
-
-      {/* ─── Artifacts ─── */}
-      <SectionHeader
-        icon={GitCommit}
-        title="Artifacts"
-        count={artifacts.length}
-      />
-      {artifacts.length === 0 ? (
-        <EmptyState icon={GitCommit} text="No artifacts recorded" />
-      ) : (
-        <DataTable
-          headers={["Kind", "External ID", "Summary", "Created"]}
-          rows={artifacts.map((a) => {
-            const Icon =
-              a.artifactKind === "commit"
-                ? GitCommit
-                : a.artifactKind === "github_comment"
-                  ? MessageSquare
-                  : a.artifactKind === "linear_issue"
-                    ? Ticket
-                    : FileCode;
-            const summaryText =
-              a.artifactKind === "commit"
-                ? (a.commitMessage ?? a.summary ?? "-")
-                : (a.summary ?? "-");
-            return [
-              <span key="kind" className="flex items-center gap-1.5 text-xs">
-                <Icon className="h-3.5 w-3.5 text-muted-foreground" />
-                {a.artifactKind}
-              </span>,
-              <code
-                key="id"
-                className="text-[11px] font-mono text-muted-foreground"
-              >
-                {a.externalId}
-              </code>,
-              <span
-                key="sum"
-                className="block max-w-[240px] space-y-1 text-xs text-muted-foreground"
-              >
-                <span className="block truncate">{summaryText}</span>
-                {a.artifactKind === "commit" && a.commitStats ? (
-                  <span className="block font-mono text-[11px] text-muted-foreground/80">
-                    {formatCommitStats(a.commitStats)}
-                  </span>
-                ) : null}
-              </span>,
-              <TimeAgo key="time" date={a.createdAt} />,
-            ];
-          })}
-        />
-      )}
-
-      {/* ─── Events ─── */}
-      <SectionHeader icon={Zap} title="PR Events" count={events.length} />
-      {events.length === 0 ? (
-        <EmptyState icon={Zap} text="No PR events recorded" />
-      ) : (
-        <DataTable
-          headers={["Kind", "HEAD SHA", "Actor", "Details", "Observed"]}
-          rows={events.map((ev) => [
-            <span
-              key="kind"
-              className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground ring-1 ring-inset ring-border"
-            >
-              {ev.kind}
-            </span>,
-            <code
-              key="sha"
-              className="text-[11px] font-mono text-muted-foreground"
-            >
-              {ev.headSha.slice(0, 8)}
-            </code>,
-            <span key="actor" className="text-xs text-foreground/70">
-              {ev.actorLogin ?? "-"}
-            </span>,
-            <span key="detail" className="text-xs text-muted-foreground">
-              {ev.kind === "manual"
-                ? "Manual re-evaluate request"
-                : ev.checkName
-                  ? `Check: ${ev.checkName}`
-                  : ev.reviewId
-                    ? `Review #${ev.reviewId}`
-                    : ev.commentId
-                      ? `Comment #${ev.commentId}`
-                      : "-"}
-            </span>,
-            <TimeAgo key="time" date={ev.observedAt} />,
-          ])}
-        />
-      )}
     </div>
   );
 }
@@ -422,53 +357,6 @@ function EmptyState({
     <div className="flex flex-col items-center justify-center rounded-lg border border-border/60 bg-card/50 py-12 text-muted-foreground">
       <Icon className="h-7 w-7 mb-3 opacity-30" />
       <p className="text-sm">{text}</p>
-    </div>
-  );
-}
-
-function formatCommitStats(stats: {
-  additions: number;
-  deletions: number;
-  files: number;
-}): string {
-  return `${stats.files} files, +${stats.additions} -${stats.deletions}`;
-}
-
-/* ── Minimal data table ── */
-function DataTable({
-  headers,
-  rows,
-}: {
-  headers: string[];
-  rows: React.ReactNode[][];
-}) {
-  return (
-    <div className="rounded-lg border border-border/60 bg-card/50 overflow-hidden">
-      <div
-        className="grid gap-4 px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border/60 bg-card/80"
-        style={{
-          gridTemplateColumns: headers.map(() => "1fr").join(" "),
-        }}
-      >
-        {headers.map((h) => (
-          <span key={h}>{h}</span>
-        ))}
-      </div>
-      <div className="divide-y divide-border/40">
-        {rows.map((cells, i) => (
-          <div
-            key={i}
-            className="grid gap-4 px-4 py-2.5 items-center"
-            style={{
-              gridTemplateColumns: headers.map(() => "1fr").join(" "),
-            }}
-          >
-            {cells.map((cell, j) => (
-              <div key={j}>{cell}</div>
-            ))}
-          </div>
-        ))}
-      </div>
     </div>
   );
 }

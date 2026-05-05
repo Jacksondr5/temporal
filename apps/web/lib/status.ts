@@ -66,6 +66,33 @@ const PHASE_LABELS: Record<string, string> = {
 };
 
 /**
+ * Past-tense operator verb for a completed phase. The activity-stream cards
+ * read more naturally with past tense ("Reviewed CodeRabbit feedback")
+ * versus the present participle exposed by `operatorPhaseLabel`
+ * ("Reviewing CodeRabbit feedback"). Falls back to the participle form when
+ * we don't have an explicit past-tense translation, which keeps Operator
+ * mode honest for new orchestrator phases.
+ */
+const PHASE_PAST_LABELS: Record<string, string> = {
+  idle: "Idle",
+  refreshing: "Checked GitHub",
+  fixing_checks: "Fixed failing checks",
+  handling_code_rabbit: "Reviewed CodeRabbit feedback",
+  running_special_reviewers: "Ran specialized reviewers",
+  resolving_merge_conflicts: "Resolved merge conflicts",
+  resolve_merge_conflicts: "Resolved merge conflicts",
+  recording_results: "Recorded results",
+  terminal_cleanup: "Cleaned up",
+};
+
+export function operatorPhasePastLabel(
+  phase: string | null | undefined,
+): string {
+  if (!phase) return "Unknown";
+  return PHASE_PAST_LABELS[phase] ?? PHASE_LABELS[phase] ?? phase;
+}
+
+/**
  * Translate an internal phase enum into the canonical status vocabulary.
  * Unknown phases fall back to `idle` so a new orchestrator state never
  * crashes the UI; pair the resulting mark with the verbatim phase string
@@ -180,4 +207,33 @@ export function mapErrorToStatus(error: ErrorStatusInput): StatusKind {
   if (error.blocked) return "blocked";
   if (error.retryable) return "caution";
   return "blocked";
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Activity-stream event mapping
+   ────────────────────────────────────────────────────────────────────── */
+
+/**
+ * Canonical status for a top-level activity-stream event. Reviewer runs use
+ * the dedicated `reviewer` kind regardless of their underlying run status,
+ * so the indigo square reads as "this is a specialized reviewer event"
+ * even when the reviewer is currently running. Failure and blocking states
+ * still override that classification — a failed reviewer reads as a blocked
+ * triangle, matching the operator's expectation that errors look the same
+ * across event sources.
+ */
+export function mapAgentRunStatusToEventStatus(
+  status: string | null | undefined,
+): StatusKind {
+  return mapRunStatusToStatus(status);
+}
+
+export function mapReviewerRunStatusToEventStatus(
+  status: string | null | undefined,
+): StatusKind {
+  const base = mapRunStatusToStatus(status);
+  // Failures and blocks override — operators read those as the same shape
+  // across all event sources.
+  if (base === "blocked" || base === "caution") return base;
+  return "reviewer";
 }
