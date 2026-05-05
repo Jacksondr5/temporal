@@ -311,6 +311,18 @@
   animation: status-rail-pulse 2.4s ease-in-out infinite;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .animate-rail-breath,
+  .animate-rail-pulse {
+    animation: none !important;
+  }
+
+  .animate-rail-sweep {
+    animation: none !important;
+    opacity: 0;
+  }
+}
+
 /* Subtle shimmer for loading states. */
 @keyframes shimmer {
   0% {
