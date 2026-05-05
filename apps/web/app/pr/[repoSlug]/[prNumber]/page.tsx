@@ -185,6 +185,10 @@ export default function PullRequestDetailPage({
         repoSlug={decodedSlug}
         prNumber={prNumber}
         title={pr.title}
+        // Inspect link goes live now that the route exists (JAC-189). The
+        // operator header has carried the prop since JAC-185 specifically
+        // so it can be flipped on without re-plumbing the component.
+        showInspect
         pr={{
           currentPhase: pr.currentPhase,
           dirty: pr.dirty,
