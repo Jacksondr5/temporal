@@ -100,13 +100,10 @@ export function derivePrRowStatus(
   pr: PrRowData,
   now: number = Date.now(),
 ): StatusKind {
+  if (pr.lifecycleState !== "open") return "idle";
   if (pr.hasBlockingError) return "blocked";
   if (isPrLive(pr)) return "live";
   if (isPrStale(pr, now)) return "caution";
-
-  // Closed and merged PRs are settled — no motion, no urgency. Still
-  // displayed at full readability so the operator can scan recent merges.
-  if (pr.lifecycleState !== "open") return "idle";
 
   if (
     pr.latestRunStatus === "success" ||
@@ -327,13 +324,15 @@ export function sortPrRows<T extends PrRowData>(rows: readonly T[]): T[] {
     const bLive = isPrLive(b) ? 1 : 0;
     if (aLive !== bLive) return bLive - aLive;
 
-    const aTs = a.lastReconciledAt
+    const aTsRaw = a.lastReconciledAt
       ? new Date(a.lastReconciledAt).getTime()
       : 0;
-    const bTs = b.lastReconciledAt
+    const bTsRaw = b.lastReconciledAt
       ? new Date(b.lastReconciledAt).getTime()
       : 0;
-    if (Number.isFinite(aTs) && Number.isFinite(bTs) && aTs !== bTs) {
+    const aTs = Number.isFinite(aTsRaw) ? aTsRaw : 0;
+    const bTs = Number.isFinite(bTsRaw) ? bTsRaw : 0;
+    if (aTs !== bTs) {
       return bTs - aTs;
     }
 

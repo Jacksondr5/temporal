@@ -54,7 +54,7 @@ export function HomeFilterBar({
 }: HomeFilterBarProps) {
   return (
     <div
-      role="tablist"
+      role="group"
       aria-label="Filter pull requests"
       className={cn("flex flex-wrap items-center gap-1.5", className)}
     >
@@ -66,8 +66,7 @@ export function HomeFilterBar({
           <button
             type="button"
             key={filter}
-            role="tab"
-            aria-selected={isActive}
+            aria-pressed={isActive}
             onClick={() => onChange(filter)}
             className={cn(
               "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-meta font-medium transition-colors",
