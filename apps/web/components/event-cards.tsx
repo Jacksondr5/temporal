@@ -304,6 +304,26 @@ export function ReviewerEventCard({
   const details = parseReviewerRunDetails(run.detailsJson);
   const status = mapReviewerRunStatusToEventStatus(run.status);
   const verb = reviewerRunVerb(run.reviewerId, run.status, details);
+
+  if (details.kind === "failed") {
+    return (
+      <EventCardShell
+        status={status}
+        eventTime={eventTime}
+        verb={verb}
+        summary={reviewerSummaryLine(run.summary ?? null, details)}
+        collapsedExtras={
+          <ErrorBody
+            errorType={details.errorType}
+            errorMessage={details.errorMessage}
+            errorStack={details.errorStack}
+          />
+        }
+        ariaLabel={`Specialized reviewer ${run.reviewerId} ${run.status}`}
+      />
+    );
+  }
+
   const observedCommitSha = getObservedCommitSha(details);
   const summary = reviewerSummaryLine(run.summary ?? null, details);
 
@@ -450,7 +470,12 @@ function ErrorBody({
            * `whitespace-pre` preserves the verbatim trace; horizontal
            * overflow scrolls instead of wrapping mid-frame.
            */}
-          <pre className="max-h-[28rem] overflow-auto rounded-md border border-border-hairline bg-surface-inset p-3 text-mono-sm font-mono text-foreground/80 whitespace-pre">
+          <pre
+            tabIndex={0}
+            aria-label="Error stack trace"
+            role="region"
+            className="max-h-[28rem] overflow-auto rounded-md border border-border-hairline bg-surface-inset p-3 text-mono-sm font-mono text-foreground/80 whitespace-pre"
+          >
             {errorStack}
           </pre>
         </div>
@@ -704,15 +729,8 @@ function renderAgentRunStoryLayer(details: RunDetails): React.ReactNode {
     return renderReviewerStory(details);
   }
   if (details.kind === "failed") {
-    // Reviewer runs reuse this story-layer renderer through
-    // `renderReviewerStoryLayer`, so a failed reviewer parse still lands
-    // here. Render the shared `<ErrorBody />` so the failure surfaces the
-    // full message and stack with the same treatment as `<ErrorEventCard />`
-    // and the failed `<AgentRunEventCard />` branch.
-    //
-    // The `<AgentRunEventCard />` failed-run branch short-circuits before
-    // ever reaching `renderAgentRunStoryLayer`, so this code is only hit
-    // via the reviewer path today.
+    // Kept as a defensive fallback for any caller that does not short-circuit
+    // failed runs before story-layer rendering.
     return (
       <ErrorBody
         errorType={details.errorType}
