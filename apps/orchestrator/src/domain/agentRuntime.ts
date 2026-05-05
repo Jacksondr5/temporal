@@ -126,11 +126,24 @@ export type CodeRabbitThreadOutcome = z.infer<typeof codeRabbitThreadOutcomeSche
 export type CodeRabbitBatchAgentOutput = z.infer<typeof codeRabbitBatchResultSchema>;
 export type CodeRabbitBatchResult = CodeRabbitBatchAgentOutput & {
   observedCommitSha: string | null;
+  commitMessage: string | null;
+  commitStats: CommitStats | null;
 };
 
 export interface AgentUsageDetails {
   usage: LanguageModelUsage | null;
   providerMetadata: ProviderMetadata | null;
+}
+
+export interface CommitStats {
+  additions: number;
+  deletions: number;
+  files: number;
+}
+
+export interface CommitMetadata {
+  commitMessage: string | null;
+  commitStats: CommitStats | null;
 }
 
 export interface CodeRabbitAgentExecution {
@@ -170,6 +183,8 @@ export type FixCheckOutcome = z.infer<typeof fixCheckOutcomeSchema>;
 export type FixChecksBatchAgentOutput = z.infer<typeof fixChecksBatchResultSchema>;
 export type FixChecksBatchResult = FixChecksBatchAgentOutput & {
   observedCommitSha: string | null;
+  commitMessage: string | null;
+  commitStats: CommitStats | null;
 };
 
 export interface FixChecksAgentExecution {
@@ -217,6 +232,8 @@ export type SpecializedReviewerAgentOutput = z.infer<
 >;
 export type SpecializedReviewerResult = SpecializedReviewerAgentOutput & {
   observedCommitSha: string | null;
+  commitMessage: string | null;
+  commitStats: CommitStats | null;
 };
 
 export interface SpecializedReviewerExecution {

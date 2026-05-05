@@ -393,6 +393,10 @@ export default function PullRequestDetailPage({
                   : a.artifactKind === "linear_issue"
                     ? Ticket
                     : FileCode;
+            const summaryText =
+              a.artifactKind === "commit"
+                ? (a.commitMessage ?? a.summary ?? "-")
+                : (a.summary ?? "-");
             return [
               <span key="kind" className="flex items-center gap-1.5 text-xs">
                 <Icon className="h-3.5 w-3.5 text-muted-foreground" />
@@ -406,9 +410,14 @@ export default function PullRequestDetailPage({
               </code>,
               <span
                 key="sum"
-                className="text-xs text-muted-foreground truncate block max-w-[200px]"
+                className="block max-w-[240px] space-y-1 text-xs text-muted-foreground"
               >
-                {a.summary ?? "-"}
+                <span className="block truncate">{summaryText}</span>
+                {a.artifactKind === "commit" && a.commitStats ? (
+                  <span className="block font-mono text-[11px] text-muted-foreground/80">
+                    {formatCommitStats(a.commitStats)}
+                  </span>
+                ) : null}
               </span>,
               <TimeAgo key="time" date={a.createdAt} />,
             ];
@@ -500,6 +509,14 @@ function EmptyState({
       <p className="text-sm">{text}</p>
     </div>
   );
+}
+
+function formatCommitStats(stats: {
+  additions: number;
+  deletions: number;
+  files: number;
+}): string {
+  return `${stats.files} files, +${stats.additions} -${stats.deletions}`;
 }
 
 /* ── Minimal data table ── */
