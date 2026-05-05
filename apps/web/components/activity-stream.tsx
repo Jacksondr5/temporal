@@ -1,0 +1,343 @@
+"use client";
+
+import { usePaginatedQuery } from "convex/react";
+import { api } from "@convex/_generated/api";
+import { Activity } from "lucide-react";
+import { cn } from "../lib/utils";
+import { Button } from "./ui/button";
+import {
+  AgentRunEventCard,
+  ErrorEventCard,
+  GitHubEventCard,
+  ReviewerEventCard,
+  type ActivityStreamEvent,
+  type CommitArtifactInfo,
+  type CommitArtifactLookup,
+} from "./event-cards";
+
+/**
+ * `<ActivityStream />` — the unified operator/inspector activity stream
+ * (per `docs/product/operator-ui-redesign.md` → "Component Patterns" →
+ * "Activity stream").
+ *
+ * Replaces today's separate sections — Reconciliation Timeline, Specialized
+ * Reviewers, Artifacts, PR Events — with one vertical timeline whose dots
+ * speak the canonical status vocabulary, whose cards foreground agent
+ * reasoning and pushed commits, and whose filter chips drive the server-side
+ * filter argument on `ui.listActivityStreamEvents`.
+ *
+ * In Operator mode, the server filters out noops and non-manual GitHub
+ * events, so consecutive reconciliations never reach the client and the
+ * grouping logic that `RunTimeline` implements becomes a no-op. Inspector
+ * variants (JAC-190) sit on top of the same payload and add the noisier
+ * detail back.
+ */
+
+export type ActivityStreamMode = "operator" | "inspector";
+
+export type ActivityStreamFilter =
+  | "all"
+  | "agent_runs"
+  | "reviewers"
+  | "errors"
+  | "github";
+
+interface FilterChipDefinition {
+  id: ActivityStreamFilter;
+  label: string;
+}
+
+const FILTER_CHIPS: readonly FilterChipDefinition[] = [
+  { id: "all", label: "All" },
+  { id: "agent_runs", label: "Agent runs" },
+  { id: "reviewers", label: "Reviewers" },
+  { id: "errors", label: "Errors" },
+  { id: "github", label: "GitHub" },
+] as const;
+
+const INITIAL_PAGE_SIZE = 25;
+const LOAD_MORE_PAGE_SIZE = 25;
+
+export interface ActivityStreamProps {
+  repoSlug: string;
+  prNumber: number;
+  mode: ActivityStreamMode;
+  filter: ActivityStreamFilter;
+  onFilterChange: (filter: ActivityStreamFilter) => void;
+  /**
+   * Optional pre-fetched commit artifacts (`artifactKind === "commit"`).
+   * Used to populate the inline `<CommitChip />` for runs that pushed a
+   * commit. The list does not need to be exhaustive — runs whose commit
+   * isn't in the list fall back to the run's `summary` per Gap 3 in the
+   * redesign doc.
+   */
+  commitArtifacts?: readonly {
+    externalId: string;
+    commitMessage: string | null;
+    commitStats: {
+      additions: number;
+      deletions: number;
+      files: number;
+    } | null;
+  }[];
+}
+
+export function ActivityStream({
+  repoSlug,
+  prNumber,
+  mode,
+  filter,
+  onFilterChange,
+  commitArtifacts,
+}: ActivityStreamProps) {
+  const { results, status, isLoading, loadMore } = usePaginatedQuery(
+    api.ui.listActivityStreamEvents,
+    {
+      repoSlug,
+      prNumber,
+      filter,
+      mode,
+    },
+    { initialNumItems: INITIAL_PAGE_SIZE },
+  );
+
+  // Build a SHA → artifact map once per render. The React Compiler
+  // memoises this for us, so we don't reach for `useMemo` manually
+  // (`react-hooks/preserve-manual-memoization`). Extracting the index
+  // creation to a helper keeps the body of `<ActivityStream />` readable
+  // and gives the compiler a clean function-body boundary to memoise.
+  const lookupCommit = buildCommitLookup(commitArtifacts);
+
+  return (
+    <section
+      aria-label="Activity stream"
+      className="space-y-3"
+      data-mode={mode}
+    >
+      <FilterChipBar
+        filter={filter}
+        onFilterChange={onFilterChange}
+        eventCount={results.length}
+      />
+
+      <ActivityStreamBody
+        status={status}
+        isLoading={isLoading}
+        events={results}
+        repoSlug={repoSlug}
+        lookupCommit={lookupCommit}
+        onLoadMore={() => loadMore(LOAD_MORE_PAGE_SIZE)}
+      />
+    </section>
+  );
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Filter chips
+   ────────────────────────────────────────────────────────────────────── */
+
+function FilterChipBar({
+  filter,
+  onFilterChange,
+  eventCount,
+}: {
+  filter: ActivityStreamFilter;
+  onFilterChange: (filter: ActivityStreamFilter) => void;
+  eventCount: number;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="text-micro font-semibold uppercase tracking-wider text-muted-foreground">
+        Filters
+      </span>
+      {FILTER_CHIPS.map((chip) => {
+        const active = chip.id === filter;
+        return (
+          <button
+            key={chip.id}
+            type="button"
+            onClick={() => onFilterChange(chip.id)}
+            aria-pressed={active}
+            className={cn(
+              "rounded-full px-2.5 py-1 text-meta font-medium transition",
+              active
+                ? "bg-status-live/15 text-status-live"
+                : "bg-surface-panel text-muted-foreground hover:bg-surface-panel-hover hover:text-foreground",
+            )}
+          >
+            {chip.label}
+          </button>
+        );
+      })}
+      <span className="ml-auto text-meta tabular-nums text-muted-foreground">
+        {eventCount} {eventCount === 1 ? "event" : "events"}
+      </span>
+    </div>
+  );
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Body — timeline + load more / loading / empty states
+   ────────────────────────────────────────────────────────────────────── */
+
+interface ActivityStreamBodyProps {
+  status: "LoadingFirstPage" | "CanLoadMore" | "LoadingMore" | "Exhausted";
+  isLoading: boolean;
+  events: readonly ActivityStreamEvent[];
+  repoSlug: string;
+  lookupCommit: CommitArtifactLookup;
+  onLoadMore: () => void;
+}
+
+function ActivityStreamBody({
+  status,
+  isLoading,
+  events,
+  repoSlug,
+  lookupCommit,
+  onLoadMore,
+}: ActivityStreamBodyProps) {
+  if (status === "LoadingFirstPage") {
+    return <ActivityStreamSkeleton />;
+  }
+
+  if (events.length === 0) {
+    return <ActivityStreamEmpty />;
+  }
+
+  return (
+    <div className="space-y-2">
+      <ol className="relative space-y-3 pl-6" role="list">
+        {/* Vertical spine */}
+        <span
+          aria-hidden
+          className="pointer-events-none absolute left-2 top-1.5 bottom-1.5 w-px bg-border-hairline"
+        />
+        {events.map((event) => (
+          <li key={eventKey(event)} className="relative">
+            <span
+              aria-hidden
+              className="pointer-events-none absolute -left-6 top-3.5 flex h-3 w-3 items-center justify-center bg-surface-canvas"
+            />
+            <EventCardForType
+              event={event}
+              repoSlug={repoSlug}
+              lookupCommit={lookupCommit}
+            />
+          </li>
+        ))}
+      </ol>
+
+      {status !== "Exhausted" && (
+        <div className="flex justify-center pt-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={isLoading || status === "LoadingMore"}
+            onClick={onLoadMore}
+          >
+            {status === "LoadingMore" ? "Loading…" : "Load more"}
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Stable, source-derived key for a stream event. We can't use the page
+ * index because pages are concatenated server-side from multiple sources,
+ * and React's reconciliation needs an identity that survives a Load More
+ * reorder.
+ */
+function eventKey(event: ActivityStreamEvent): string {
+  return `${event.eventType}:${event.source._id}`;
+}
+
+function EventCardForType({
+  event,
+  repoSlug,
+  lookupCommit,
+}: {
+  event: ActivityStreamEvent;
+  repoSlug: string;
+  lookupCommit: CommitArtifactLookup;
+}) {
+  switch (event.eventType) {
+    case "agent_run":
+      return (
+        <AgentRunEventCard
+          run={event.source}
+          repoSlug={repoSlug}
+          lookupCommit={lookupCommit}
+        />
+      );
+    case "reviewer_run":
+      return (
+        <ReviewerEventCard
+          run={event.source}
+          repoSlug={repoSlug}
+          lookupCommit={lookupCommit}
+        />
+      );
+    case "workflow_error":
+      return <ErrorEventCard error={event.source} />;
+    case "github_event":
+      return <GitHubEventCard event={event.source} />;
+  }
+}
+
+function ActivityStreamSkeleton() {
+  // Cap at 4 rows per the redesign's "Empty and loading states" guidance
+  // ("shimmer rows that match the new row layout, capped at 4 rows so the
+  // page doesn't feel like a slot machine on every nav").
+  return (
+    <ol className="relative space-y-3 pl-6" role="list" aria-busy>
+      <span
+        aria-hidden
+        className="pointer-events-none absolute left-2 top-1.5 bottom-1.5 w-px bg-border-hairline"
+      />
+      {Array.from({ length: 4 }).map((_, index) => (
+        <li key={index} className="relative">
+          <span
+            aria-hidden
+            className="pointer-events-none absolute -left-6 top-3.5 h-3 w-3 rounded-full bg-surface-panel"
+          />
+          <div className="h-14 w-full animate-shimmer rounded-md" />
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+function ActivityStreamEmpty() {
+  return (
+    <div className="flex flex-col items-center justify-center gap-2 rounded-md border border-dashed border-border-hairline bg-surface-panel/30 px-4 py-12 text-muted-foreground">
+      <Activity className="h-5 w-5 opacity-60" aria-hidden />
+      <p className="text-meta">No activity matches the current filter yet.</p>
+    </div>
+  );
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Commit-artifact index
+   ────────────────────────────────────────────────────────────────────── */
+
+function buildCommitLookup(
+  commitArtifacts: ActivityStreamProps["commitArtifacts"],
+): CommitArtifactLookup {
+  if (!commitArtifacts || commitArtifacts.length === 0) {
+    return EMPTY_COMMIT_LOOKUP;
+  }
+  const index = new Map<string, CommitArtifactInfo>();
+  for (const artifact of commitArtifacts) {
+    index.set(artifact.externalId, {
+      message: artifact.commitMessage,
+      stats: artifact.commitStats,
+    });
+  }
+  return (sha) => index.get(sha);
+}
+
+const EMPTY_COMMIT_LOOKUP: CommitArtifactLookup = () => undefined;
