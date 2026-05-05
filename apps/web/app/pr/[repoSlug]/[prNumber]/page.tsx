@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
-import { use, useState } from "react";
+import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { DispositionBadge } from "../../../../components/status-badge";
 import { TimeAgo } from "../../../../components/time-ago";
@@ -44,6 +44,39 @@ export default function PullRequestDetailPage({
     null,
   );
 
+  const events = detail?.events ?? [];
+  const latestManualEvent =
+    events.find((event) => event.kind === "manual") ?? null;
+  const nowMs = Date.now();
+  const manualClaimIsFresh =
+    latestManualEvent?.claimedAt != null &&
+    nowMs - new Date(latestManualEvent.claimedAt).getTime() <
+      MANUAL_EVENT_CLAIM_STALE_MS;
+  const manualRequestState =
+    latestManualEvent === null
+      ? null
+      : latestManualEvent.processedAt != null
+        ? "picked_up"
+        : manualClaimIsFresh
+          ? "dispatching"
+          : "queued";
+  const manualRequestStatusTime =
+    manualRequestState === "picked_up"
+      ? (latestManualEvent?.processedAt ??
+        latestManualEvent?.observedAt ??
+        null)
+      : manualRequestState === "dispatching"
+        ? (latestManualEvent?.claimedAt ??
+          latestManualEvent?.observedAt ??
+          null)
+        : (latestManualEvent?.observedAt ?? null);
+
+  useEffect(() => {
+    if (manualRequestState !== null) {
+      setManualRequestError(null);
+    }
+  }, [manualRequestState]);
+
   if (detail === undefined) {
     return (
       <div className="space-y-6">
@@ -74,32 +107,7 @@ export default function PullRequestDetailPage({
     );
   }
 
-  const { pr, threads, runs, reviewerRuns, artifacts, errors, events } = detail;
-  const latestManualEvent =
-    events.find((event) => event.kind === "manual") ?? null;
-  const nowMs = Date.now();
-  const manualClaimIsFresh =
-    latestManualEvent?.claimedAt != null &&
-    nowMs - new Date(latestManualEvent.claimedAt).getTime() <
-      MANUAL_EVENT_CLAIM_STALE_MS;
-  const manualRequestState =
-    latestManualEvent === null
-      ? null
-      : latestManualEvent.processedAt != null
-        ? "picked_up"
-        : manualClaimIsFresh
-          ? "dispatching"
-          : "queued";
-  const manualRequestStatusTime =
-    manualRequestState === "picked_up"
-      ? (latestManualEvent?.processedAt ??
-        latestManualEvent?.observedAt ??
-        null)
-      : manualRequestState === "dispatching"
-        ? (latestManualEvent?.claimedAt ??
-          latestManualEvent?.observedAt ??
-          null)
-        : (latestManualEvent?.observedAt ?? null);
+  const { pr, threads, runs, reviewerRuns, artifacts, errors } = detail;
 
   async function handleManualReevaluate(): Promise<void> {
     if (isSubmittingManualRequest) {

@@ -66,6 +66,7 @@ export interface PrHeaderOperatorLatestRun {
 export interface PrHeaderOperatorProps {
   repoSlug: string;
   prNumber: number;
+  showInspect?: boolean;
   /** Persisted PR title. May be empty until the backend backfill lands. */
   title: string;
   pr: PrHeaderOperatorPullRequest;
@@ -85,6 +86,7 @@ export interface PrHeaderOperatorProps {
 export function PrHeaderOperator({
   repoSlug,
   prNumber,
+  showInspect = false,
   title,
   pr,
   latestRun,
@@ -100,10 +102,9 @@ export function PrHeaderOperator({
   const manualLabel = manualPending ? "Re-evaluate queued" : "Re-evaluate now";
 
   const githubUrl = `https://github.com/${repoSlug}/pull/${prNumber}`;
-  // Inspector route lives at `/pr/[slug]/[num]/inspect` per the redesign
-  // doc. The route is delivered by JAC-189 — until then the link will 404,
-  // which is fine for a phased rollout.
-  const inspectHref = `/pr/${encodeURIComponent(repoSlug)}/${prNumber}/inspect`;
+  const inspectHref = showInspect
+    ? `/pr/${encodeURIComponent(repoSlug)}/${prNumber}/inspect`
+    : null;
 
   const signals = buildOperatorSignals({
     pr,
@@ -169,13 +170,15 @@ export function PrHeaderOperator({
                 ? `PR ${pr.lifecycleState}`
                 : manualLabel}
           </Button>
-          <Link
-            href={inspectHref}
-            className="inline-flex h-7 items-center gap-1 rounded-[min(var(--radius-md),12px)] border border-border bg-background px-2.5 text-[0.8rem] font-medium text-foreground transition-colors hover:bg-muted"
-          >
-            Inspect
-            <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
-          </Link>
+          {inspectHref ? (
+            <Link
+              href={inspectHref}
+              className="inline-flex h-7 items-center gap-1 rounded-[min(var(--radius-md),12px)] border border-border bg-background px-2.5 text-[0.8rem] font-medium text-foreground transition-colors hover:bg-muted"
+            >
+              Inspect
+              <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
+            </Link>
+          ) : null}
         </div>
       </div>
 
