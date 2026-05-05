@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
-import { use, useMemo, useState } from "react";
+import { use, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   PhaseBadge,
@@ -30,6 +30,16 @@ import {
 import { Button } from "../../../../components/ui/button";
 
 const MANUAL_EVENT_CLAIM_STALE_MS = 5 * 60 * 1000;
+const MANUAL_FRESHNESS_TICK_MS = 15_000;
+
+function useNow(intervalMs: number): number {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), intervalMs);
+    return () => window.clearInterval(id);
+  }, [intervalMs]);
+  return now;
+}
 
 export default function PullRequestDetailPage({
   params,
@@ -49,6 +59,7 @@ export default function PullRequestDetailPage({
   const [manualRequestError, setManualRequestError] = useState<string | null>(null);
   const [activityFilter, setActivityFilter] =
     useState<ActivityStreamFilter>("all");
+  const nowMs = useNow(MANUAL_FRESHNESS_TICK_MS);
 
   // Pre-compute the commit-artifact list so the activity-stream commit chips
   // can resolve a SHA → message/stats lookup without re-scanning the full
@@ -101,7 +112,6 @@ export default function PullRequestDetailPage({
   const { pr, threads, runs, events } = detail;
   const latestManualEvent = events.find((event) => event.kind === "manual") ?? null;
   const isTerminal = pr.lifecycleState !== "open";
-  const nowMs = Date.now();
   const manualClaimIsFresh =
     latestManualEvent?.claimedAt != null &&
     nowMs - new Date(latestManualEvent.claimedAt).getTime() < MANUAL_EVENT_CLAIM_STALE_MS;
@@ -372,6 +382,7 @@ export default function PullRequestDetailPage({
         repoSlug={decodedSlug}
         prNumber={prNumber}
         mode="operator"
+        now={nowMs}
         filter={activityFilter}
         onFilterChange={setActivityFilter}
         commitArtifacts={commitArtifacts}
@@ -423,4 +434,3 @@ function EmptyState({
     </div>
   );
 }
-

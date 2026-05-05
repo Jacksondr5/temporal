@@ -62,6 +62,7 @@ export interface ActivityStreamProps {
   repoSlug: string;
   prNumber: number;
   mode: ActivityStreamMode;
+  now: number;
   filter: ActivityStreamFilter;
   onFilterChange: (filter: ActivityStreamFilter) => void;
   /**
@@ -86,6 +87,7 @@ export function ActivityStream({
   repoSlug,
   prNumber,
   mode,
+  now,
   filter,
   onFilterChange,
   commitArtifacts,
@@ -125,6 +127,7 @@ export function ActivityStream({
         isLoading={isLoading}
         events={results}
         repoSlug={repoSlug}
+        now={now}
         lookupCommit={lookupCommit}
         onLoadMore={() => loadMore(LOAD_MORE_PAGE_SIZE)}
       />
@@ -185,6 +188,7 @@ interface ActivityStreamBodyProps {
   isLoading: boolean;
   events: readonly ActivityStreamEvent[];
   repoSlug: string;
+  now: number;
   lookupCommit: CommitArtifactLookup;
   onLoadMore: () => void;
 }
@@ -194,6 +198,7 @@ function ActivityStreamBody({
   isLoading,
   events,
   repoSlug,
+  now,
   lookupCommit,
   onLoadMore,
 }: ActivityStreamBodyProps) {
@@ -207,12 +212,13 @@ function ActivityStreamBody({
 
   return (
     <div className="space-y-2">
-      <ol className="relative space-y-3 pl-6" role="list">
+      <div className="relative">
         {/* Vertical spine */}
         <span
           aria-hidden
           className="pointer-events-none absolute left-2 top-1.5 bottom-1.5 w-px bg-border-hairline"
         />
+        <ol className="space-y-3 pl-6" role="list">
         {events.map((event) => (
           <li key={eventKey(event)} className="relative">
             <span
@@ -222,11 +228,13 @@ function ActivityStreamBody({
             <EventCardForType
               event={event}
               repoSlug={repoSlug}
+              now={now}
               lookupCommit={lookupCommit}
             />
           </li>
         ))}
-      </ol>
+        </ol>
+      </div>
 
       {status !== "Exhausted" && (
         <div className="flex justify-center pt-2">
@@ -258,10 +266,12 @@ function eventKey(event: ActivityStreamEvent): string {
 function EventCardForType({
   event,
   repoSlug,
+  now,
   lookupCommit,
 }: {
   event: ActivityStreamEvent;
   repoSlug: string;
+  now: number;
   lookupCommit: CommitArtifactLookup;
 }) {
   switch (event.eventType) {
@@ -269,6 +279,7 @@ function EventCardForType({
       return (
         <AgentRunEventCard
           run={event.source}
+          eventTime={event.eventTime}
           repoSlug={repoSlug}
           lookupCommit={lookupCommit}
         />
@@ -277,14 +288,21 @@ function EventCardForType({
       return (
         <ReviewerEventCard
           run={event.source}
+          eventTime={event.eventTime}
           repoSlug={repoSlug}
           lookupCommit={lookupCommit}
         />
       );
     case "workflow_error":
-      return <ErrorEventCard error={event.source} />;
+      return <ErrorEventCard error={event.source} eventTime={event.eventTime} />;
     case "github_event":
-      return <GitHubEventCard event={event.source} />;
+      return (
+        <GitHubEventCard
+          event={event.source}
+          eventTime={event.eventTime}
+          now={now}
+        />
+      );
   }
 }
 
@@ -293,21 +311,23 @@ function ActivityStreamSkeleton() {
   // ("shimmer rows that match the new row layout, capped at 4 rows so the
   // page doesn't feel like a slot machine on every nav").
   return (
-    <ol className="relative space-y-3 pl-6" role="list" aria-busy>
+    <div className="relative">
       <span
         aria-hidden
         className="pointer-events-none absolute left-2 top-1.5 bottom-1.5 w-px bg-border-hairline"
       />
-      {Array.from({ length: 4 }).map((_, index) => (
-        <li key={index} className="relative">
-          <span
-            aria-hidden
-            className="pointer-events-none absolute -left-6 top-3.5 h-3 w-3 rounded-full bg-surface-panel"
-          />
-          <div className="h-14 w-full animate-shimmer rounded-md" />
-        </li>
-      ))}
-    </ol>
+      <ol className="space-y-3 pl-6" role="list" aria-busy>
+        {Array.from({ length: 4 }).map((_, index) => (
+          <li key={index} className="relative">
+            <span
+              aria-hidden
+              className="pointer-events-none absolute -left-6 top-3.5 h-3 w-3 rounded-full bg-surface-panel"
+            />
+            <div className="h-14 w-full animate-shimmer rounded-md" />
+          </li>
+        ))}
+      </ol>
+    </div>
   );
 }
 

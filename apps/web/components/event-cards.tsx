@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   AlertTriangle,
   ChevronDown,
@@ -88,27 +88,6 @@ export type CommitArtifactLookup = (
 ) => CommitArtifactInfo | undefined;
 
 const MANUAL_EVENT_CLAIM_STALE_MS = 5 * 60 * 1000;
-// How often the manual-event card re-evaluates "is the claim still fresh?"
-// against the wall clock. 15s matches the `<TimeAgo />` cadence so the
-// transition from "dispatching" to "queued" happens around the same beat
-// as the timestamp in the row updates.
-const MANUAL_FRESHNESS_TICK_MS = 15_000;
-
-/**
- * Returns a monotonically updating `Date.now()` value, refreshed on the
- * supplied interval. Encapsulates the impure `Date.now()` read inside a
- * lazy `useState` initialiser plus a ticking effect, satisfying React 19's
- * `react-hooks/purity` rule for components that need wall-clock comparisons
- * at render time.
- */
-function useNow(intervalMs: number): number {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const id = window.setInterval(() => setNow(Date.now()), intervalMs);
-    return () => window.clearInterval(id);
-  }, [intervalMs]);
-  return now;
-}
 
 /* ──────────────────────────────────────────────────────────────────────────
    Shared layout
@@ -209,18 +188,19 @@ function EventCardShell({
 
 export interface AgentRunEventCardProps {
   run: AgentRunSource;
+  eventTime: string | null;
   repoSlug: string;
   lookupCommit?: CommitArtifactLookup;
 }
 
 export function AgentRunEventCard({
   run,
+  eventTime,
   repoSlug,
   lookupCommit,
 }: AgentRunEventCardProps) {
   const details = parseRunDetails(run.detailsJson);
   const status = mapAgentRunStatusToEventStatus(run.status);
-  const eventTime = run.completedAt ?? run.startedAt;
   const verb = agentRunVerb(run.phase, run.status, details);
   const observedCommitSha = getObservedCommitSha(details);
   const summary = oneLineSummary(run.summary ?? null, details);
@@ -286,12 +266,14 @@ function AgentRunCommitChip({
 
 export interface ReviewerEventCardProps {
   run: ReviewerRunSource;
+  eventTime: string | null;
   repoSlug: string;
   lookupCommit?: CommitArtifactLookup;
 }
 
 export function ReviewerEventCard({
   run,
+  eventTime,
   repoSlug,
   lookupCommit,
 }: ReviewerEventCardProps) {
@@ -315,7 +297,7 @@ export function ReviewerEventCard({
   return (
     <EventCardShell
       status={status}
-      eventTime={run.createdAt}
+      eventTime={eventTime}
       verb={verb}
       summary={summary}
       collapsedExtras={commitChip}
@@ -331,6 +313,7 @@ export function ReviewerEventCard({
 
 export interface ErrorEventCardProps {
   error: WorkflowErrorSource;
+  eventTime: string | null;
 }
 
 /**
@@ -341,7 +324,7 @@ export interface ErrorEventCardProps {
  * stack trace plainly when present, and JAC-188 will replace this with the
  * richer treatment.
  */
-export function ErrorEventCard({ error }: ErrorEventCardProps) {
+export function ErrorEventCard({ error, eventTime }: ErrorEventCardProps) {
   const status = mapErrorToStatus({
     blocked: error.blocked,
     retryable: error.retryable,
@@ -389,7 +372,7 @@ export function ErrorEventCard({ error }: ErrorEventCardProps) {
   return (
     <EventCardShell
       status={status}
-      eventTime={error.lastSeenAt}
+      eventTime={eventTime}
       verb={verb}
       summary={error.errorMessage}
       collapsedExtras={
@@ -418,37 +401,42 @@ export function ErrorEventCard({ error }: ErrorEventCardProps) {
 
 export interface GitHubEventCardProps {
   event: GithubEventSource;
+  eventTime: string | null;
+  now: number;
 }
 
-export function GitHubEventCard({ event }: GitHubEventCardProps) {
+export function GitHubEventCard({ event, eventTime, now }: GitHubEventCardProps) {
   if (event.kind === "manual") {
-    return <ManualEventCard event={event} />;
+    return <ManualEventCard event={event} eventTime={eventTime} now={now} />;
   }
-  return <GenericGitHubEventCard event={event} />;
+  return <GenericGitHubEventCard event={event} eventTime={eventTime} />;
 }
 
-function ManualEventCard({ event }: { event: GithubEventSource }) {
+function ManualEventCard({
+  event,
+  eventTime,
+  now,
+}: {
+  event: GithubEventSource;
+  eventTime: string | null;
+  now: number;
+}) {
   const claimedAt = event.claimedAt ?? null;
   const processedAt = event.processedAt ?? null;
-  const now = useNow(MANUAL_FRESHNESS_TICK_MS);
   const claimIsFresh =
     claimedAt != null &&
     now - new Date(claimedAt).getTime() < MANUAL_EVENT_CLAIM_STALE_MS;
 
   let stateLabel: string;
-  let stateTime: string;
   let status: StatusKind;
   if (processedAt) {
     stateLabel = "Manual re-evaluate picked up";
-    stateTime = processedAt;
     status = "healthy";
   } else if (claimIsFresh) {
     stateLabel = "Manual re-evaluate dispatching";
-    stateTime = claimedAt as string;
     status = "live";
   } else {
     stateLabel = "Manual re-evaluate queued";
-    stateTime = event.observedAt;
     status = "idle";
   }
 
@@ -459,7 +447,7 @@ function ManualEventCard({ event }: { event: GithubEventSource }) {
   return (
     <EventCardShell
       status={status}
-      eventTime={stateTime}
+      eventTime={eventTime}
       verb={stateLabel}
       summary={summary}
       collapsedExtras={
@@ -481,7 +469,13 @@ function ManualEventCard({ event }: { event: GithubEventSource }) {
   );
 }
 
-function GenericGitHubEventCard({ event }: { event: GithubEventSource }) {
+function GenericGitHubEventCard({
+  event,
+  eventTime,
+}: {
+  event: GithubEventSource;
+  eventTime: string | null;
+}) {
   // Operator mode hides non-manual GitHub events at the server, so this
   // branch is only ever rendered in Inspector mode (or when an operator
   // selects the "GitHub" filter chip with non-manual events present).
@@ -499,7 +493,7 @@ function GenericGitHubEventCard({ event }: { event: GithubEventSource }) {
   return (
     <EventCardShell
       status="idle"
-      eventTime={event.observedAt}
+      eventTime={eventTime}
       verb={`GitHub event — ${detail}`}
       summary={summary}
       collapsedExtras={
@@ -531,6 +525,9 @@ function agentRunVerb(
 ): string {
   if (status === "running") {
     return `Working — ${operatorPhaseLabel(phase)}`;
+  }
+  if (status === "skipped") {
+    return `Skipped — ${operatorPhaseLabel(phase)}`;
   }
   if (status === "blocked") {
     return `Blocked — ${operatorPhaseLabel(phase)}`;
@@ -573,6 +570,9 @@ function reviewerRunVerb(
 ): string {
   if (status === "running") {
     return `Reviewing — ${reviewerId}`;
+  }
+  if (status === "skipped") {
+    return `Reviewer skipped — ${reviewerId}`;
   }
   if (status === "failed") {
     return `Reviewer failed — ${reviewerId}`;
