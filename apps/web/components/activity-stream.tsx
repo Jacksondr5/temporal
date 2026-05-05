@@ -121,6 +121,7 @@ export function ActivityStream({
         filter={filter}
         onFilterChange={onFilterChange}
         eventCount={results.length}
+        countIsFinal={status === "Exhausted"}
       />
 
       <ActivityStreamBody
@@ -144,10 +145,12 @@ function FilterChipBar({
   filter,
   onFilterChange,
   eventCount,
+  countIsFinal,
 }: {
   filter: ActivityStreamFilter;
   onFilterChange: (filter: ActivityStreamFilter) => void;
   eventCount: number;
+  countIsFinal: boolean;
 }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -174,7 +177,12 @@ function FilterChipBar({
         );
       })}
       <span className="ml-auto text-meta tabular-nums text-muted-foreground">
-        {eventCount} {eventCount === 1 ? "event" : "events"}
+        {eventCount}{" "}
+        {countIsFinal
+          ? eventCount === 1
+            ? "event"
+            : "events"
+          : "shown"}
       </span>
     </div>
   );
