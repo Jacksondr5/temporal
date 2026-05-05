@@ -22,6 +22,7 @@ import {
 import { PhaseBadge, RunStatusBadge, DispositionBadge } from "./status-badge";
 import { TimeAgo } from "./time-ago";
 import { ErrorTypeBadge } from "./status-badge";
+import { activityStreamEventAnchor } from "../lib/activity-stream-anchors";
 import {
   ChevronDown,
   ChevronRight,
@@ -381,7 +382,13 @@ function ReviewerRunCard({ run }: { run: ReviewerRun }) {
       : null;
 
   return (
-    <div className="rounded-lg border border-indigo-500/20 bg-indigo-500/[0.03] overflow-hidden">
+    <div
+      // Shared anchor scheme so `<ReviewerSummary />` (and any future
+      // surface) can deep-link to this reviewer event. The activity stream
+      // (issue 3.3) will reuse the same id when it absorbs this section.
+      id={activityStreamEventAnchor("reviewer_run", run._id)}
+      className="rounded-lg border border-indigo-500/20 bg-indigo-500/[0.03] overflow-hidden scroll-mt-4"
+    >
       <button
         type="button"
         onClick={() => setExpanded((p) => !p)}
