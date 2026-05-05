@@ -426,6 +426,7 @@ function ManualEventCard({
   const claimIsFresh =
     claimedAt != null &&
     now - new Date(claimedAt).getTime() < MANUAL_EVENT_CLAIM_STALE_MS;
+  const stateTime = processedAt ?? (claimIsFresh ? claimedAt : eventTime);
 
   let stateLabel: string;
   let status: StatusKind;
@@ -447,7 +448,7 @@ function ManualEventCard({
   return (
     <EventCardShell
       status={status}
-      eventTime={eventTime}
+      eventTime={stateTime}
       verb={stateLabel}
       summary={summary}
       collapsedExtras={
