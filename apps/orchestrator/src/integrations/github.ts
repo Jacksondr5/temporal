@@ -157,7 +157,9 @@ export interface GitHubClient {
     allowedAuthor: string | null,
   ): Promise<GitHubPullRequestListItem[]>;
   listPullRequestReviews(pr: PullRequestRef): Promise<GitHubReviewSummary[]>;
-  listPullRequestReviewThreads(pr: PullRequestRef): Promise<GitHubReviewThread[]>;
+  listPullRequestReviewThreads(
+    pr: PullRequestRef,
+  ): Promise<GitHubReviewThread[]>;
   listPullRequestFiles(pr: PullRequestRef): Promise<string[]>;
   listCheckRuns(pr: PullRequestRef): Promise<GitHubCheckRun[]>;
   listCommitStatuses(pr: PullRequestRef): Promise<GitHubCheckRun[]>;
@@ -229,7 +231,10 @@ async function requestGitHub<TResponse>(
   path: string,
   query: Record<string, string | number> = {},
 ): Promise<TResponse> {
-  const url = new URL(path, config.apiUrl.endsWith('/') ? config.apiUrl : `${config.apiUrl}/`);
+  const url = new URL(
+    path,
+    config.apiUrl.endsWith('/') ? config.apiUrl : `${config.apiUrl}/`,
+  );
   for (const [key, value] of Object.entries(query)) {
     url.searchParams.set(key, String(value));
   }
@@ -243,7 +248,9 @@ async function requestGitHub<TResponse>(
   });
 
   if (!response.ok) {
-    throw new Error(`GitHub request failed for ${url.pathname}: ${response.status}`);
+    throw new Error(
+      `GitHub request failed for ${url.pathname}: ${response.status}`,
+    );
   }
 
   return (await response.json()) as TResponse;
@@ -254,7 +261,10 @@ async function postGitHub<TResponse>(
   path: string,
   body: unknown,
 ): Promise<TResponse> {
-  const url = new URL(path, config.apiUrl.endsWith('/') ? config.apiUrl : `${config.apiUrl}/`);
+  const url = new URL(
+    path,
+    config.apiUrl.endsWith('/') ? config.apiUrl : `${config.apiUrl}/`,
+  );
 
   const response = await fetch(url, {
     method: 'POST',
@@ -268,7 +278,9 @@ async function postGitHub<TResponse>(
   });
 
   if (!response.ok) {
-    throw new Error(`GitHub request failed for ${url.pathname}: ${response.status}`);
+    throw new Error(
+      `GitHub request failed for ${url.pathname}: ${response.status}`,
+    );
   }
 
   return (await response.json()) as TResponse;
@@ -368,19 +380,19 @@ export function createGitHubClient(config: GitHubRuntimeConfig): GitHubClient {
         ].join(' | '),
       );
 
-      return matchingPulls
-        .map((pull) => ({
-          pr: {
-            repository,
-            number: pull.number,
-            branchName: pull.head.ref,
-            headSha: pull.head.sha,
-          },
+      return matchingPulls.map((pull) => ({
+        pr: {
+          repository,
+          number: pull.number,
           title: pull.title,
-          body: pull.body,
-          author: toActor(pull.user),
-          updatedAt: pull.updated_at,
-        }));
+          branchName: pull.head.ref,
+          headSha: pull.head.sha,
+        },
+        title: pull.title,
+        body: pull.body,
+        author: toActor(pull.user),
+        updatedAt: pull.updated_at,
+      }));
     },
     listPullRequestReviews: async (pr) => {
       const reviews = await requestGitHub<GitHubApiReview[]>(
@@ -450,15 +462,15 @@ export function createGitHubClient(config: GitHubRuntimeConfig): GitHubClient {
       while (true) {
         const data: GitHubGraphQlReviewThreadsResponse =
           await requestGitHubGraphQl<GitHubGraphQlReviewThreadsResponse>(
-          config,
-          query,
-          {
-            owner: pr.repository.owner,
-            name: pr.repository.name,
-            number: pr.number,
-            cursor,
-          },
-        );
+            config,
+            query,
+            {
+              owner: pr.repository.owner,
+              name: pr.repository.name,
+              number: pr.number,
+              cursor,
+            },
+          );
 
         const reviewThreads =
           data.repository?.pullRequest?.reviewThreads.nodes ?? [];
@@ -552,20 +564,26 @@ export function createGitHubClient(config: GitHubRuntimeConfig): GitHubClient {
       const currentPrRef: PullRequestRef = {
         repository: pr.repository,
         number: pullRequest.number,
+        title: pullRequest.title,
         branchName: pullRequest.head.ref,
         headSha: pullRequest.head.sha,
       };
 
       const client = createGitHubClient(config);
 
-      const [reviews, unresolvedThreads, checkRuns, commitStatuses, changedFiles] =
-        await Promise.all([
-          (async () => await client.listPullRequestReviews(currentPrRef))(),
-          (async () => await client.listPullRequestReviewThreads(currentPrRef))(),
-          (async () => await client.listCheckRuns(currentPrRef))(),
-          (async () => await client.listCommitStatuses(currentPrRef))(),
-          (async () => await client.listPullRequestFiles(currentPrRef))(),
-        ]);
+      const [
+        reviews,
+        unresolvedThreads,
+        checkRuns,
+        commitStatuses,
+        changedFiles,
+      ] = await Promise.all([
+        (async () => await client.listPullRequestReviews(currentPrRef))(),
+        (async () => await client.listPullRequestReviewThreads(currentPrRef))(),
+        (async () => await client.listCheckRuns(currentPrRef))(),
+        (async () => await client.listCommitStatuses(currentPrRef))(),
+        (async () => await client.listPullRequestFiles(currentPrRef))(),
+      ]);
 
       // Merge check runs and commit statuses into a single list.
       // Dedupe by name in case a check run and a commit status share
@@ -603,6 +621,7 @@ export function createGitHubClient(config: GitHubRuntimeConfig): GitHubClient {
         pr: {
           repository: pr.repository,
           number: pullRequest.number,
+          title: pullRequest.title,
           branchName: pullRequest.head.ref,
           headSha: pullRequest.head.sha,
         },

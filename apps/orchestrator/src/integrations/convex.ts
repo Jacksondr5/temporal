@@ -72,6 +72,7 @@ interface ConvexPullRequestRecord {
   workflowId: string;
   branchName: string;
   headSha: string;
+  title?: string;
   lifecycleState?: PullRequestLifecycleState;
   statusSummary: string | null;
   currentPhase: string;
@@ -149,9 +150,13 @@ export interface ConvexClient {
     limit: number;
   }): Promise<ConvexManualEventRecord[]>;
   claimManualEvent(eventId: string): Promise<ConvexManualClaimResult>;
-  markManualEventProcessed(eventId: string): Promise<ConvexManualProcessedResult>;
+  markManualEventProcessed(
+    eventId: string,
+  ): Promise<ConvexManualProcessedResult>;
   upsertPullRequest(pr: PullRequestRef): Promise<unknown>;
-  listTrackedOpenPullRequests(repoSlug: string): Promise<ConvexPullRequestRecord[]>;
+  listTrackedOpenPullRequests(
+    repoSlug: string,
+  ): Promise<ConvexPullRequestRecord[]>;
   syncPullRequestStatus(
     pr: PullRequestRef,
     status: PrReviewWorkflowStatusRecord,
@@ -193,6 +198,7 @@ export interface ConvexClient {
     workflowId: string;
     errorType: string;
     errorMessage: string;
+    errorStack: string | null;
     phase: string | null;
     retryable: boolean;
     blocked: boolean;
@@ -249,11 +255,16 @@ export function createConvexClient(config: ConvexRuntimeConfig): ConvexClient {
   return {
     url: baseUrl,
     ensureRepoWithPolicy: async (owner, name) =>
-      await callConvexFunction(baseUrl, 'mutation', 'repos:ensureRepoWithPolicy', {
-        slug: `${owner}/${name}`,
-        owner,
-        name,
-      }),
+      await callConvexFunction(
+        baseUrl,
+        'mutation',
+        'repos:ensureRepoWithPolicy',
+        {
+          slug: `${owner}/${name}`,
+          owner,
+          name,
+        },
+      ),
     getRepoPolicy: async (repoSlug) => {
       const [record, firstPage] = await Promise.all([
         callConvexFunction<ConvexRepoPolicyRecord | null>(
@@ -268,15 +279,10 @@ export function createConvexClient(config: ConvexRuntimeConfig): ConvexClient {
           page: ConvexRepoStatusCheckRecord[];
           isDone: boolean;
           continueCursor: string;
-        }>(
-          baseUrl,
-          'query',
-          'repoStatusChecks:listEnabledByRepo',
-          {
-            repoSlug,
-            paginationOpts: { numItems: 256, cursor: null },
-          },
-        ),
+        }>(baseUrl, 'query', 'repoStatusChecks:listEnabledByRepo', {
+          repoSlug,
+          paginationOpts: { numItems: 256, cursor: null },
+        }),
       ]);
       const enabledStatusChecks = [...firstPage.page];
       let cursor = firstPage.continueCursor;
@@ -322,7 +328,12 @@ export function createConvexClient(config: ConvexRuntimeConfig): ConvexClient {
         cursorKey,
       }),
     setPollCursor: async (input) =>
-      await callConvexFunction(baseUrl, 'mutation', 'pollState:setCursor', input),
+      await callConvexFunction(
+        baseUrl,
+        'mutation',
+        'pollState:setCursor',
+        input,
+      ),
     recordGitHubEvent: async (event) =>
       await callConvexFunction(baseUrl, 'mutation', 'githubEvents:record', {
         eventId: event.id,
@@ -337,16 +348,21 @@ export function createConvexClient(config: ConvexRuntimeConfig): ConvexClient {
         checkName: event.checkName ?? null,
       }),
     recordCheckObservation: async (input) =>
-      await callConvexFunction(baseUrl, 'mutation', 'checkObservations:record', {
-        repoSlug: input.repoSlug,
-        prNumber: input.prNumber,
-        headSha: input.headSha,
-        checkName: input.checkName,
-        state: input.state,
-        status: input.status,
-        conclusion: input.conclusion,
-        lastObservedAt: input.lastObservedAt,
-      }),
+      await callConvexFunction(
+        baseUrl,
+        'mutation',
+        'checkObservations:record',
+        {
+          repoSlug: input.repoSlug,
+          prNumber: input.prNumber,
+          headSha: input.headSha,
+          checkName: input.checkName,
+          state: input.state,
+          status: input.status,
+          conclusion: input.conclusion,
+          lastObservedAt: input.lastObservedAt,
+        },
+      ),
     getPullRequest: async (repoSlug, prNumber) =>
       await callConvexFunction<ConvexPullRequestRecord | null>(
         baseUrl,
@@ -385,13 +401,19 @@ export function createConvexClient(config: ConvexRuntimeConfig): ConvexClient {
         },
       ),
     upsertPullRequest: async (pr) =>
-      await callConvexFunction(baseUrl, 'mutation', 'pullRequests:upsertDiscovered', {
-        repoSlug: `${pr.repository.owner}/${pr.repository.name}`,
-        prNumber: pr.number,
-        workflowId: formatPrWorkflowId(pr),
-        branchName: pr.branchName,
-        headSha: pr.headSha,
-      }),
+      await callConvexFunction(
+        baseUrl,
+        'mutation',
+        'pullRequests:upsertDiscovered',
+        {
+          repoSlug: `${pr.repository.owner}/${pr.repository.name}`,
+          prNumber: pr.number,
+          workflowId: formatPrWorkflowId(pr),
+          title: pr.title,
+          branchName: pr.branchName,
+          headSha: pr.headSha,
+        },
+      ),
     listTrackedOpenPullRequests: async (repoSlug) =>
       await callConvexFunction<ConvexPullRequestRecord[]>(
         baseUrl,
@@ -406,6 +428,7 @@ export function createConvexClient(config: ConvexRuntimeConfig): ConvexClient {
         repoSlug: `${pr.repository.owner}/${pr.repository.name}`,
         prNumber: pr.number,
         workflowId: status.workflowId,
+        title: pr.title,
         branchName: status.branchName,
         headSha: status.headSha,
         lifecycleState: status.lifecycleState,
@@ -451,8 +474,9 @@ export function createConvexClient(config: ConvexRuntimeConfig): ConvexClient {
         targetHeadSha: decision.targetHeadSha,
         artifactIds: decision.artifacts.map((artifact) => artifact.id),
         linearIssueId:
-          decision.artifacts.find((artifact) => artifact.kind === 'linear_issue')?.id ??
-          null,
+          decision.artifacts.find(
+            (artifact) => artifact.kind === 'linear_issue',
+          )?.id ?? null,
         githubCommentId:
           decision.artifacts.find((artifact) =>
             isGitHubCommentArtifactKind(artifact.kind),
@@ -476,16 +500,22 @@ export function createConvexClient(config: ConvexRuntimeConfig): ConvexClient {
         workflowId: input.workflowId,
         errorType: input.errorType,
         errorMessage: input.errorMessage,
+        errorStack: input.errorStack,
         phase: input.phase,
         retryable: input.retryable,
         blocked: input.blocked,
         lastSeenAt: new Date().toISOString(),
       }),
     listReviewerRunsForPullRequest: async (input) =>
-      await callConvexFunction(baseUrl, 'query', 'reviewerRuns:listForPullRequest', {
-        repoSlug: input.repoSlug,
-        prNumber: input.prNumber,
-      }),
+      await callConvexFunction(
+        baseUrl,
+        'query',
+        'reviewerRuns:listForPullRequest',
+        {
+          repoSlug: input.repoSlug,
+          prNumber: input.prNumber,
+        },
+      ),
     insertReviewerRun: async (input) =>
       await callConvexFunction(baseUrl, 'mutation', 'reviewerRuns:insert', {
         repoSlug: input.repoSlug,

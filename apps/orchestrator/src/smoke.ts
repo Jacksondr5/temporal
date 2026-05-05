@@ -1,7 +1,14 @@
-import { Client, Connection, WorkflowIdConflictPolicy } from '@temporalio/client';
+import {
+  Client,
+  Connection,
+  WorkflowIdConflictPolicy,
+} from '@temporalio/client';
 import { nanoid } from 'nanoid';
 import { loadTemporalRuntimeConfig } from './config.js';
-import { type PrReviewWorkflowInput, formatPrWorkflowId } from './domain/workflow.js';
+import {
+  type PrReviewWorkflowInput,
+  formatPrWorkflowId,
+} from './domain/workflow.js';
 import { prReviewOrchestratorWorkflow } from './workflows.js';
 import { prActivityObservedSignal } from './workflows/signals.js';
 
@@ -13,6 +20,7 @@ async function run(): Promise<void> {
         name: 'repo',
       },
       number: 1,
+      title: 'Smoke test PR',
       branchName: 'example-branch',
       headSha: 'foundation-scaffold',
     },
@@ -25,25 +33,28 @@ async function run(): Promise<void> {
   const client = new Client({ connection, namespace: config.namespace });
 
   try {
-    const handle = await client.workflow.signalWithStart(prReviewOrchestratorWorkflow, {
-      workflowId,
-      taskQueue: config.taskQueue,
-      args: [input],
-      signal: prActivityObservedSignal,
-      signalArgs: [
-        {
-          event: {
-            id: `manual:${nanoid()}`,
-            kind: 'manual',
-            pr: input.pr,
-            observedAt: new Date().toISOString(),
-            actor: null,
-            headSha: input.pr.headSha,
+    const handle = await client.workflow.signalWithStart(
+      prReviewOrchestratorWorkflow,
+      {
+        workflowId,
+        taskQueue: config.taskQueue,
+        args: [input],
+        signal: prActivityObservedSignal,
+        signalArgs: [
+          {
+            event: {
+              id: `manual:${nanoid()}`,
+              kind: 'manual',
+              pr: input.pr,
+              observedAt: new Date().toISOString(),
+              actor: null,
+              headSha: input.pr.headSha,
+            },
           },
-        },
-      ],
-      workflowIdConflictPolicy: WorkflowIdConflictPolicy.USE_EXISTING,
-    });
+        ],
+        workflowIdConflictPolicy: WorkflowIdConflictPolicy.USE_EXISTING,
+      },
+    );
 
     console.log(`Started workflow ${handle.workflowId}`);
     console.log(await handle.result());

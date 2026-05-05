@@ -128,7 +128,10 @@ async function drainManualEvents(
         continue;
       }
 
-      const pullRequest = await convex.getPullRequest(event.repoSlug, event.prNumber);
+      const pullRequest = await convex.getPullRequest(
+        event.repoSlug,
+        event.prNumber,
+      );
       if (pullRequest === null) {
         throw new Error(
           `Tracked pull request not found for manual event ${event.eventId}.`,
@@ -141,6 +144,7 @@ async function drainManualEvents(
           pr: {
             repository,
             number: pullRequest.prNumber,
+            title: pullRequest.title ?? '',
             branchName: pullRequest.branchName,
             headSha: pullRequest.headSha,
           },
@@ -153,6 +157,7 @@ async function drainManualEvents(
             pr: {
               repository,
               number: pullRequest.prNumber,
+              title: pullRequest.title ?? '',
               branchName: pullRequest.branchName,
               headSha: pullRequest.headSha,
             },
@@ -219,13 +224,16 @@ export async function runPoller(): Promise<PollerRunSummary> {
     // immediately visible in the operator UI, even before any PRs appear.
     await convex.ensureRepoWithPolicy(repository.owner, repository.name);
 
-    const trackedOpenPullRequests = await convex.listTrackedOpenPullRequests(repoSlug);
+    const trackedOpenPullRequests =
+      await convex.listTrackedOpenPullRequests(repoSlug);
     const pullRequests = await discoverPullRequests(
       github,
       repository,
       config.poller.allowedAuthor,
     );
-    const openPrNumbers = new Set(pullRequests.map((pullRequest) => pullRequest.pr.number));
+    const openPrNumbers = new Set(
+      pullRequests.map((pullRequest) => pullRequest.pr.number),
+    );
 
     for (const pullRequest of pullRequests) {
       await convex.upsertPullRequest(pullRequest.pr);
@@ -264,6 +272,7 @@ export async function runPoller(): Promise<PollerRunSummary> {
       const lifecycle = await github.fetchPullRequestLifecycle({
         repository: parseRepositorySlug(repoSlug),
         number: trackedPullRequest.prNumber,
+        title: trackedPullRequest.title ?? '',
         branchName: trackedPullRequest.branchName,
         headSha: trackedPullRequest.headSha,
       });
@@ -290,7 +299,10 @@ export async function runPoller(): Promise<PollerRunSummary> {
         });
         signaledWorkflowCount += 1;
       } catch (error) {
-        if (!(error instanceof WorkflowNotFoundError) && !isSignalEventLimitError(error)) {
+        if (
+          !(error instanceof WorkflowNotFoundError) &&
+          !isSignalEventLimitError(error)
+        ) {
           throw error;
         }
 
@@ -323,6 +335,7 @@ export async function runPoller(): Promise<PollerRunSummary> {
           workflowId,
           errorType,
           errorMessage,
+          errorStack: error instanceof Error ? (error.stack ?? null) : null,
           phase: 'terminal_cleanup',
           retryable: false,
           blocked: !isWorkflowMissing,

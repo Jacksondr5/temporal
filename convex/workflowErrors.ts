@@ -24,6 +24,7 @@ export const insert = mutation({
     workflowId: v.string(),
     errorType: v.string(),
     errorMessage: v.string(),
+    errorStack: v.union(v.string(), v.null()),
     phase: v.union(v.string(), v.null()),
     retryable: v.boolean(),
     blocked: v.boolean(),

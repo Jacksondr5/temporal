@@ -12,6 +12,7 @@ export function formatRepositoryName(repository: RepositoryRef): string {
 export interface PullRequestRef {
   repository: RepositoryRef;
   number: number;
+  title: string;
   branchName: string;
   headSha: string;
 }
@@ -35,11 +36,7 @@ export interface GitHubCheckRun {
   appSlug: string | null;
 }
 
-export type GitHubCheckState =
-  | 'failing'
-  | 'passing'
-  | 'pending'
-  | 'other';
+export type GitHubCheckState = 'failing' | 'passing' | 'pending' | 'other';
 
 export type GitHubMergeabilityState =
   | 'mergeable'

@@ -102,6 +102,7 @@ export default defineSchema({
     repoSlug: v.string(),
     prNumber: v.number(),
     workflowId: v.string(),
+    title: v.optional(v.string()),
     branchName: v.string(),
     headSha: v.string(),
     lifecycleState: v.optional(
@@ -242,6 +243,7 @@ export default defineSchema({
     workflowId: v.string(),
     errorType: v.string(),
     errorMessage: v.string(),
+    errorStack: v.optional(v.union(v.string(), v.null())),
     phase: v.union(v.string(), v.null()),
     retryable: v.boolean(),
     blocked: v.boolean(),
