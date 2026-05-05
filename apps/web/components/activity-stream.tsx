@@ -4,6 +4,7 @@ import { usePaginatedQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
 import { Activity } from "lucide-react";
 import { cn } from "../lib/utils";
+import { activityStreamEventAnchor } from "../lib/activity-stream-anchors";
 import { Button } from "./ui/button";
 import {
   AgentRunEventCard,
@@ -220,7 +221,20 @@ function ActivityStreamBody({
         />
         <ol className="space-y-3 pl-6" role="list">
         {events.map((event) => (
-          <li key={eventKey(event)} className="relative">
+          <li
+            key={eventKey(event)}
+            // Shared deep-link target — see `lib/activity-stream-anchors.ts`.
+            // `<ReviewerSummary />` (JAC-186) and any future surface that
+            // wants to scroll to a specific event uses the matching href via
+            // `activityStreamEventHref()`. Apply `scroll-mt` so the anchored
+            // card sits below the page chrome rather than flush against
+            // the viewport edge when navigated to.
+            id={activityStreamEventAnchor(
+              event.eventType,
+              event.source._id,
+            )}
+            className="relative scroll-mt-24"
+          >
             <span
               aria-hidden
               className="pointer-events-none absolute -left-6 top-3.5 flex h-3 w-3 items-center justify-center bg-surface-canvas"
