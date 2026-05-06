@@ -49,6 +49,11 @@ interface ReviewerDraft {
    * cards are expanded. Not sent to the backend; stripped before save.
    */
   _uiKey: string;
+  /**
+   * Immutable identity from the server used to reconcile refetches even when
+   * the editable reviewer `id` is changed locally.
+   */
+  serverId: string | null;
   id: string;
   description: string;
   fileGlobs: string;
@@ -238,6 +243,7 @@ function PolicyEditForm({
   const [reviewers, setReviewers] = useState<ReviewerDraft[]>(() =>
     initialReviewers.map((r, i) => ({
       _uiKey: `existing-${i}`,
+      serverId: r.id,
       ...r,
     })),
   );
@@ -294,28 +300,35 @@ function PolicyEditForm({
         return next;
       });
 
-      const previousInitialById = new Map(
+      const previousInitialByServerId = new Map(
         previousInitialReviewersRef.current.map((reviewer) => [
           reviewer.id,
           reviewer,
         ]),
       );
-      const nextInitialById = new Map(
+      const nextInitialByServerId = new Map(
         initialReviewers.map((reviewer) => [reviewer.id, reviewer]),
       );
 
       setReviewers((prev) => {
-        const prevById = new Map(prev.map((reviewer) => [reviewer.id, reviewer]));
+        const prevByServerId = new Map(
+          prev
+            .filter((reviewer) => reviewer.serverId !== null)
+            .map((reviewer) => [reviewer.serverId, reviewer]),
+        );
         const reconciled = initialReviewers.map((initialReviewer) => {
-          const existing = prevById.get(initialReviewer.id);
+          const existing = prevByServerId.get(initialReviewer.id);
           if (!existing) {
             return {
               _uiKey: `existing-${initialReviewer.id || crypto.randomUUID()}`,
+              serverId: initialReviewer.id,
               ...initialReviewer,
             };
           }
 
-          const previousInitial = previousInitialById.get(initialReviewer.id);
+          const previousInitial = previousInitialByServerId.get(
+            initialReviewer.id,
+          );
           const existingComparable: ReviewerComparable = {
             id: existing.id,
             description: existing.description,
@@ -329,13 +342,17 @@ function PolicyEditForm({
               JSON.stringify(previousInitial);
 
           if (wasEdited) return existing;
-          return { ...existing, ...initialReviewer };
+          return {
+            ...existing,
+            ...initialReviewer,
+            serverId: initialReviewer.id,
+          };
         });
 
         const localOnly = prev.filter(
           (reviewer) =>
-            !previousInitialById.has(reviewer.id) &&
-            !nextInitialById.has(reviewer.id),
+            reviewer.serverId === null &&
+            !nextInitialByServerId.has(reviewer.id),
         );
 
         return [...reconciled, ...localOnly];
@@ -365,6 +382,7 @@ function PolicyEditForm({
         ...prev,
         {
           _uiKey: newKey,
+          serverId: null,
           id: "",
           description: "",
           fileGlobs: "",
@@ -416,6 +434,7 @@ function PolicyEditForm({
     setReviewers(
       initialReviewers.map((r, i) => ({
         _uiKey: `existing-${i}`,
+        serverId: r.id,
         ...r,
       })),
     );
