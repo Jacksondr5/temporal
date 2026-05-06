@@ -12,6 +12,7 @@ import {
   ActivityStream,
   type ActivityStreamFilter,
 } from "../../../../../components/activity-stream";
+import { OutputsPanel } from "../../../../../components/outputs-panel";
 import {
   ArrowLeft,
   MessageSquare,
@@ -37,10 +38,12 @@ import {
  * > - Inspector page background uses `--surface-inspector` and Monaspace
  * >   Neon is the dominant typeface, making the mode unambiguous."
  *
- * The Inspector activity-stream variants and the Outputs panel are tracked
- * in JAC-190 and JAC-191 respectively. This route ships the page shell, the
- * Inspector header, and the Inspector-mode `<ActivityStream />` (which
- * already accepts `mode="inspector"` so noops/github events surface).
+ * The richer Inspector activity-stream card variants (raw JSON toggle,
+ * provider metadata, token usage, etc.) are tracked separately in JAC-190.
+ * This route ships the page shell, the Inspector header, the
+ * Inspector-mode `<ActivityStream />` (which already accepts
+ * `mode="inspector"` so noops/github events surface), and the
+ * `<OutputsPanel />` below the stream (JAC-191).
  *
  * The page wraps content in a full-bleed inspector surface that breaks out
  * of the `<main>` container's padding and applies `font-mono` so Monaspace
@@ -168,7 +171,7 @@ export default function PullRequestInspectorPage({
     );
   }
 
-  const { pr, threads, reviewerRuns } = detail;
+  const { pr, threads, reviewerRuns, artifacts } = detail;
 
   async function handleManualReevaluate(): Promise<void> {
     if (isSubmittingManualRequest) {
@@ -330,6 +333,24 @@ export default function PullRequestInspectorPage({
           filter={activityFilter}
           onFilterChange={setActivityFilter}
           commitArtifacts={commitArtifacts}
+        />
+
+        {/* ─── Outputs panel (Inspector only) ─── */}
+        {/*
+          Per `docs/product/operator-ui-redesign.md` →
+          "Per-Screen Direction" → "PR detail — Inspector": "Outputs panel
+          renders below the activity stream." Inspector mode also gets the
+          panel because its grouping makes it easy to verify "every
+          deferred thread has a Linear ticket" / "the agent pushed exactly
+          one commit this run" without scrubbing the timeline. Operator
+          mode does not need this view — artifacts are already attached to
+          their parent events in the stream and commits surface via the
+          inline `<CommitChip />`.
+        */}
+        <OutputsPanel
+          repoSlug={decodedSlug}
+          prNumber={prNumber}
+          artifacts={artifacts}
         />
       </div>
     </InspectorShell>
