@@ -38,12 +38,12 @@ import {
  * > - Inspector page background uses `--surface-inspector` and Monaspace
  * >   Neon is the dominant typeface, making the mode unambiguous."
  *
- * The richer Inspector activity-stream card variants (raw JSON toggle,
- * provider metadata, token usage, etc.) are tracked separately in JAC-190.
- * This route ships the page shell, the Inspector header, the
- * Inspector-mode `<ActivityStream />` (which already accepts
- * `mode="inspector"` so noops/github events surface), and the
- * `<OutputsPanel />` below the stream (JAC-191).
+ * This route ships the full Inspector page: the page shell, the Inspector
+ * header, the Inspector-mode `<ActivityStream />` — which renders the
+ * inspector card variants (SHA pair, internal phase enums, provider
+ * metadata, workspace path, reviewer pack, command summaries, raw JSON
+ * toggle, token usage) per JAC-190 — and the `<OutputsPanel />` below the
+ * stream (JAC-191).
  *
  * The page wraps content in a full-bleed inspector surface that breaks out
  * of the `<main>` container's padding and applies `font-mono` so Monaspace
@@ -318,12 +318,11 @@ export default function PullRequestInspectorPage({
         {/* ─── Activity stream (Inspector mode) ─── */}
         {/*
           Inspector mode surfaces noops and non-manual GitHub events (which
-          the operator stream filters out at the server layer). The richer
-          inspector card variants — raw JSON toggle, command summaries,
-          provider metadata, token usage — are tracked separately in
-          JAC-190; the activity stream itself already accepts
-          `mode="inspector"` and the inspector route is wired against it
-          here so the toggle is functional from day one.
+          the operator stream filters out at the server layer) and renders
+          the inspector card variants (JAC-190): SHA pair commit chip,
+          internal phase/status enums, provider metadata, workspace path,
+          reviewer pack, command summaries, raw JSON toggle, and token
+          usage.
         */}
         <ActivityStream
           repoSlug={decodedSlug}
