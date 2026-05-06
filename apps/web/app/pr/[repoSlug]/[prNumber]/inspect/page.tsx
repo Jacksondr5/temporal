@@ -4,7 +4,11 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
 import { use, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { DispositionBadge } from "../../../../../components/status-badge";
+import { StatusMark } from "../../../../../components/status-mark";
+import {
+  mapDispositionToStatus,
+  operatorDispositionLabel,
+} from "../../../../../lib/status";
 import { TimeAgo } from "../../../../../components/time-ago";
 import { PrHeaderInspector } from "../../../../../components/pr-header-inspector";
 import { ReviewerSummary } from "../../../../../components/reviewer-summary";
@@ -262,7 +266,16 @@ export default function PullRequestInspectorPage({
                     )}
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <DispositionBadge disposition={thread.disposition} />
+                    <span className="inline-flex items-center gap-1.5">
+                      <StatusMark
+                        status={mapDispositionToStatus(thread.disposition)}
+                        size="sm"
+                        label={null}
+                      />
+                      <span className="text-[11px] font-sans text-muted-foreground">
+                        {operatorDispositionLabel(thread.disposition)}
+                      </span>
+                    </span>
                     {thread.isResolved && (
                       <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-sans font-semibold uppercase tracking-wider text-emerald-400 ring-1 ring-inset ring-emerald-500/20">
                         Resolved
@@ -288,7 +301,14 @@ export default function PullRequestInspectorPage({
                         className="rounded-md border border-border/40 bg-muted/20 p-3 space-y-1.5"
                       >
                         <div className="flex items-center gap-2">
-                          <DispositionBadge disposition={d.disposition} />
+                          <StatusMark
+                            status={mapDispositionToStatus(d.disposition)}
+                            size="sm"
+                            label={null}
+                          />
+                          <span className="text-[11px] font-sans text-muted-foreground">
+                            {operatorDispositionLabel(d.disposition)}
+                          </span>
                           <TimeAgo date={d.createdAt} />
                           <code className="ml-auto text-[11px] font-mono text-muted-foreground">
                             {d.targetHeadSha.slice(0, 8)}
