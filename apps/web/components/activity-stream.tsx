@@ -12,6 +12,7 @@ import {
   GitHubEventCard,
   ReviewerEventCard,
   type ActivityStreamEvent,
+  type ActivityStreamMode,
   type CommitArtifactInfo,
   type CommitArtifactLookup,
 } from "./event-cards";
@@ -30,11 +31,17 @@ import {
  * In Operator mode, the server filters out noops and non-manual GitHub
  * events, so consecutive reconciliations never reach the client and the
  * grouping logic that `RunTimeline` implements becomes a no-op. Inspector
- * variants (JAC-190) sit on top of the same payload and add the noisier
- * detail back.
+ * mode (JAC-190) keeps the same payload but flips the cards into their
+ * inspector variant — surfacing the SHA pair, internal phase enums,
+ * provider metadata, workspace path, reviewer pack, command summaries,
+ * raw JSON toggle, and token usage badge.
  */
 
-export type ActivityStreamMode = "operator" | "inspector";
+// Re-export for callers that want to type a `mode` prop without reaching
+// into `./event-cards` directly. The canonical definition lives there so
+// the cards can take it as a prop without introducing a circular type
+// dependency back into `activity-stream.tsx`.
+export type { ActivityStreamMode };
 
 export type ActivityStreamFilter =
   | "all"
@@ -129,6 +136,7 @@ export function ActivityStream({
         isLoading={isLoading}
         events={results}
         repoSlug={repoSlug}
+        mode={mode}
         now={now}
         lookupCommit={lookupCommit}
         onLoadMore={() => loadMore(LOAD_MORE_PAGE_SIZE)}
@@ -197,6 +205,7 @@ interface ActivityStreamBodyProps {
   isLoading: boolean;
   events: readonly ActivityStreamEvent[];
   repoSlug: string;
+  mode: ActivityStreamMode;
   now: number;
   lookupCommit: CommitArtifactLookup;
   onLoadMore: () => void;
@@ -207,6 +216,7 @@ function ActivityStreamBody({
   isLoading,
   events,
   repoSlug,
+  mode,
   now,
   lookupCommit,
   onLoadMore,
@@ -250,6 +260,7 @@ function ActivityStreamBody({
             <EventCardForType
               event={event}
               repoSlug={repoSlug}
+              mode={mode}
               now={now}
               lookupCommit={lookupCommit}
             />
@@ -288,11 +299,13 @@ function eventKey(event: ActivityStreamEvent): string {
 function EventCardForType({
   event,
   repoSlug,
+  mode,
   now,
   lookupCommit,
 }: {
   event: ActivityStreamEvent;
   repoSlug: string;
+  mode: ActivityStreamMode;
   now: number;
   lookupCommit: CommitArtifactLookup;
 }) {
@@ -303,6 +316,7 @@ function EventCardForType({
           run={event.source}
           eventTime={event.eventTime}
           repoSlug={repoSlug}
+          mode={mode}
           lookupCommit={lookupCommit}
         />
       );
@@ -312,17 +326,25 @@ function EventCardForType({
           run={event.source}
           eventTime={event.eventTime}
           repoSlug={repoSlug}
+          mode={mode}
           lookupCommit={lookupCommit}
         />
       );
     case "workflow_error":
-      return <ErrorEventCard error={event.source} eventTime={event.eventTime} />;
+      return (
+        <ErrorEventCard
+          error={event.source}
+          eventTime={event.eventTime}
+          mode={mode}
+        />
+      );
     case "github_event":
       return (
         <GitHubEventCard
           event={event.source}
           eventTime={event.eventTime}
           now={now}
+          mode={mode}
         />
       );
   }
