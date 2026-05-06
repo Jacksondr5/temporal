@@ -3,7 +3,7 @@
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@convex/_generated/api";
 import type { Doc } from "@convex/_generated/dataModel";
-import { useCallback, useId, useMemo, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Button } from "../../../components/ui/button";
@@ -249,6 +249,7 @@ function PolicyEditForm({
   const [saveStatus, setSaveStatus] = useState<
     "idle" | "saving" | "saved" | "error"
   >("idle");
+  const previousInitialReviewersRef = useRef(initialReviewers);
 
   const statusCheckNames = useMemo(
     () => detail.statusChecks.map((c) => c.name),
@@ -277,6 +278,75 @@ function PolicyEditForm({
     ],
   );
   const isDirty = dirtyParts.length > 0;
+
+  useEffect(() => {
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) return;
+
+      setStatusCheckSelections((prev) => {
+        const next: Record<string, boolean> = {};
+        for (const [name, initialValue] of Object.entries(
+          initialStatusCheckSelections,
+        )) {
+          next[name] = name in prev ? prev[name] : initialValue;
+        }
+        return next;
+      });
+
+      const previousInitialById = new Map(
+        previousInitialReviewersRef.current.map((reviewer) => [
+          reviewer.id,
+          reviewer,
+        ]),
+      );
+      const nextInitialById = new Map(
+        initialReviewers.map((reviewer) => [reviewer.id, reviewer]),
+      );
+
+      setReviewers((prev) => {
+        const prevById = new Map(prev.map((reviewer) => [reviewer.id, reviewer]));
+        const reconciled = initialReviewers.map((initialReviewer) => {
+          const existing = prevById.get(initialReviewer.id);
+          if (!existing) {
+            return {
+              _uiKey: `existing-${initialReviewer.id || crypto.randomUUID()}`,
+              ...initialReviewer,
+            };
+          }
+
+          const previousInitial = previousInitialById.get(initialReviewer.id);
+          const existingComparable: ReviewerComparable = {
+            id: existing.id,
+            description: existing.description,
+            fileGlobs: existing.fileGlobs,
+            runPolicy: existing.runPolicy,
+            promptId: existing.promptId,
+          };
+          const wasEdited =
+            previousInitial !== undefined &&
+            JSON.stringify(existingComparable) !==
+              JSON.stringify(previousInitial);
+
+          if (wasEdited) return existing;
+          return { ...existing, ...initialReviewer };
+        });
+
+        const localOnly = prev.filter(
+          (reviewer) =>
+            !previousInitialById.has(reviewer.id) &&
+            !nextInitialById.has(reviewer.id),
+        );
+
+        return [...reconciled, ...localOnly];
+      });
+
+      previousInitialReviewersRef.current = initialReviewers;
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [initialReviewers, initialStatusCheckSelections]);
 
   /* ── reviewer mutators ── */
 
@@ -723,6 +793,11 @@ function ReviewerCard({
 }) {
   const detailsId = useId();
   const headingId = useId();
+  const idInputId = useId();
+  const runPolicyInputId = useId();
+  const descriptionInputId = useId();
+  const promptIdInputId = useId();
+  const fileGlobsInputId = useId();
 
   return (
     <div
@@ -749,16 +824,18 @@ function ReviewerCard({
 
       {/* Surface fields: ID, run policy, description. */}
       <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <FieldGroup label="ID">
+        <FieldGroup label="ID" htmlFor={idInputId}>
           <Input
+            id={idInputId}
             value={reviewer.id}
             onChange={(e) => onChange("id", e.target.value)}
             placeholder="security-reviewer"
             className="border-border-hairline bg-surface-panel font-mono text-mono-sm"
           />
         </FieldGroup>
-        <FieldGroup label="Run policy">
+        <FieldGroup label="Run policy" htmlFor={runPolicyInputId}>
           <select
+            id={runPolicyInputId}
             value={reviewer.runPolicy}
             onChange={(e) => onChange("runPolicy", e.target.value)}
             className="flex h-9 w-full rounded-md border border-border-hairline bg-surface-panel px-3 py-1 text-body text-foreground transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/40"
@@ -770,8 +847,9 @@ function ReviewerCard({
       </div>
 
       <div className="mt-3">
-        <FieldGroup label="Description">
+        <FieldGroup label="Description" htmlFor={descriptionInputId}>
           <Input
+            id={descriptionInputId}
             value={reviewer.description}
             onChange={(e) => onChange("description", e.target.value)}
             placeholder="Reviews security-sensitive files"
@@ -804,8 +882,9 @@ function ReviewerCard({
             id={detailsId}
             className="mt-3 space-y-3 border-t border-border-hairline pt-3"
           >
-            <FieldGroup label="Prompt ID">
+            <FieldGroup label="Prompt ID" htmlFor={promptIdInputId}>
               <Input
+                id={promptIdInputId}
                 value={reviewer.promptId}
                 onChange={(e) => onChange("promptId", e.target.value)}
                 placeholder="security-review-v1"
@@ -814,9 +893,11 @@ function ReviewerCard({
             </FieldGroup>
             <FieldGroup
               label="File globs"
+              htmlFor={fileGlobsInputId}
               description="Comma-separated glob patterns"
             >
               <Input
+                id={fileGlobsInputId}
                 value={reviewer.fileGlobs}
                 onChange={(e) => onChange("fileGlobs", e.target.value)}
                 placeholder="src/auth/**, *.security.ts"
@@ -859,7 +940,13 @@ function SaveBar({
       )}
     >
       <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center gap-3 px-6 py-3">
-        <SaveBarSummary summary={summary} saveStatus={saveStatus} />
+        <div
+          role="status"
+          aria-live={saveStatus === "error" ? "assertive" : "polite"}
+          aria-atomic="true"
+        >
+          <SaveBarSummary summary={summary} saveStatus={saveStatus} />
+        </div>
         <div className="ml-auto flex items-center gap-2">
           <Button
             variant="outline"
@@ -939,16 +1026,20 @@ function Section({
 
 function FieldGroup({
   label,
+  htmlFor,
   description,
   children,
 }: {
   label: string;
+  htmlFor: string;
   description?: string;
   children: React.ReactNode;
 }) {
   return (
     <div className="space-y-1.5">
-      <Label className="text-meta text-foreground/80">{label}</Label>
+      <Label htmlFor={htmlFor} className="text-meta text-foreground/80">
+        {label}
+      </Label>
       {description && (
         <p className="text-meta text-muted-foreground/80">{description}</p>
       )}
