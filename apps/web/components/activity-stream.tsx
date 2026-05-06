@@ -30,11 +30,11 @@ import {
  *
  * In Operator mode, the server filters out noops and non-manual GitHub
  * events, so consecutive reconciliations never reach the client and the
- * grouping logic that `RunTimeline` implements becomes a no-op. Inspector
- * mode (JAC-190) keeps the same payload but flips the cards into their
- * inspector variant — surfacing the SHA pair, internal phase enums,
- * provider metadata, workspace path, reviewer pack, command summaries,
- * raw JSON toggle, and token usage badge.
+ * grouping logic the legacy reconciliation timeline used to implement is
+ * unnecessary. Inspector mode (JAC-190) keeps the same payload but flips
+ * the cards into their inspector variant — surfacing the SHA pair,
+ * internal phase enums, provider metadata, workspace path, reviewer pack,
+ * command summaries, raw JSON toggle, and token usage badge.
  */
 
 // Re-export for callers that want to type a `mode` prop without reaching

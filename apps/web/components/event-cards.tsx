@@ -1247,10 +1247,9 @@ function InspectorKv({
 
 /**
  * `<UsageBadge />` ported to the new design tokens (JAC-190 acceptance
- * criterion). Replaces the legacy `apps/web/components/run-detail.tsx`
- * implementation that uses `bg-muted/10` and `text-emerald-400/70`. The new
- * badge uses the canonical `--surface-inset` background, the `text-mono-sm`
- * size token, and `text-status-healthy` for the cached-token highlight.
+ * criterion). The badge uses the canonical `--surface-inset` background,
+ * the `text-mono-sm` size token, and `text-status-healthy` for the
+ * cached-token highlight.
  */
 function InspectorUsageBadge({ usage }: { usage: TokenUsage }) {
   const cachedAvailable =
