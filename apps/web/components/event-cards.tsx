@@ -380,6 +380,13 @@ export function ReviewerEventCard({
           status={run.status}
         />
       ) : null;
+    // Reviewer runs may not carry a detailsJson; only mount the toggle when
+    // there's content to show, matching the null-tolerant handling in
+    // `<RunInspectorExpandedExtras />`.
+    const failedRawJson =
+      run.detailsJson != null && run.detailsJson.trim().length > 0
+        ? run.detailsJson
+        : null;
 
     return (
       <EventCardShell
@@ -391,10 +398,10 @@ export function ReviewerEventCard({
           <>
             {failedInspectorMeta}
             {renderReviewerStoryLayer(run.matchedFiles, details)}
-            {mode === "inspector" && (
+            {mode === "inspector" && failedRawJson != null && (
               <InspectorJsonToggle
                 label="Raw event JSON"
-                json={run.detailsJson ?? "{}"}
+                json={failedRawJson}
               />
             )}
           </>
