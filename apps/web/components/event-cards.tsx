@@ -362,7 +362,7 @@ export function ReviewerEventCard({
     mode === "inspector" ? (
       <RunInspectorExpandedExtras
         details={details}
-        rawJson={run.detailsJson ?? "{}"}
+        rawJson={run.detailsJson}
       />
     ) : null;
   const expandedBody = composeExpandedBody(operatorStory, inspectorExtras);
@@ -1202,7 +1202,7 @@ function RunInspectorExpandedExtras({
   rawJson,
 }: {
   details: RunDetails;
-  rawJson: string;
+  rawJson: string | null;
 }) {
   const commands =
     details.kind === "success" || details.kind === "reviewer_success"
@@ -1213,8 +1213,9 @@ function RunInspectorExpandedExtras({
       ? details.providerMetadata
       : null;
 
+  const hasRawJson = rawJson != null && rawJson.trim().length > 0;
   const hasContent =
-    commands.length > 0 || providerMetadata != null || rawJson.length > 0;
+    commands.length > 0 || providerMetadata != null || hasRawJson;
   if (!hasContent) return null;
 
   return (
@@ -1232,7 +1233,7 @@ function RunInspectorExpandedExtras({
           json={JSON.stringify(providerMetadata, null, 2)}
         />
       )}
-      <InspectorJsonToggle label="Raw event JSON" json={rawJson} />
+      {hasRawJson && <InspectorJsonToggle label="Raw event JSON" json={rawJson} />}
     </section>
   );
 }
