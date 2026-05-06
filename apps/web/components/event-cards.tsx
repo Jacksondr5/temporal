@@ -223,6 +223,46 @@ export function AgentRunEventCard({
   const details = parseRunDetails(run.detailsJson);
   const status = mapAgentRunStatusToEventStatus(run.status);
   const verb = agentRunVerb(run.phase, run.status, details);
+
+  // Failed runs render the error story (`errorType` + `errorMessage` +
+  // `errorStack`) inline by default per JAC-188 and Principle 10:
+  // stack traces are not truncated, parsed, or hidden behind an expand
+  // gate. The same `<ErrorBody />` powers the workflow-error card so the
+  // two surfaces stay visually consistent. Inspector mode (JAC-190) adds
+  // its raw phase / status enums above the body and a raw-JSON toggle
+  // below so the technical layer stays one click away.
+  if (details.kind === "failed") {
+    const failedInspectorMeta =
+      mode === "inspector" ? (
+        <InspectorMetaStrip phase={run.phase} status={run.status} />
+      ) : null;
+
+    return (
+      <EventCardShell
+        status={status}
+        eventTime={eventTime}
+        verb={verb}
+        collapsedExtras={
+          <>
+            {failedInspectorMeta}
+            <ErrorBody
+              errorType={details.errorType}
+              errorMessage={details.errorMessage}
+              errorStack={details.errorStack}
+            />
+            {mode === "inspector" && (
+              <InspectorJsonToggle
+                label="Raw event JSON"
+                json={run.detailsJson}
+              />
+            )}
+          </>
+        }
+        ariaLabel={`Agent run ${run.phase} ${run.status}`}
+      />
+    );
+  }
+
   const observedCommitSha = getObservedCommitSha(details);
   const summary = oneLineSummary(run.summary ?? null, details);
 
@@ -331,6 +371,39 @@ export function ReviewerEventCard({
   const details = parseReviewerRunDetails(run.detailsJson);
   const status = mapReviewerRunStatusToEventStatus(run.status);
   const verb = reviewerRunVerb(run.reviewerId, run.status, details);
+
+  if (details.kind === "failed") {
+    const failedInspectorMeta =
+      mode === "inspector" ? (
+        <InspectorMetaStrip
+          phase={`reviewer:${run.reviewerId}`}
+          status={run.status}
+        />
+      ) : null;
+
+    return (
+      <EventCardShell
+        status={status}
+        eventTime={eventTime}
+        verb={verb}
+        summary={reviewerSummaryLine(run.summary ?? null, details)}
+        collapsedExtras={
+          <>
+            {failedInspectorMeta}
+            {renderReviewerStoryLayer(run.matchedFiles, details)}
+            {mode === "inspector" && (
+              <InspectorJsonToggle
+                label="Raw event JSON"
+                json={run.detailsJson ?? "{}"}
+              />
+            )}
+          </>
+        }
+        ariaLabel={`Specialized reviewer ${run.reviewerId} ${run.status}`}
+      />
+    );
+  }
+
   const observedCommitSha = getObservedCommitSha(details);
   const summary = reviewerSummaryLine(run.summary ?? null, details);
 
@@ -392,13 +465,19 @@ export interface ErrorEventCardProps {
 
 /**
  * Operator/inspector error card. The "errors are stories" treatment
- * (Principle 10) says the card surfaces a what/why/what-to-do block with
- * the agent's last reasoning inline. Full stack-trace rendering with the
- * tall scrollable monospace block is the dedicated subject of JAC-188; here
- * we surface the stack trace plainly when present, and JAC-188 will replace
- * this with the richer treatment. Inspector mode adds a small chip with the
- * raw `phase` enum so operators debugging the orchestrator can match the
- * error to the state machine without expanding.
+ * (Principle 10) says an errored or blocked workflow surfaces a
+ * what/why/what-to-do block with the full failure narrative inline.
+ *
+ * Per JAC-188 the body — `errorType`, `errorMessage`, and `errorStack` —
+ * is rendered by default in `<ErrorBody />`. Stack traces are not
+ * truncated, parsed, or hidden behind an expand gate; they live in a
+ * tall scrollable monospace block sized to roughly 24 visible lines.
+ *
+ * Inspector mode (JAC-190) adds the internal phase / status enums above
+ * the body so operators debugging the orchestrator can match the error to
+ * the state machine, plus a raw-JSON toggle below the body for the full
+ * `workflowErrors` document — both rendered alongside `<ErrorBody />` in
+ * the always-visible collapsed surface (errors do not expand/collapse).
  */
 export function ErrorEventCard({ error, eventTime, mode }: ErrorEventCardProps) {
   const status = mapErrorToStatus({
@@ -419,21 +498,6 @@ export function ErrorEventCard({ error, eventTime, mode }: ErrorEventCardProps) 
         ? `Errored — ${phaseLabel}`
         : "Errored";
 
-  const baseRow = (
-    <div className="flex items-center gap-2 pt-0.5 text-meta text-muted-foreground">
-      <AlertTriangle
-        className="h-3.5 w-3.5 shrink-0 text-status-blocked"
-        aria-hidden
-      />
-      <code className="font-mono text-mono-sm text-status-blocked">
-        {error.errorType}
-      </code>
-      {error.retryable && !error.blocked && (
-        <span className="text-status-caution">retryable</span>
-      )}
-    </div>
-  );
-
   const inspectorMeta =
     mode === "inspector" ? (
       <InspectorMetaStrip
@@ -444,48 +508,107 @@ export function ErrorEventCard({ error, eventTime, mode }: ErrorEventCardProps) 
       />
     ) : null;
 
-  const expandedBody = (
-    <div className="space-y-3">
-      <div className="space-y-1">
-        <h4 className="text-micro font-semibold uppercase text-muted-foreground">
-          Error
-        </h4>
-        <p className="text-meta font-mono text-status-blocked">
-          {error.errorType}
-        </p>
-        <p className="text-body leading-relaxed text-foreground/85 whitespace-pre-wrap">
-          {error.errorMessage}
-        </p>
-      </div>
-      {error.errorStack && (
-        <div className="space-y-1">
-          <h4 className="text-micro font-semibold uppercase text-muted-foreground">
-            Stack trace
-          </h4>
-          <pre className="max-h-72 overflow-auto rounded-md border border-border-hairline bg-surface-inset p-3 text-mono-sm font-mono leading-relaxed text-foreground/80 whitespace-pre">
-            {error.errorStack}
-          </pre>
-        </div>
-      )}
-      {mode === "inspector" && (
-        <InspectorJsonToggle
-          label="Raw error JSON"
-          json={JSON.stringify(error, null, 2)}
-        />
-      )}
-    </div>
-  );
-
   return (
     <EventCardShell
       status={status}
       eventTime={eventTime}
       verb={verb}
-      summary={error.errorMessage}
-      collapsedExtras={composeCollapsedExtras(inspectorMeta, baseRow)}
-      expandedBody={expandedBody}
+      collapsedExtras={
+        <>
+          {inspectorMeta}
+          <ErrorBody
+            errorType={error.errorType}
+            errorMessage={error.errorMessage}
+            errorStack={error.errorStack ?? null}
+            qualifier={
+              error.retryable && !error.blocked ? "retryable" : null
+            }
+          />
+          {mode === "inspector" && (
+            <InspectorJsonToggle
+              label="Raw error JSON"
+              json={JSON.stringify(error, null, 2)}
+            />
+          )}
+        </>
+      }
       ariaLabel={`Workflow error ${error.errorType}`}
     />
+  );
+}
+
+/**
+ * Always-visible "errors are stories" body. Used by `<ErrorEventCard />`
+ * for `workflowErrors` rows and by `<AgentRunEventCard />` for failed
+ * `prRuns`, so the two surfaces render error content identically.
+ *
+ * Per JAC-188 acceptance criteria:
+ *
+ * - `errorType` is shown as an inline mono code chip.
+ * - `errorMessage` is wrapped prose, rendered faithfully (no truncation,
+ *   `whitespace-pre-wrap` so embedded newlines stay).
+ * - `errorStack` is shown by default in a tall scrollable mono block
+ *   sized to roughly 24 visible lines, never gated behind expand.
+ *
+ * The optional `qualifier` slot lets the workflow-error card surface its
+ * "retryable" indicator alongside the type without leaking that concept
+ * into the failed-run case (which has no retryable bit).
+ */
+interface ErrorBodyProps {
+  errorType: string;
+  errorMessage: string;
+  errorStack: string | null;
+  qualifier?: "retryable" | null;
+}
+
+function ErrorBody({
+  errorType,
+  errorMessage,
+  errorStack,
+  qualifier,
+}: ErrorBodyProps) {
+  return (
+    <div className="space-y-3 pt-1">
+      <div className="flex flex-wrap items-center gap-2 text-meta text-muted-foreground">
+        <AlertTriangle
+          className="h-3.5 w-3.5 shrink-0 text-status-blocked"
+          aria-hidden
+        />
+        <code className="font-mono text-mono-sm text-status-blocked">
+          {errorType}
+        </code>
+        {qualifier === "retryable" && (
+          <span className="text-status-caution">retryable</span>
+        )}
+      </div>
+      {errorMessage.length > 0 && (
+        <p className="text-body leading-relaxed text-foreground/85 whitespace-pre-wrap break-words">
+          {errorMessage}
+        </p>
+      )}
+      {errorStack && (
+        <div className="space-y-1.5">
+          <h4 className="text-micro font-semibold uppercase tracking-wider text-muted-foreground">
+            Stack trace
+          </h4>
+          {/*
+           * Tall scrollable monospace block. `max-h-[28rem]` (448px)
+           * with `text-mono-sm` (12.5px / 1.4 line-height = 17.5px/line)
+           * shows ~24 lines plus the 12px top/bottom padding from `p-3`.
+           * `whitespace-pre` preserves the verbatim trace; horizontal
+           * overflow scrolls instead of wrapping mid-frame.
+           */}
+          <pre
+            tabIndex={0}
+            aria-label="Error stack trace"
+            role="region"
+            className="max-h-[28rem] overflow-auto rounded-md border border-border-hairline bg-surface-inset p-3 text-mono-sm font-mono text-foreground/80 whitespace-pre"
+          >
+            {errorStack}
+          </pre>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -790,23 +913,14 @@ function renderAgentRunStoryLayer(details: RunDetails): React.ReactNode {
     return renderReviewerStory(details);
   }
   if (details.kind === "failed") {
+    // Kept as a defensive fallback for any caller that does not short-circuit
+    // failed runs before story-layer rendering.
     return (
-      <div className="space-y-2">
-        <h4 className="text-micro font-semibold uppercase text-muted-foreground">
-          Failure
-        </h4>
-        <p className="text-meta font-mono text-status-blocked">
-          {details.errorType}
-        </p>
-        <p className="text-body leading-relaxed text-foreground/85 whitespace-pre-wrap">
-          {details.errorMessage}
-        </p>
-        {details.errorStack && (
-          <pre className="max-h-72 overflow-auto rounded-md border border-border-hairline bg-surface-inset p-3 text-mono-sm font-mono leading-relaxed text-foreground/80 whitespace-pre">
-            {details.errorStack}
-          </pre>
-        )}
-      </div>
+      <ErrorBody
+        errorType={details.errorType}
+        errorMessage={details.errorMessage}
+        errorStack={details.errorStack}
+      />
     );
   }
   if (details.kind === "blocked") {
