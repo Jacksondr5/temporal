@@ -312,13 +312,7 @@ export function ReviewerEventCard({
         eventTime={eventTime}
         verb={verb}
         summary={reviewerSummaryLine(run.summary ?? null, details)}
-        collapsedExtras={
-          <ErrorBody
-            errorType={details.errorType}
-            errorMessage={details.errorMessage}
-            errorStack={details.errorStack}
-          />
-        }
+        collapsedExtras={renderReviewerStoryLayer(run.matchedFiles, details)}
         ariaLabel={`Specialized reviewer ${run.reviewerId} ${run.status}`}
       />
     );
