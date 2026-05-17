@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Operator UI · Three North Stars</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&family=Inter+Tight:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --page: oklch(0.18 0.045 265);
+        --ink: oklch(0.93 0.014 80);
+        --ink-soft: oklch(0.6 0.02 70);
+        --rule: oklch(0.34 0.035 265);
+        --lapis: oklch(0.74 0.16 245);
+
+        --serif: "Source Serif 4", Georgia, serif;
+        --sans: "Inter Tight", system-ui, sans-serif;
+        --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--page);
+        color: var(--ink);
+        font-family: var(--serif);
+        line-height: 1.5;
+        -webkit-font-smoothing: antialiased;
+      }
+      body::before {
+        content: "";
+        position: fixed;
+        inset: -10% auto auto -10%;
+        width: 50%;
+        height: 60%;
+        background: radial-gradient(
+          ellipse at top left,
+          oklch(0.34 0.06 80 / 0.3) 0%,
+          transparent 60%
+        );
+        pointer-events: none;
+        z-index: 0;
+      }
+      .wrap {
+        position: relative;
+        z-index: 1;
+        max-width: 880px;
+        margin: 0 auto;
+        padding: 64px 48px 120px;
+      }
+      h1 {
+        font-family: var(--serif);
+        font-weight: 500;
+        font-size: 36px;
+        letter-spacing: -0.02em;
+        line-height: 1.1;
+        margin: 0 0 12px;
+      }
+      .lede {
+        font-family: var(--serif);
+        font-size: 17px;
+        line-height: 1.55;
+        color: var(--ink-soft);
+        margin: 0 0 40px;
+        max-width: 60ch;
+      }
+      .options {
+        display: grid;
+        gap: 0;
+        border-top: 1px solid var(--rule);
+      }
+      a.option {
+        display: grid;
+        grid-template-columns: 80px 1fr auto;
+        gap: 32px;
+        padding: 26px 0 28px;
+        text-decoration: none;
+        color: var(--ink);
+        border-bottom: 1px solid var(--rule);
+        transition: padding 200ms ease-out;
+      }
+      a.option:hover {
+        padding-left: 12px;
+      }
+      .num {
+        font-family: var(--mono);
+        font-size: 13px;
+        color: var(--ink-soft);
+        padding-top: 8px;
+      }
+      .num strong {
+        display: block;
+        font-family: var(--serif);
+        font-size: 20px;
+        font-weight: 500;
+        color: var(--ink);
+      }
+      .meta {
+        display: grid;
+        gap: 6px;
+      }
+      .name {
+        font-family: var(--serif);
+        font-weight: 500;
+        font-size: 22px;
+        line-height: 1.2;
+      }
+      .desc {
+        font-family: var(--serif);
+        font-size: 14.5px;
+        color: var(--ink-soft);
+        line-height: 1.5;
+        max-width: 56ch;
+      }
+      .scene {
+        font-family: var(--sans);
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.18em;
+        color: var(--lapis);
+        margin-top: 4px;
+      }
+      .arrow {
+        font-family: var(--serif);
+        font-size: 22px;
+        align-self: center;
+        color: var(--ink-soft);
+      }
+      a.option:hover .arrow {
+        color: var(--ink);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>Three Dark North Stars</h1>
+      <p class="lede">
+        Each link opens a working mock with the same content rendered in the
+        chosen design language. PR rows, detail header, signal stack, reviewer
+        widget, activity stream, commit chip, and palette swatches appear in
+        all three so they can be compared side by side. Live elements are
+        actually animated. All three are dark, but each picks a distinctly
+        different ground temperature and dominant color.
+      </p>
+
+      <div class="options">
+        <a class="option" href="option-1-ledger.html">
+          <div class="num">
+            01<strong>I.</strong>
+          </div>
+          <div class="meta">
+            <div class="name">The Operator's Ledger</div>
+            <div class="desc">
+              Deep indigo canvas, cream ink, lapis-blue live accent. A
+              hand-kept night ledger with marginal annotations in madder-red,
+              postal-stamp status marks, and prose-quality serif reading
+              typography.
+            </div>
+            <div class="scene">indigo · cream · serif · cool dark</div>
+          </div>
+          <div class="arrow">→</div>
+        </a>
+
+        <a class="option" href="option-2-watch-office.html">
+          <div class="num">
+            02<strong>II.</strong>
+          </div>
+          <div class="meta">
+            <div class="name">The Watch Office</div>
+            <div class="desc">
+              Walnut and cream, single brass-amber dominant for everything
+              live. Atmospheric, instrument-flavored, committed to one warm
+              identity. A ship's log under a single lamp.
+            </div>
+            <div class="scene">walnut · brass · slab · warm dark</div>
+          </div>
+          <div class="arrow">→</div>
+        </a>
+
+        <a class="option" href="option-3-machine-room.html">
+          <div class="num">
+            03<strong>III.</strong>
+          </div>
+          <div class="meta">
+            <div class="name">The Machine Room</div>
+            <div class="desc">
+              Warm charcoal, phosphor amber, ops-room status hues. Industrial
+              condensed sans, geometric mono, hard edges. Reads like an
+              instrument console, not a dashboard.
+            </div>
+            <div class="scene">charcoal · phosphor · condensed · industrial</div>
+          </div>
+          <div class="arrow">→</div>
+        </a>
+      </div>
+    </div>
+  </body>
+</html>

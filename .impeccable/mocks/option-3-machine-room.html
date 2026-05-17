@@ -1,0 +1,1517 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Operator UI · The Machine Room</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --charcoal: oklch(0.16 0.012 50);
+        --charcoal-up: oklch(0.2 0.014 55);
+        --charcoal-deep: oklch(0.13 0.01 50);
+        --panel: oklch(0.21 0.014 55);
+        --panel-hover: oklch(0.25 0.016 55);
+        --rule: oklch(0.32 0.014 55);
+        --rule-strong: oklch(0.42 0.016 55);
+
+        --cream: oklch(0.92 0.008 75);
+        --cream-dim: oklch(0.75 0.012 70);
+        --cream-soft: oklch(0.55 0.012 65);
+
+        --phosphor: oklch(0.83 0.16 75); /* dominant */
+        --phosphor-dim: oklch(0.62 0.12 75);
+        --phosphor-bloom: oklch(0.83 0.16 75 / 0.4);
+
+        --scope-green: oklch(0.74 0.16 145);
+        --oxide-red: oklch(0.62 0.2 30);
+        --caution-yellow: oklch(0.85 0.18 95);
+        --station-blue: oklch(0.62 0.12 240);
+        --indigo-fold: oklch(0.55 0.14 280);
+
+        --cond: "IBM Plex Sans Condensed", "Inter", system-ui, sans-serif;
+        --sans: "Inter", system-ui, sans-serif;
+        --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        background: var(--charcoal);
+        color: var(--cream);
+        font-family: var(--mono);
+        font-size: 13px;
+        line-height: 1.5;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      /* faint scanline-style backdrop, very subtle */
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        background:
+          repeating-linear-gradient(
+            0deg,
+            transparent 0,
+            transparent 3px,
+            oklch(0.13 0.01 50 / 0.4) 3px,
+            oklch(0.13 0.01 50 / 0.4) 4px
+          );
+        opacity: 0.25;
+        z-index: 0;
+      }
+
+      .room {
+        position: relative;
+        z-index: 1;
+        max-width: none;
+        margin: 0;
+        padding: 28px 40px 120px;
+      }
+
+      /* ── Top rack: nav + station status ──────────────────────────── */
+      .rack {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        gap: 32px;
+        align-items: center;
+        padding: 14px 18px;
+        background: var(--panel);
+        border: 1px solid var(--rule);
+        border-radius: 0;
+        margin-bottom: 28px;
+      }
+      .rack-brand {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+      .rack-brand .led {
+        width: 12px;
+        height: 12px;
+        background: var(--phosphor);
+        border-radius: 0;
+        box-shadow:
+          0 0 0 1px var(--rule-strong),
+          0 0 10px 2px var(--phosphor-bloom);
+        animation: led-tick 1.4s steps(1) infinite;
+      }
+      @keyframes led-tick {
+        0%,
+        65% {
+          opacity: 1;
+        }
+        66%,
+        100% {
+          opacity: 0.55;
+        }
+      }
+      .rack-brand .name {
+        font-family: var(--cond);
+        font-weight: 700;
+        font-size: 18px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        line-height: 1;
+      }
+      .rack-brand .name small {
+        display: block;
+        font-family: var(--mono);
+        font-weight: 400;
+        font-size: 10.5px;
+        letter-spacing: 0.16em;
+        color: var(--cream-soft);
+        margin-top: 4px;
+        text-transform: uppercase;
+      }
+      .rack-tabs {
+        display: flex;
+        gap: 4px;
+      }
+      .rack-tab {
+        font-family: var(--cond);
+        font-weight: 600;
+        font-size: 12.5px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        padding: 8px 16px;
+        color: var(--cream-dim);
+        cursor: pointer;
+        border: 1px solid var(--rule);
+        border-radius: 0;
+        background: transparent;
+      }
+      .rack-tab.is-active {
+        color: var(--phosphor);
+        border-color: var(--phosphor);
+        background: oklch(0.83 0.16 75 / 0.06);
+      }
+      .station-status {
+        font-family: var(--mono);
+        font-size: 10.5px;
+        text-transform: uppercase;
+        letter-spacing: 0.16em;
+        color: var(--phosphor);
+        text-align: right;
+      }
+      .station-status .clock {
+        display: block;
+        font-size: 16px;
+        font-weight: 500;
+        color: var(--cream);
+        letter-spacing: 0.04em;
+        margin-top: 2px;
+      }
+
+      /* ── Page heading ─────────────────────────────────────────── */
+      .page-head {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        align-items: end;
+        gap: 18px;
+        padding-bottom: 14px;
+        border-bottom: 1px solid var(--rule-strong);
+        margin-bottom: 22px;
+      }
+      .head-title {
+        font-family: var(--cond);
+        font-weight: 700;
+        font-size: 26px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        line-height: 1.05;
+        margin: 0;
+      }
+      .head-title small {
+        display: block;
+        font-family: var(--mono);
+        font-weight: 400;
+        text-transform: uppercase;
+        letter-spacing: 0.18em;
+        color: var(--cream-soft);
+        font-size: 10.5px;
+        margin-bottom: 6px;
+      }
+      .head-title em {
+        color: var(--phosphor);
+        font-style: normal;
+      }
+      .head-counters {
+        display: flex;
+        gap: 22px;
+        align-items: end;
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--cream-soft);
+        text-transform: uppercase;
+        letter-spacing: 0.14em;
+      }
+      .counter .num {
+        font-family: var(--cond);
+        display: block;
+        font-size: 28px;
+        font-weight: 700;
+        line-height: 1;
+        color: var(--cream);
+        letter-spacing: 0;
+      }
+      .counter.is-warn .num {
+        color: var(--caution-yellow);
+      }
+      .counter.is-blocked .num {
+        color: var(--oxide-red);
+      }
+
+      /* ── Filter bar ─────────────────────────────────────────────── */
+      .filters {
+        display: flex;
+        gap: 4px;
+        padding: 4px;
+        background: var(--panel);
+        border: 1px solid var(--rule);
+        margin-bottom: 22px;
+      }
+      .filter {
+        font-family: var(--cond);
+        font-weight: 600;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        padding: 8px 14px;
+        color: var(--cream-dim);
+        cursor: pointer;
+        border-radius: 0;
+      }
+      .filter.is-active {
+        color: var(--charcoal-deep);
+        background: var(--phosphor);
+      }
+      .filter .ct {
+        margin-left: 6px;
+        font-family: var(--mono);
+        font-size: 11px;
+        font-weight: 400;
+      }
+
+      /* ── PR rows: station ledgers ─────────────────────────────── */
+      .station-row {
+        display: grid;
+        grid-template-columns: 64px minmax(0, 1fr) 460px;
+        gap: 0;
+        align-items: stretch;
+        background: var(--panel);
+        border: 1px solid var(--rule);
+        border-top: none;
+        font-family: var(--mono);
+        font-size: 12.5px;
+      }
+      .station-row:first-of-type {
+        border-top: 1px solid var(--rule);
+      }
+      .station-row:hover {
+        background: var(--panel-hover);
+      }
+      .station-row .stamp {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--charcoal-up);
+        border-right: 1px solid var(--rule);
+        padding: 14px 0;
+      }
+      .station-row .led {
+        width: 14px;
+        height: 14px;
+        border-radius: 0;
+      }
+      .led.is-live {
+        background: var(--phosphor);
+        box-shadow: 0 0 0 1px var(--rule-strong), 0 0 12px 2px var(--phosphor-bloom);
+        animation: led-tick 1.4s steps(1) infinite;
+      }
+      .led.is-healthy {
+        background: var(--scope-green);
+        box-shadow:
+          0 0 0 1px var(--rule-strong),
+          0 0 4px 1px oklch(0.74 0.16 145 / 0.35);
+      }
+      .led.is-caution {
+        background: var(--caution-yellow);
+        box-shadow:
+          0 0 0 1px var(--rule-strong),
+          0 0 4px 1px oklch(0.85 0.18 95 / 0.35);
+      }
+      .led.is-blocked {
+        background: var(--oxide-red);
+        box-shadow:
+          0 0 0 1px var(--rule-strong),
+          0 0 4px 1px oklch(0.62 0.20 30 / 0.35);
+      }
+      .led.is-deferred {
+        background: var(--indigo-fold);
+        box-shadow: 0 0 0 1px var(--rule-strong);
+        clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+      }
+
+      .station-row .body {
+        padding: 12px 18px;
+        display: grid;
+        gap: 4px;
+      }
+      .station-row .pr-line {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--cream-soft);
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        display: flex;
+        gap: 12px;
+      }
+      .station-row .pr-line .pr-num {
+        color: var(--phosphor);
+      }
+      .station-row .pr-line .repo {
+        color: var(--cream-dim);
+      }
+      .station-row .subject {
+        font-family: var(--cond);
+        font-weight: 600;
+        font-size: 17px;
+        line-height: 1.3;
+        text-transform: none;
+        color: var(--cream);
+        letter-spacing: 0.005em;
+      }
+      .station-row .state-line {
+        font-family: var(--mono);
+        font-size: 11.5px;
+        color: var(--cream-dim);
+        margin-top: 2px;
+        display: flex;
+        gap: 12px;
+        align-items: baseline;
+      }
+      .state-tag {
+        font-family: var(--cond);
+        font-weight: 700;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.16em;
+      }
+      .state-tag.is-live {
+        color: var(--phosphor);
+      }
+      .state-tag.is-healthy {
+        color: var(--scope-green);
+      }
+      .state-tag.is-caution {
+        color: var(--caution-yellow);
+      }
+      .state-tag.is-blocked {
+        color: var(--oxide-red);
+      }
+      .state-tag.is-deferred {
+        color: var(--indigo-fold);
+      }
+
+      .station-row .telemetry {
+        border-left: 1px solid var(--rule);
+        background: var(--charcoal-up);
+        padding: 10px 16px;
+        display: grid;
+        grid-template-columns: 84px 1fr 84px 1fr;
+        gap: 4px 14px;
+        font-size: 11px;
+        line-height: 1.5;
+        align-content: center;
+      }
+      .telemetry .k {
+        color: var(--cream-soft);
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+      }
+      .telemetry .v {
+        color: var(--cream);
+      }
+      .telemetry .v.live {
+        color: var(--phosphor);
+      }
+      .telemetry .v.warn {
+        color: var(--caution-yellow);
+      }
+      .telemetry .v.bad {
+        color: var(--oxide-red);
+      }
+
+      /* ── Detail station ─────────────────────────────────────────── */
+      .detail {
+        margin-top: 56px;
+      }
+      .detail-rack {
+        background: var(--panel);
+        border: 1px solid var(--rule);
+        padding: 22px 28px 26px;
+        position: relative;
+        margin-bottom: 24px;
+      }
+      .detail-rack::before {
+        content: "STATION 01";
+        position: absolute;
+        top: -10px;
+        left: 18px;
+        background: var(--charcoal);
+        padding: 0 8px;
+        font-family: var(--mono);
+        font-size: 10.5px;
+        text-transform: uppercase;
+        letter-spacing: 0.2em;
+        color: var(--phosphor);
+      }
+      .detail-line {
+        font-family: var(--mono);
+        font-size: 11.5px;
+        color: var(--cream-soft);
+        text-transform: uppercase;
+        letter-spacing: 0.16em;
+        display: flex;
+        gap: 14px;
+        margin-bottom: 6px;
+      }
+      .detail-line .pr-num {
+        color: var(--phosphor);
+      }
+      .detail-title {
+        font-family: var(--cond);
+        font-weight: 700;
+        font-size: 32px;
+        line-height: 1.08;
+        margin: 0 0 18px;
+        color: var(--cream);
+        letter-spacing: 0.005em;
+        max-width: 24ch;
+      }
+
+      .signal-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 0;
+        margin: 12px 0 22px;
+        background: var(--charcoal-up);
+        border: 1px solid var(--rule);
+      }
+      .signal-cell {
+        padding: 14px 16px;
+        border-right: 1px solid var(--rule);
+      }
+      .signal-cell:last-child {
+        border-right: none;
+      }
+      .signal-cell .k {
+        font-family: var(--mono);
+        font-size: 10.5px;
+        color: var(--cream-soft);
+        text-transform: uppercase;
+        letter-spacing: 0.18em;
+        margin-bottom: 6px;
+      }
+      .signal-cell .v {
+        font-family: var(--cond);
+        font-weight: 600;
+        font-size: 16px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        line-height: 1.2;
+      }
+      .signal-cell .v.live {
+        color: var(--phosphor);
+      }
+      .signal-cell .v.warn {
+        color: var(--caution-yellow);
+      }
+      .signal-cell .sub {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--cream-dim);
+        text-transform: none;
+        letter-spacing: 0;
+        margin-top: 4px;
+      }
+
+      .actions {
+        display: flex;
+        gap: 8px;
+      }
+      .btn {
+        font-family: var(--cond);
+        font-weight: 700;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.14em;
+        padding: 10px 22px;
+        border: 1px solid var(--rule-strong);
+        background: transparent;
+        color: var(--cream);
+        cursor: pointer;
+        border-radius: 0;
+      }
+      .btn:hover {
+        border-color: var(--phosphor);
+        color: var(--phosphor);
+      }
+      .btn.is-primary {
+        background: var(--phosphor);
+        color: var(--charcoal-deep);
+        border-color: var(--phosphor);
+      }
+      .btn.is-primary:hover {
+        background: oklch(0.88 0.16 75);
+        color: var(--charcoal-deep);
+        border-color: oklch(0.88 0.16 75);
+      }
+
+      /* ── Detail body: stream + right rail ─────────────────────── */
+      .detail-body {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 380px;
+        gap: 24px;
+        align-items: start;
+      }
+      .right-rail {
+        display: grid;
+        gap: 22px;
+        position: sticky;
+        top: 24px;
+      }
+      .about-pr {
+        background: var(--panel);
+        border: 1px solid var(--rule);
+      }
+      .about-pr .head {
+        padding: 10px 18px;
+        font-family: var(--mono);
+        font-size: 10.5px;
+        text-transform: uppercase;
+        letter-spacing: 0.2em;
+        color: var(--phosphor);
+        background: var(--charcoal-up);
+        border-bottom: 1px solid var(--rule);
+      }
+      .about-row {
+        display: grid;
+        grid-template-columns: 88px 1fr;
+        gap: 14px;
+        padding: 10px 18px;
+        border-top: 1px solid var(--rule);
+        font-family: var(--mono);
+        font-size: 11.5px;
+        line-height: 1.5;
+      }
+      .about-row:first-of-type {
+        border-top: none;
+      }
+      .about-row .k {
+        color: var(--cream-soft);
+        text-transform: uppercase;
+        letter-spacing: 0.14em;
+        font-size: 10.5px;
+        padding-top: 1px;
+      }
+      .about-row .v {
+        color: var(--cream);
+      }
+      .about-row .v.live {
+        color: var(--phosphor);
+      }
+      .about-row .v.warn {
+        color: var(--caution-yellow);
+      }
+      .about-row .v a {
+        color: var(--phosphor);
+        text-decoration: none;
+      }
+      .about-row .v a:hover {
+        text-decoration: underline;
+      }
+
+      /* ── Reviewer rack ──────────────────────────────────────────── */
+      .reviewers {
+        background: var(--panel);
+        border: 1px solid var(--rule);
+        margin-bottom: 0;
+      }
+      .reviewers-head {
+        padding: 10px 18px;
+        border-bottom: 1px solid var(--rule);
+        font-family: var(--mono);
+        font-size: 10.5px;
+        text-transform: uppercase;
+        letter-spacing: 0.2em;
+        color: var(--phosphor);
+        background: var(--charcoal-up);
+      }
+      .rev-row {
+        display: grid;
+        grid-template-columns: 18px 110px 1fr 90px;
+        gap: 14px;
+        align-items: center;
+        padding: 10px 18px;
+        border-top: 1px solid var(--rule);
+      }
+      .rev-row:first-of-type {
+        border-top: none;
+      }
+      .rev-row .led {
+        width: 10px;
+        height: 10px;
+      }
+      .rev-row .name {
+        font-family: var(--cond);
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        font-size: 12.5px;
+        color: var(--cream);
+      }
+      .rev-row .summary {
+        font-family: var(--mono);
+        color: var(--cream-dim);
+        font-size: 12px;
+      }
+      .rev-row .tag {
+        font-family: var(--cond);
+        font-weight: 700;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.16em;
+        text-align: right;
+      }
+      .tag.ok {
+        color: var(--scope-green);
+      }
+      .tag.warn {
+        color: var(--caution-yellow);
+      }
+
+      /* ── Activity stream ─────────────────────────────────────────── */
+      .stream {
+        background: var(--panel);
+        border: 1px solid var(--rule);
+      }
+      .stream-head {
+        padding: 10px 18px;
+        font-family: var(--mono);
+        font-size: 10.5px;
+        text-transform: uppercase;
+        letter-spacing: 0.2em;
+        color: var(--phosphor);
+        border-bottom: 1px solid var(--rule);
+        background: var(--charcoal-up);
+        display: flex;
+        justify-content: space-between;
+      }
+      .stream-head .meta {
+        color: var(--cream-soft);
+      }
+      .event {
+        display: grid;
+        grid-template-columns: 100px 22px 1fr;
+        gap: 14px;
+        padding: 16px 18px 18px;
+        border-top: 1px solid var(--rule);
+        align-items: start;
+      }
+      .event:first-of-type {
+        border-top: none;
+      }
+      .event .ts {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--cream-soft);
+        line-height: 1.4;
+        padding-top: 4px;
+      }
+      .event .ts strong {
+        display: block;
+        color: var(--cream);
+        font-size: 12px;
+        font-weight: 500;
+      }
+      .event .indicator-col {
+        padding-top: 6px;
+        display: flex;
+        justify-content: center;
+      }
+      .event .led {
+        width: 10px;
+        height: 10px;
+      }
+      /* Body itself is uncapped; only actual agent-prose elements
+         (.quote, .reasoning-quote) get the 65–75ch readability cap.
+         Technical content (commit chip, retry list, stack trace) uses
+         the full available width of the stream column. */
+      .event .verb {
+        font-family: var(--cond);
+        font-weight: 700;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.18em;
+        color: var(--phosphor);
+        display: inline-block;
+        margin-bottom: 4px;
+      }
+      .event .headline {
+        font-family: var(--cond);
+        font-weight: 600;
+        font-size: 16px;
+        line-height: 1.3;
+        color: var(--cream);
+        margin: 2px 0 8px;
+        letter-spacing: 0.005em;
+      }
+      .event .quote {
+        font-family: var(--sans);
+        font-size: 13.5px;
+        color: var(--cream-dim);
+        line-height: 1.55;
+        margin: 0 0 6px;
+        padding-left: 12px;
+        border-left: 1px solid var(--phosphor-dim);
+        max-width: 80ch;
+      }
+      .event.error .verb {
+        color: var(--oxide-red);
+      }
+      .event.deferred .verb {
+        color: var(--indigo-fold);
+      }
+      .event.healthy .verb {
+        color: var(--scope-green);
+      }
+      .event .trace {
+        font-family: var(--mono);
+        font-size: 11.5px;
+        color: var(--cream-soft);
+        line-height: 1.6;
+        margin: 0 0 4px;
+      }
+      .event .expand {
+        font-family: var(--mono);
+        font-size: 10.5px;
+        text-transform: uppercase;
+        letter-spacing: 0.16em;
+        color: var(--cream-soft);
+        cursor: pointer;
+        margin-top: 6px;
+        display: inline-block;
+      }
+      .event .expand::before {
+        content: "[ ";
+      }
+      .event .expand::after {
+        content: " ]";
+      }
+
+      /* ── Error story (PRODUCT principle 10) ─────────────────────── */
+      .error-summary {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--cream-dim);
+        line-height: 1.65;
+        margin: 0 0 14px;
+        padding: 10px 14px;
+        background: var(--charcoal-up);
+        border-left: 2px solid var(--oxide-red);
+      }
+      .error-summary code {
+        font-family: var(--mono);
+        color: var(--oxide-red);
+        background: oklch(0.62 0.2 30 / 0.12);
+        padding: 1px 5px;
+      }
+      .error-section {
+        margin: 14px 0 0;
+      }
+      .error-section-head {
+        font-family: var(--cond);
+        font-weight: 700;
+        font-size: 10.5px;
+        text-transform: uppercase;
+        letter-spacing: 0.22em;
+        color: var(--cream-soft);
+        margin-bottom: 6px;
+      }
+      .error-section-head .marker {
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        background: var(--oxide-red);
+        margin-right: 8px;
+        vertical-align: 2px;
+      }
+      .stack-trace {
+        font-family: var(--mono);
+        font-size: 12px;
+        line-height: 1.65;
+        background: var(--charcoal-deep);
+        border: 1px solid var(--rule);
+        border-top: 2px solid var(--oxide-red);
+        padding: 12px 16px;
+        max-height: 432px;
+        overflow-x: hidden;
+        overflow-y: auto;
+        white-space: pre-wrap;
+        word-break: break-word;
+        overflow-wrap: anywhere;
+        color: var(--cream-dim);
+      }
+      .stack-trace .err {
+        color: var(--oxide-red);
+        font-weight: 500;
+      }
+      .stack-trace .frame {
+        color: var(--cream);
+      }
+      .stack-trace .path {
+        color: var(--cream-soft);
+      }
+      .stack-trace .line {
+        color: var(--phosphor);
+      }
+      .stack-trace::-webkit-scrollbar {
+        width: 12px;
+      }
+      .stack-trace::-webkit-scrollbar-track {
+        background: var(--charcoal);
+      }
+      .stack-trace::-webkit-scrollbar-thumb {
+        background: var(--rule-strong);
+      }
+      .retry-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        font-family: var(--mono);
+        font-size: 12px;
+      }
+      .retry-list li {
+        display: grid;
+        grid-template-columns: 84px 80px 1fr;
+        gap: 14px;
+        padding: 6px 0;
+        border-top: 1px solid var(--rule);
+        align-items: baseline;
+      }
+      .retry-list li:first-child {
+        border-top: none;
+      }
+      .retry-list .when {
+        color: var(--cream);
+      }
+      .retry-list .tag {
+        font-family: var(--cond);
+        font-weight: 700;
+        font-size: 10.5px;
+        text-transform: uppercase;
+        letter-spacing: 0.16em;
+        color: var(--cream-soft);
+      }
+      .retry-list .tag.is-halt {
+        color: var(--oxide-red);
+      }
+      .retry-list .tag.is-fail {
+        color: var(--caution-yellow);
+      }
+      .retry-list .detail {
+        color: var(--cream-dim);
+      }
+      .reasoning-quote {
+        font-family: var(--sans);
+        font-size: 14px;
+        line-height: 1.6;
+        color: var(--cream);
+        font-style: italic;
+        margin: 0;
+        padding: 12px 16px;
+        background: var(--charcoal-up);
+        border-left: 2px solid var(--phosphor-dim);
+        max-width: 80ch;
+      }
+
+      /* ── Commit chip ─────────────────────────────────────────────── */
+      .commit-chip {
+        display: grid;
+        grid-template-columns: auto auto 1fr auto;
+        gap: 16px;
+        align-items: center;
+        padding: 12px 16px;
+        margin: 10px 0 8px;
+        background: var(--charcoal-up);
+        border: 1px solid var(--scope-green);
+        border-radius: 0;
+        max-width: 640px;
+      }
+      .commit-chip .tag-l {
+        font-family: var(--cond);
+        font-weight: 700;
+        font-size: 10.5px;
+        text-transform: uppercase;
+        letter-spacing: 0.2em;
+        color: var(--scope-green);
+        white-space: nowrap;
+      }
+      .commit-chip .sha {
+        font-family: var(--mono);
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--phosphor);
+      }
+      .commit-chip .subject {
+        font-family: var(--sans);
+        font-size: 13px;
+        color: var(--cream);
+        line-height: 1.4;
+      }
+      .commit-chip .stats {
+        font-family: var(--mono);
+        font-size: 10.5px;
+        color: var(--cream-soft);
+        white-space: nowrap;
+      }
+
+      /* ── Palette appendix ─────────────────────────────────────────── */
+      .appendix {
+        margin-top: 56px;
+        padding-top: 20px;
+        border-top: 1px solid var(--rule-strong);
+      }
+      .appendix h3 {
+        font-family: var(--cond);
+        font-weight: 700;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.2em;
+        color: var(--phosphor);
+        margin: 0 0 18px;
+      }
+      .swatches {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px 18px;
+      }
+      .swatch {
+        display: grid;
+        grid-template-columns: 56px 1fr;
+        gap: 14px;
+        align-items: stretch;
+        font-family: var(--mono);
+        font-size: 11.5px;
+        line-height: 1.45;
+      }
+      .swatch .chip {
+        height: 56px;
+        border: 1px solid var(--rule);
+        margin: 0;
+        padding: 0;
+        cursor: default;
+      }
+      .swatch .name {
+        font-family: var(--cond);
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        font-size: 12.5px;
+        color: var(--cream);
+      }
+      .swatch .role {
+        color: var(--cream-soft);
+      }
+      .swatch .oklch {
+        font-size: 10.5px;
+        color: var(--cream-soft);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="room">
+      <!-- TOP RACK ─────────────────────────────────────────────────── -->
+      <div class="rack">
+        <div class="rack-brand">
+          <div class="led" aria-hidden="true"></div>
+          <div class="name">
+            Machine Room
+            <small>pr-review · station 01</small>
+          </div>
+        </div>
+        <div class="rack-tabs">
+          <button class="rack-tab is-active">PRs</button>
+          <button class="rack-tab">Policies</button>
+          <button class="rack-tab">Reviewers</button>
+        </div>
+        <div class="station-status">
+          Convex Live
+          <span class="clock">14:32:18</span>
+        </div>
+      </div>
+
+      <!-- HEAD ─────────────────────────────────────────────────────── -->
+      <header class="page-head">
+        <h1 class="head-title">
+          <small>Pull Request Roster · Tuesday 2026-05-05</small>
+          12 OPEN · <em>2 NEED OPERATOR</em>
+        </h1>
+        <div class="head-counters">
+          <div class="counter">
+            <span class="num">12</span>
+            open
+          </div>
+          <div class="counter is-warn">
+            <span class="num">2</span>
+            need attn
+          </div>
+          <div class="counter is-blocked">
+            <span class="num">1</span>
+            blocked
+          </div>
+        </div>
+      </header>
+
+      <!-- FILTERS ──────────────────────────────────────────────────── -->
+      <div class="filters">
+        <button class="filter is-active">
+          Open <span class="ct">012</span>
+        </button>
+        <button class="filter">
+          Need operator <span class="ct">002</span>
+        </button>
+        <button class="filter">
+          Recently merged <span class="ct">008</span>
+        </button>
+        <button class="filter">
+          All <span class="ct">204</span>
+        </button>
+      </div>
+
+      <!-- STATION ROWS ─────────────────────────────────────────────── -->
+      <article class="station-row">
+        <div class="stamp"><div class="led is-live"></div></div>
+        <div class="body">
+          <div class="pr-line">
+            <span class="pr-num">PR-92413</span>
+            <span class="repo">vercel / next.js</span>
+          </div>
+          <div class="subject">feat: streaming RSC into the App Router shell</div>
+          <div class="state-line">
+            <span class="state-tag is-live">LIVE</span>
+            <span style="color: var(--cream-dim)"
+              >reviewing CodeRabbit feedback · 3 of 4 logged</span
+            >
+          </div>
+        </div>
+        <div class="telemetry">
+          <span class="k">Branch</span><span class="v">jackson/streaming-rsc</span>
+          <span class="k">Threads</span><span class="v live">3 / 4 logged</span>
+          <span class="k">Last</span><span class="v live">04:32 working</span>
+          <span class="k">Reviewers</span><span class="v">2 ✓ · 1 ⚠</span>
+        </div>
+      </article>
+
+      <article class="station-row">
+        <div class="stamp"><div class="led is-healthy"></div></div>
+        <div class="body">
+          <div class="pr-line">
+            <span class="pr-num">PR-92402</span>
+            <span class="repo">vercel / next.js</span>
+          </div>
+          <div class="subject">
+            fix(turbopack): resolve dynamic import edge case
+          </div>
+          <div class="state-line">
+            <span class="state-tag is-healthy">SETTLED</span>
+            <span style="color: var(--cream-dim)"
+              >completed 22m ago · 0 open threads</span
+            >
+          </div>
+        </div>
+        <div class="telemetry">
+          <span class="k">Branch</span><span class="v">jackson/turbo-fix-dyn</span>
+          <span class="k">Threads</span><span class="v">0 / 0 open</span>
+          <span class="k">Last</span><span class="v">04:10 settled</span>
+          <span class="k">Reviewers</span><span class="v">3 ✓</span>
+        </div>
+      </article>
+
+      <article class="station-row">
+        <div class="stamp"><div class="led is-caution"></div></div>
+        <div class="body">
+          <div class="pr-line">
+            <span class="pr-num">PR-92388</span>
+            <span class="repo">vercel / examples</span>
+          </div>
+          <div class="subject">add example: tRPC with Vercel Functions</div>
+          <div class="state-line">
+            <span class="state-tag is-caution">DIRTY · RE-RUN</span>
+            <span style="color: var(--cream-dim)"
+              >head moved during sweep · stale 28m</span
+            >
+          </div>
+        </div>
+        <div class="telemetry">
+          <span class="k">Branch</span><span class="v">jackson/trpc-example</span>
+          <span class="k">Threads</span><span class="v warn">2 stale</span>
+          <span class="k">Last</span><span class="v warn">04:02 dirty 28m</span>
+          <span class="k">Reviewers</span><span class="v warn">2 stale on prev</span>
+        </div>
+      </article>
+
+      <article class="station-row">
+        <div class="stamp"><div class="led is-blocked"></div></div>
+        <div class="body">
+          <div class="pr-line">
+            <span class="pr-num">PR-92350</span>
+            <span class="repo">jacksondr5 / orchestrator</span>
+          </div>
+          <div class="subject">refactor: extract reviewer-pack loader</div>
+          <div class="state-line">
+            <span class="state-tag is-blocked">HOLD</span>
+            <span style="color: var(--cream-dim)"
+              >GitError ‘invalid credentials’ · 3 retries</span
+            >
+          </div>
+        </div>
+        <div class="telemetry">
+          <span class="k">Branch</span><span class="v">jackson/reviewer-pack</span>
+          <span class="k">Threads</span><span class="v">— blocked —</span>
+          <span class="k">Last</span><span class="v bad">held 5h 45m</span>
+          <span class="k">Reviewers</span><span class="v">— blocked —</span>
+        </div>
+      </article>
+
+      <article class="station-row">
+        <div class="stamp"><div class="led is-deferred"></div></div>
+        <div class="body">
+          <div class="pr-line">
+            <span class="pr-num">PR-92301</span>
+            <span class="repo">jacksondr5 / orchestrator</span>
+          </div>
+          <div class="subject">chore: bump temporal-sdk to 1.13</div>
+          <div class="state-line">
+            <span class="state-tag is-deferred">HANDED OFF</span>
+            <span style="color: var(--cream-dim)"
+              >to ENG-2241 · scope decision logged</span
+            >
+          </div>
+        </div>
+        <div class="telemetry">
+          <span class="k">Branch</span><span class="v">renovate/temporal-sdk</span>
+          <span class="k">Threads</span><span class="v">handed off</span>
+          <span class="k">Last</span><span class="v">1d 4h ago</span>
+          <span class="k">Reviewers</span><span class="v">n/a</span>
+        </div>
+      </article>
+
+      <!-- DETAIL ─────────────────────────────────────────────────── -->
+      <section class="detail">
+        <div class="detail-rack">
+          <div class="detail-line">
+            <span class="pr-num">PR-92413</span>
+            <span style="color: var(--cream-dim)">vercel / next.js</span>
+            <span style="color: var(--cream-soft)"
+              >jackson/streaming-rsc · 7c2f4e1a</span
+            >
+          </div>
+          <h2 class="detail-title">feat: streaming RSC into the App Router shell</h2>
+
+          <div class="signal-grid">
+            <div class="signal-cell">
+              <div class="k">State</div>
+              <div class="v live">⬤ Live</div>
+              <div class="sub">reviewing CodeRabbit feedback</div>
+            </div>
+            <div class="signal-cell">
+              <div class="k">Reconcile</div>
+              <div class="v warn">▲ Re-run pending</div>
+              <div class="sub">dirty since 14:18</div>
+            </div>
+            <div class="signal-cell">
+              <div class="k">Last entry</div>
+              <div class="v">12s ago</div>
+              <div class="sub">+2/4 threads · 1 commit pushed</div>
+            </div>
+            <div class="signal-cell">
+              <div class="k">Reviewers</div>
+              <div class="v warn">2 ✓ · 1 ⚠</div>
+              <div class="sub">a11y · 2 findings on this SHA</div>
+            </div>
+          </div>
+
+          <div class="actions">
+            <button class="btn is-primary">Re-evaluate now</button>
+            <a
+              class="btn"
+              href="option-3-machine-room-inspect.html"
+              style="text-decoration: none; display: inline-flex; align-items: center"
+              >Inspect →</a
+            >
+          </div>
+        </div>
+
+        <div class="detail-body">
+          <!-- Stream (left column, fills available width) -->
+          <div class="stream">
+          <div class="stream-head">
+            <span>Activity Trace · STATION 01</span>
+            <span class="meta">25 events · scrolling oldest below</span>
+          </div>
+
+          <article class="event">
+            <div class="ts"><strong>14:32:08</strong>4m ago</div>
+            <div class="indicator-col"><div class="led is-live"></div></div>
+            <div class="body">
+              <span class="verb">→ Working</span>
+              <h4 class="headline">Fixing failing checks</h4>
+              <p class="quote">
+                ESLint reported three errors in
+                apps/web/components/event-cards.tsx, all unused-imports
+                left over from the activity stream split. Removing them is
+                safe and shouldn’t affect runtime behavior.
+              </p>
+              <span class="expand">expand reasoning</span>
+            </div>
+          </article>
+
+          <article class="event healthy">
+            <div class="ts"><strong>14:14:52</strong>22m ago</div>
+            <div class="indicator-col"><div class="led is-healthy"></div></div>
+            <div class="body">
+              <span class="verb">✓ Reviewed</span>
+              <h4 class="headline">
+                Reviewed CodeRabbit feedback · fixed 3 of 4 threads
+              </h4>
+              <div class="commit-chip">
+                <span class="tag-l">▲ Commit</span>
+                <span class="sha">7c2f4e1a</span>
+                <span class="subject"
+                  >fix(rsc): replace manual debounce with useDeferredValue per
+                  CodeRabbit guidance</span
+                >
+                <span class="stats">+12 −4 · 3 files</span>
+              </div>
+              <span class="expand">expand reasoning</span>
+            </div>
+          </article>
+
+          <article class="event deferred">
+            <div class="ts"><strong>14:10:02</strong>26m ago</div>
+            <div class="indicator-col"><div class="led is-deferred"></div></div>
+            <div class="body">
+              <span class="verb">↻ Handed off</span>
+              <h4 class="headline">Deferred to Linear: ENG-2241</h4>
+              <p class="quote">
+                Refactor of the legacy useDebounce hook is out of scope for
+                this PR. Filing follow-up so it’s not lost.
+              </p>
+            </div>
+          </article>
+
+          <article class="event error">
+            <div class="ts">
+              <strong>14:01:18</strong>35m ago<br />
+              <span style="color: var(--oxide-red); font-size: 10px; text-transform: uppercase; letter-spacing: 0.16em">held 35m</span>
+            </div>
+            <div class="indicator-col"><div class="led is-blocked"></div></div>
+            <div class="body">
+              <span class="verb">✕ Held</span>
+              <h4 class="headline">Auth token expired refreshing workspace</h4>
+
+              <p class="error-summary">
+                3 retries, all returned <code>GitError 'invalid credentials'</code>.
+                Workflow paused, awaiting operator. Phase
+                <code>fixing_checks</code> · activity
+                <code>refreshWorkspace</code>.
+              </p>
+
+              <div class="error-section">
+                <div class="error-section-head">
+                  <span class="marker"></span>Agent's last reasoning
+                </div>
+                <p class="reasoning-quote">
+                  I tried to refresh the workspace by running
+                  <span style="font-family: var(--mono); font-style: normal; color: var(--phosphor)">git fetch origin pull/92350/head</span>
+                  on the PR branch. The remote returned 401 Unauthorized,
+                  which means my GITHUB_TOKEN env var is either missing or
+                  expired. Halting here and flagging to the operator. I
+                  cannot continue without intervention; further retries
+                  will only burn rate-limit.
+                </p>
+              </div>
+
+              <div class="error-section">
+                <div class="error-section-head">
+                  <span class="marker"></span>Stack trace · GitError
+                </div>
+<pre class="stack-trace"><span class="err">GitError: invalid credentials (HTTP 401)</span>
+    response: { status: 401, body: 'Bad credentials' }
+    at <span class="frame">authenticatedFetch</span> (<span class="path">apps/orchestrator/integrations/github/fetch.ts</span>:<span class="line">87</span>)
+    at <span class="frame">resolveRemote</span> (<span class="path">apps/orchestrator/activities/refresh-workspace.ts</span>:<span class="line">142</span>)
+    at <span class="frame">refreshWorkspace</span> (<span class="path">apps/orchestrator/activities/refresh-workspace.ts</span>:<span class="line">42</span>)
+    at <span class="frame">async runActivity</span> (<span class="path">node_modules/@temporalio/worker/lib/activities.ts</span>:<span class="line">212</span>)
+    at <span class="frame">async ActivityScheduler.run</span> (<span class="path">node_modules/@temporalio/worker/lib/scheduler.ts</span>:<span class="line">98</span>)
+    at <span class="frame">async processWorkflowTask</span> (<span class="path">node_modules/@temporalio/worker/lib/worker.ts</span>:<span class="line">1942</span>)
+
+  Caused by: <span class="err">FetchError: HTTP 401 Unauthorized</span>
+    body: 'Bad credentials'
+    headers: { 'x-github-request-id': 'F4A2:2BC74:9F73E1', ... }
+    at <span class="frame">parseResponse</span> (<span class="path">node_modules/octokit/lib/parse.ts</span>:<span class="line">42</span>)
+    at <span class="frame">async Octokit.request</span> (<span class="path">node_modules/octokit/lib/index.ts</span>:<span class="line">213</span>)
+    at <span class="frame">authenticatedFetch</span> (<span class="path">apps/orchestrator/integrations/github/fetch.ts</span>:<span class="line">85</span>)
+
+  PR context:
+    repoSlug:    jacksondr5/orchestrator
+    prNumber:    #92350
+    branch:      jackson/reviewer-pack-refactor
+    targetSha:   7a3f1b29c1
+    workflowId:  pr-92350-fix-checks-2026-05-05
+    runId:       a8f3-2c14-d709
+    activityId:  refresh-workspace-3
+    attempt:     4 of max 4
+    nonRetryable: false (env-level credential issue)</pre>
+              </div>
+
+              <div class="error-section">
+                <div class="error-section-head">
+                  <span class="marker"></span>Retry history · 4 attempts
+                </div>
+                <ol class="retry-list">
+                  <li>
+                    <span class="when">14:01:18</span>
+                    <span class="tag is-halt">HALT</span>
+                    <span class="detail">attempt 4 of 4 → GitError 401 · gave up</span>
+                  </li>
+                  <li>
+                    <span class="when">14:00:42</span>
+                    <span class="tag is-fail">RETRY</span>
+                    <span class="detail">attempt 3 → GitError 401 · same error</span>
+                  </li>
+                  <li>
+                    <span class="when">14:00:08</span>
+                    <span class="tag is-fail">RETRY</span>
+                    <span class="detail">attempt 2 → GitError 401 · same error</span>
+                  </li>
+                  <li>
+                    <span class="when">13:59:12</span>
+                    <span class="tag is-fail">FAIL</span>
+                    <span class="detail">attempt 1 → GitError 401 · initial</span>
+                  </li>
+                </ol>
+              </div>
+            </div>
+          </article>
+          </div>
+          <!-- /stream -->
+
+          <!-- Right rail: pinned reviewer + about panels -->
+          <aside class="right-rail">
+            <div class="reviewers">
+              <div class="reviewers-head">Reviewers · this SHA</div>
+              <div class="rev-row">
+                <div class="led is-healthy"></div>
+                <div class="name">security</div>
+                <div class="summary">no findings</div>
+                <div class="tag ok">CLEAR</div>
+              </div>
+              <div class="rev-row">
+                <div class="led is-healthy"></div>
+                <div class="name">perf</div>
+                <div class="summary">no findings</div>
+                <div class="tag ok">CLEAR</div>
+              </div>
+              <div class="rev-row">
+                <div class="led is-caution"></div>
+                <div class="name">a11y</div>
+                <div class="summary">2 findings · focus-management gaps</div>
+                <div class="tag warn">SEE LOG</div>
+              </div>
+            </div>
+
+            <div class="about-pr">
+              <div class="head">About this PR</div>
+              <div class="about-row">
+                <span class="k">Branch</span>
+                <span class="v">jackson/streaming-rsc</span>
+              </div>
+              <div class="about-row">
+                <span class="k">Author</span>
+                <span class="v">jackson</span>
+              </div>
+              <div class="about-row">
+                <span class="k">Opened</span>
+                <span class="v">3 days ago · 2026-05-02</span>
+              </div>
+              <div class="about-row">
+                <span class="k">Last sync</span>
+                <span class="v live">14s ago</span>
+              </div>
+              <div class="about-row">
+                <span class="k">Threads</span>
+                <span class="v warn">3 of 4 logged · 1 deferred</span>
+              </div>
+              <div class="about-row">
+                <span class="k">On GitHub</span>
+                <span class="v"><a href="#">vercel/next.js · #92413 ↗</a></span>
+              </div>
+              <div class="about-row">
+                <span class="k">Policy</span>
+                <span class="v">vercel/next.js · v6 · 12 checks</span>
+              </div>
+            </div>
+          </aside>
+        </div>
+        <!-- /detail-body -->
+      </section>
+
+      <!-- APPENDIX ─────────────────────────────────────────────────── -->
+      <section class="appendix">
+        <h3>Palette · Machine Room</h3>
+        <div class="swatches">
+          <div class="swatch">
+            <div class="chip" style="background: var(--charcoal)"></div>
+            <div>
+              <div class="name">Charcoal</div>
+              <div class="role">canvas</div>
+              <div class="oklch">oklch(0.16 0.012 50)</div>
+            </div>
+          </div>
+          <div class="swatch">
+            <div class="chip" style="background: var(--phosphor)"></div>
+            <div>
+              <div class="name">Phosphor</div>
+              <div class="role">live · dominant</div>
+              <div class="oklch">oklch(0.83 0.16 75)</div>
+            </div>
+          </div>
+          <div class="swatch">
+            <div class="chip" style="background: var(--scope-green)"></div>
+            <div>
+              <div class="name">Scope Green</div>
+              <div class="role">healthy</div>
+              <div class="oklch">oklch(0.74 0.16 145)</div>
+            </div>
+          </div>
+          <div class="swatch">
+            <div class="chip" style="background: var(--caution-yellow)"></div>
+            <div>
+              <div class="name">Caution Yellow</div>
+              <div class="role">dirty / re-run</div>
+              <div class="oklch">oklch(0.85 0.18 95)</div>
+            </div>
+          </div>
+          <div class="swatch">
+            <div class="chip" style="background: var(--oxide-red)"></div>
+            <div>
+              <div class="name">Oxide Red</div>
+              <div class="role">blocked</div>
+              <div class="oklch">oklch(0.62 0.20 30)</div>
+            </div>
+          </div>
+          <div class="swatch">
+            <div class="chip" style="background: var(--indigo-fold)"></div>
+            <div>
+              <div class="name">Indigo Fold</div>
+              <div class="role">deferred / handoff</div>
+              <div class="oklch">oklch(0.55 0.14 280)</div>
+            </div>
+          </div>
+          <div class="swatch">
+            <div class="chip" style="background: var(--station-blue)"></div>
+            <div>
+              <div class="name">Station Blue</div>
+              <div class="role">reviewer events</div>
+              <div class="oklch">oklch(0.62 0.12 240)</div>
+            </div>
+          </div>
+          <div class="swatch">
+            <div class="chip" style="background: var(--panel)"></div>
+            <div>
+              <div class="name">Panel</div>
+              <div class="role">surface</div>
+              <div class="oklch">oklch(0.21 0.014 55)</div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </body>
+</html>

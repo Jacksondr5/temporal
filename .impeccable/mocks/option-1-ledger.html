@@ -1,0 +1,1169 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Operator UI · The Operator's Ledger</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,300;8..60,400;8..60,500;8..60,600;8..60,700&family=Inter+Tight:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        /* Deep indigo "night reading room" canvas. Cool, opposite of
+           Watch Office's warm walnut. */
+        --page: oklch(0.18 0.045 265);
+        --page-tint: oklch(0.22 0.04 265);
+        --page-inset: oklch(0.14 0.04 265);
+        --page-up: oklch(0.26 0.045 265);
+
+        /* Cream ink — warm against the cool ground. */
+        --ink: oklch(0.93 0.014 80);
+        --ink-mid: oklch(0.78 0.016 75);
+        --ink-soft: oklch(0.6 0.02 70);
+
+        /* Cream rules between sections; quieter than ink. */
+        --rule: oklch(0.34 0.035 265);
+        --rule-strong: oklch(0.5 0.04 265);
+
+        /* Ink colors. Live is a luminous fountain-pen lapis;
+           the rest are fountain inks that read on indigo. */
+        --lapis: oklch(0.74 0.16 245); /* live */
+        --lapis-bloom: oklch(0.74 0.16 245 / 0.34);
+        --settled-sage: oklch(0.76 0.08 150); /* healthy */
+        --madder: oklch(0.72 0.16 35); /* caution / margin notes */
+        --garnet: oklch(0.6 0.2 22); /* blocked */
+        --heather: oklch(0.68 0.1 295); /* deferred / handoff */
+
+        --serif: "Source Serif 4", "Source Serif Pro", Georgia, serif;
+        --sans: "Inter Tight", "Inter", system-ui, sans-serif;
+        --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        background: var(--page);
+        color: var(--ink);
+        font-family: var(--serif);
+        font-size: 16px;
+        line-height: 1.5;
+        font-feature-settings:
+          "ss01" on,
+          "onum" on;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      /* Soft warm halo from a "reading lamp" off-page, very subtle.
+         Keeps the cool indigo from feeling clinical. */
+      body::before {
+        content: "";
+        position: fixed;
+        inset: -10% auto auto -10%;
+        width: 50%;
+        height: 60%;
+        background: radial-gradient(
+          ellipse at top left,
+          oklch(0.34 0.06 80 / 0.32) 0%,
+          oklch(0.28 0.05 90 / 0.18) 30%,
+          transparent 60%
+        );
+        pointer-events: none;
+        z-index: 0;
+      }
+
+      .page {
+        position: relative;
+        z-index: 1;
+        max-width: 880px;
+        margin: 0 auto;
+        padding: 56px 48px 120px;
+      }
+      /* The bound-book gutter rule on the inside edge. */
+      .page::before {
+        content: "";
+        position: absolute;
+        inset: 0 auto 0 32px;
+        width: 1px;
+        background: var(--rule);
+        z-index: 1;
+      }
+
+      /* ── Nav ─────────────────────────────────────────────────────── */
+      .nav {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        padding-bottom: 24px;
+        border-bottom: 1px solid var(--rule-strong);
+        margin-bottom: 28px;
+      }
+      .logotype {
+        font-family: var(--serif);
+        font-weight: 600;
+        font-size: 20px;
+        letter-spacing: -0.01em;
+        color: var(--ink);
+      }
+      .logotype small {
+        font-family: var(--sans);
+        font-size: 11px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.14em;
+        color: var(--ink-soft);
+        margin-left: 12px;
+      }
+      .nav-links {
+        display: flex;
+        gap: 28px;
+        font-family: var(--sans);
+        font-size: 13px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+      }
+      .nav-links a {
+        color: var(--ink-mid);
+        text-decoration: none;
+        padding-bottom: 2px;
+        border-bottom: 1px solid transparent;
+      }
+      .nav-links a.is-active {
+        color: var(--ink);
+        border-color: var(--ink);
+      }
+      .connection {
+        font-family: var(--sans);
+        font-size: 11px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.14em;
+        color: var(--lapis);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .connection::before {
+        content: "";
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--lapis);
+        box-shadow: 0 0 0 3px var(--lapis-bloom);
+        animation: ledger-soft-pulse 4s ease-in-out infinite;
+      }
+      @keyframes ledger-soft-pulse {
+        0%,
+        100% {
+          box-shadow: 0 0 0 3px var(--lapis-bloom);
+        }
+        50% {
+          box-shadow: 0 0 0 7px oklch(0.74 0.16 245 / 0.08);
+        }
+      }
+
+      /* ── Section header ──────────────────────────────────────────── */
+      .section-eyebrow {
+        font-family: var(--sans);
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.18em;
+        color: var(--ink-soft);
+      }
+      h1.page-title {
+        font-family: var(--serif);
+        font-weight: 500;
+        font-size: 30px;
+        line-height: 1.18;
+        letter-spacing: -0.015em;
+        margin: 6px 0 4px;
+        color: var(--ink);
+      }
+      .page-meta {
+        font-family: var(--sans);
+        font-size: 13px;
+        color: var(--ink-soft);
+      }
+      .page-meta strong {
+        color: var(--ink);
+        font-weight: 600;
+      }
+
+      /* ── Filter chips: ledger tabs ───────────────────────────────── */
+      .chips {
+        display: flex;
+        gap: 0;
+        margin-top: 28px;
+        margin-bottom: 24px;
+        border-bottom: 1px solid var(--rule);
+      }
+      .chip {
+        font-family: var(--sans);
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        color: var(--ink-soft);
+        padding: 10px 16px 10px 0;
+        margin-right: 28px;
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        margin-bottom: -1px;
+      }
+      .chip.is-active {
+        color: var(--ink);
+        border-color: var(--ink);
+      }
+      .chip .count {
+        margin-left: 6px;
+        font-family: var(--mono);
+        font-size: 12px;
+        font-weight: 400;
+        color: var(--ink-soft);
+        text-transform: none;
+        letter-spacing: 0;
+      }
+
+      /* ── Entries: PR rows as ledger entries ──────────────────────── */
+      .entry {
+        display: grid;
+        grid-template-columns: 64px 1fr auto;
+        gap: 24px;
+        padding: 22px 0;
+        border-bottom: 1px solid var(--rule);
+        position: relative;
+      }
+      .entry:hover {
+        background: var(--page-tint);
+      }
+      .entry-no {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--ink-soft);
+        padding-top: 6px;
+      }
+      .entry-no strong {
+        display: block;
+        color: var(--ink);
+        font-weight: 500;
+        font-size: 14px;
+      }
+      .entry-body .repo {
+        font-family: var(--sans);
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--ink-soft);
+      }
+      .entry-body .title {
+        font-family: var(--serif);
+        font-size: 19px;
+        font-weight: 500;
+        letter-spacing: -0.005em;
+        line-height: 1.3;
+        margin: 2px 0 8px;
+        color: var(--ink);
+      }
+      .entry-status {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-family: var(--sans);
+        font-size: 13.5px;
+      }
+      .entry-meta {
+        font-family: var(--sans);
+        font-size: 12px;
+        color: var(--ink-soft);
+        margin-top: 6px;
+      }
+      .entry-meta .branch {
+        font-family: var(--mono);
+        color: var(--ink-mid);
+      }
+
+      /* ── Stamp: status mark as a postal/ledger stamp ─────────────── */
+      .stamp {
+        align-self: start;
+        width: 64px;
+        height: 64px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+      }
+      .stamp-ring {
+        position: absolute;
+        inset: 0;
+        border: 1.5px solid currentColor;
+        border-radius: 50%;
+        opacity: 0.85;
+      }
+      .stamp-ring::after {
+        content: "";
+        position: absolute;
+        inset: 4px;
+        border: 1px dashed currentColor;
+        border-radius: 50%;
+        opacity: 0.55;
+      }
+      .stamp-glyph {
+        font-family: var(--sans);
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: currentColor;
+        text-align: center;
+        line-height: 1.05;
+      }
+      .stamp-glyph .symbol {
+        display: block;
+        font-family: var(--serif);
+        font-size: 22px;
+        font-weight: 400;
+        line-height: 1;
+        margin-bottom: 2px;
+        letter-spacing: 0;
+      }
+      .stamp.is-live {
+        color: var(--lapis);
+        transform: rotate(-2deg);
+      }
+      .stamp.is-live::before {
+        content: "";
+        position: absolute;
+        inset: -8px;
+        border-radius: 50%;
+        background: var(--lapis-bloom);
+        filter: blur(10px);
+        animation: ledger-ink-bloom 2.4s ease-in-out infinite;
+        z-index: -1;
+      }
+      @keyframes ledger-ink-bloom {
+        0%,
+        100% {
+          opacity: 0.55;
+          transform: scale(0.9);
+        }
+        50% {
+          opacity: 1;
+          transform: scale(1.1);
+        }
+      }
+      .stamp.is-healthy {
+        color: var(--settled-sage);
+        transform: rotate(1.2deg);
+      }
+      .stamp.is-caution {
+        color: var(--madder);
+        transform: rotate(-1.5deg);
+      }
+      .stamp.is-blocked {
+        color: var(--garnet);
+        transform: rotate(2deg);
+      }
+      .stamp.is-deferred {
+        color: var(--heather);
+        transform: rotate(-1deg);
+      }
+      .stamp.is-blocked .stamp-ring,
+      .stamp.is-caution .stamp-ring {
+        border-style: solid;
+      }
+
+      .status-label {
+        font-family: var(--sans);
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        font-size: 11.5px;
+      }
+      .status-label.is-live {
+        color: var(--lapis);
+      }
+      .status-label.is-healthy {
+        color: var(--settled-sage);
+      }
+      .status-label.is-caution {
+        color: var(--madder);
+      }
+      .status-label.is-blocked {
+        color: var(--garnet);
+      }
+      .status-label.is-deferred {
+        color: var(--heather);
+      }
+
+      .entry-side {
+        text-align: right;
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--ink-soft);
+        line-height: 1.4;
+      }
+
+      /* Margin annotation: madder-red marginalia in the gutter */
+      .margin-note {
+        position: absolute;
+        left: -188px;
+        top: 24px;
+        width: 152px;
+        font-family: var(--serif);
+        font-style: italic;
+        font-size: 12.5px;
+        color: var(--madder);
+        line-height: 1.35;
+        text-align: right;
+      }
+      .margin-note::after {
+        content: "";
+        position: absolute;
+        top: 8px;
+        right: -16px;
+        width: 12px;
+        height: 1px;
+        background: var(--madder);
+        opacity: 0.6;
+      }
+
+      /* ── PR Detail block ─────────────────────────────────────────── */
+      .detail {
+        margin-top: 80px;
+        padding-top: 36px;
+        border-top: 2px solid var(--rule-strong);
+      }
+      .detail-eyebrow {
+        font-family: var(--sans);
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.18em;
+        color: var(--ink-soft);
+      }
+      .detail-title {
+        font-family: var(--serif);
+        font-weight: 500;
+        font-size: 38px;
+        line-height: 1.12;
+        letter-spacing: -0.02em;
+        margin: 8px 0 24px;
+        max-width: 22ch;
+        color: var(--ink);
+      }
+
+      .signal-stack {
+        display: grid;
+        grid-template-columns: 16px 1fr;
+        gap: 8px 18px;
+        margin: 24px 0 32px;
+        font-family: var(--sans);
+        font-size: 14px;
+      }
+      .signal-stack .glyph {
+        font-family: var(--serif);
+        font-size: 18px;
+        line-height: 1;
+        padding-top: 2px;
+      }
+      .signal-stack .signal-row {
+        line-height: 1.45;
+      }
+      .signal-stack .signal-row strong {
+        font-weight: 600;
+      }
+      .signal-stack .signal-row em {
+        font-style: italic;
+        color: var(--ink-soft);
+      }
+      .signal-stack .glyph.is-live {
+        color: var(--lapis);
+      }
+      .signal-stack .glyph.is-caution {
+        color: var(--madder);
+      }
+
+      .actions {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 36px;
+      }
+      .btn {
+        font-family: var(--sans);
+        font-weight: 600;
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        padding: 10px 20px;
+        border: 1.5px solid var(--ink);
+        background: transparent;
+        color: var(--ink);
+        cursor: pointer;
+        border-radius: 0;
+        transition: background 120ms ease-out;
+      }
+      .btn:hover {
+        background: var(--ink);
+        color: var(--page);
+      }
+      .btn.is-primary {
+        background: var(--ink);
+        color: var(--page);
+      }
+      .btn.is-primary:hover {
+        background: var(--lapis);
+        border-color: var(--lapis);
+        color: var(--page-inset);
+      }
+      .btn.is-ghost {
+        border-color: var(--rule-strong);
+        color: var(--ink-mid);
+      }
+
+      /* ── Reviewer summary widget ─────────────────────────────────── */
+      .reviewers {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 0;
+        margin-bottom: 32px;
+        padding: 0 16px;
+        background: var(--page-tint);
+      }
+      .reviewers h3 {
+        font-family: var(--sans);
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.18em;
+        color: var(--ink-soft);
+        margin: 18px 0 12px;
+      }
+      .reviewer-row {
+        display: grid;
+        grid-template-columns: 18px 110px 1fr;
+        align-items: center;
+        gap: 14px;
+        padding: 10px 0;
+        font-family: var(--sans);
+        font-size: 13.5px;
+        border-top: 1px solid var(--rule);
+      }
+      .reviewer-row:last-child {
+        padding-bottom: 18px;
+      }
+      .reviewer-row .marker {
+        width: 10px;
+        height: 10px;
+        border-radius: 0;
+        background: currentColor;
+        margin-left: 4px;
+      }
+      .reviewer-row.ok {
+        color: var(--settled-sage);
+      }
+      .reviewer-row.warn {
+        color: var(--madder);
+      }
+      .reviewer-row .name {
+        color: var(--ink);
+        font-weight: 600;
+      }
+      .reviewer-row .summary {
+        color: var(--ink-mid);
+      }
+
+      /* ── Activity stream ────────────────────────────────────────── */
+      .stream {
+        position: relative;
+        padding-left: 32px;
+      }
+      .stream::before {
+        content: "";
+        position: absolute;
+        top: 8px;
+        bottom: 24px;
+        left: 5px;
+        width: 1px;
+        background: var(--rule-strong);
+      }
+      .event {
+        position: relative;
+        padding: 14px 0 26px;
+      }
+      .event::before {
+        content: "";
+        position: absolute;
+        left: -32px;
+        top: 22px;
+        width: 11px;
+        height: 11px;
+        border-radius: 50%;
+        background: var(--page);
+        border: 1.5px solid currentColor;
+      }
+      .event.is-live::before {
+        background: currentColor;
+        box-shadow: 0 0 0 5px var(--lapis-bloom);
+        animation: ledger-ink-bloom 2.4s ease-in-out infinite;
+      }
+      .event.live {
+        color: var(--lapis);
+      }
+      .event.healthy {
+        color: var(--settled-sage);
+      }
+      .event.error {
+        color: var(--garnet);
+      }
+      .event.deferred {
+        color: var(--heather);
+      }
+      .event.reviewer {
+        color: var(--madder);
+      }
+      .event-line {
+        display: flex;
+        gap: 12px;
+        align-items: baseline;
+        font-family: var(--sans);
+        font-size: 13px;
+        color: var(--ink-soft);
+      }
+      .event-line .when {
+        font-family: var(--mono);
+        font-size: 12.5px;
+        min-width: 76px;
+      }
+      .event-line .verb {
+        font-family: var(--sans);
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        font-size: 11.5px;
+        color: currentColor;
+      }
+      .event-headline {
+        margin: 6px 0 8px;
+        font-family: var(--serif);
+        font-size: 18px;
+        line-height: 1.32;
+        color: var(--ink);
+        font-weight: 500;
+      }
+      .event-quote {
+        font-family: var(--serif);
+        font-style: italic;
+        color: var(--ink-mid);
+        margin: 0 0 10px;
+        font-size: 15px;
+        line-height: 1.5;
+        max-width: 62ch;
+      }
+      .event-trace {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--ink-soft);
+      }
+      .expand {
+        display: inline-block;
+        font-family: var(--sans);
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--ink-mid);
+        margin-top: 6px;
+        cursor: pointer;
+      }
+      .expand::before {
+        content: "▾  ";
+      }
+
+      /* ── Commit chip: ledger entry within an entry ───────────────── */
+      .commit-chip {
+        display: grid;
+        grid-template-columns: 22px 1fr auto;
+        gap: 12px;
+        align-items: baseline;
+        padding: 12px 14px 14px;
+        margin: 12px 0 8px;
+        background: var(--page-inset);
+        border: 1px solid var(--rule);
+        border-left: 3px double var(--settled-sage);
+        max-width: 600px;
+      }
+      .commit-chip .glyph {
+        font-family: var(--serif);
+        font-size: 17px;
+        color: var(--settled-sage);
+        line-height: 1;
+      }
+      .commit-chip .sha {
+        font-family: var(--mono);
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--ink);
+        margin-right: 10px;
+      }
+      .commit-chip .label {
+        font-family: var(--sans);
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        color: var(--settled-sage);
+        margin-right: 8px;
+      }
+      .commit-chip .subject {
+        display: block;
+        margin-top: 4px;
+        font-family: var(--serif);
+        font-size: 14.5px;
+        line-height: 1.4;
+        color: var(--ink);
+        font-style: italic;
+      }
+      .commit-chip .arrow {
+        color: var(--ink-soft);
+        font-family: var(--mono);
+      }
+
+      /* ── Palette appendix ─────────────────────────────────────────── */
+      .appendix {
+        margin-top: 80px;
+        padding-top: 28px;
+        border-top: 2px solid var(--rule-strong);
+      }
+      .appendix h3 {
+        font-family: var(--sans);
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.18em;
+        color: var(--ink-soft);
+        margin: 0 0 16px;
+      }
+      .swatches {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px 24px;
+      }
+      .swatch {
+        display: grid;
+        grid-template-columns: 56px 1fr;
+        gap: 14px;
+        align-items: stretch;
+        font-family: var(--sans);
+        font-size: 12.5px;
+        line-height: 1.45;
+      }
+      .swatch .chip {
+        height: 56px;
+        border: 1px solid var(--rule);
+        margin: 0;
+        padding: 0;
+        cursor: default;
+      }
+      .swatch .name {
+        font-weight: 600;
+        color: var(--ink);
+      }
+      .swatch .role {
+        color: var(--ink-soft);
+      }
+      .swatch .oklch {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--ink-soft);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <!-- NAV ─────────────────────────────────────────────────────── -->
+      <nav class="nav">
+        <div class="logotype">
+          Operator's Ledger
+          <small>vol. III · pr-review</small>
+        </div>
+        <div class="nav-links">
+          <a href="#" class="is-active">PRs</a>
+          <a href="#">Policies</a>
+          <a href="#">Reviewers</a>
+        </div>
+        <div class="connection">Convex live</div>
+      </nav>
+
+      <!-- HOME ─────────────────────────────────────────────────────── -->
+      <header>
+        <div class="section-eyebrow">Pull Requests</div>
+        <h1 class="page-title">12 open · 2 need attention</h1>
+        <div class="page-meta">
+          <strong>Tuesday, May 5</strong> · last refresh 14s ago · sorted by
+          repo, then activity
+        </div>
+      </header>
+
+      <div class="chips">
+        <div class="chip is-active">
+          Open<span class="count">12</span>
+        </div>
+        <div class="chip">
+          Needs attention<span class="count">2</span>
+        </div>
+        <div class="chip">
+          Recently merged<span class="count">8</span>
+        </div>
+        <div class="chip">All<span class="count">204</span></div>
+      </div>
+
+      <!-- LIVE ENTRY ──────────────────────────────────────────────── -->
+      <article class="entry">
+        <div class="entry-no">
+          <strong>92413</strong>
+          14:32
+        </div>
+        <div class="entry-body">
+          <div class="repo">vercel / next.js</div>
+          <div class="title">feat: streaming RSC into the App Router shell</div>
+          <div class="entry-status">
+            <div class="status-label is-live">Under review</div>
+            <span style="color: var(--ink-soft)">·</span>
+            <span style="color: var(--ink-mid); font-family: var(--sans)"
+              >reviewing CodeRabbit feedback</span
+            >
+          </div>
+          <div class="entry-meta">
+            <span class="branch">jackson/streaming-rsc</span> · branch updated
+            4m ago · 3 of 4 threads logged
+          </div>
+        </div>
+        <div class="stamp is-live">
+          <div class="stamp-ring"></div>
+          <div class="stamp-glyph">
+            <span class="symbol">✦</span>LIVE
+          </div>
+        </div>
+      </article>
+
+      <!-- HEALTHY ENTRY ───────────────────────────────────────────── -->
+      <article class="entry">
+        <div class="entry-no">
+          <strong>92402</strong>
+          13:18
+        </div>
+        <div class="entry-body">
+          <div class="repo">vercel / next.js</div>
+          <div class="title">fix(turbopack): resolve dynamic import edge case</div>
+          <div class="entry-status">
+            <div class="status-label is-healthy">Settled</div>
+            <span style="color: var(--ink-soft)">·</span>
+            <span style="color: var(--ink-mid); font-family: var(--sans)"
+              >completed 22m ago · no further action</span
+            >
+          </div>
+          <div class="entry-meta">
+            <span class="branch">jackson/turbo-fix-dyn</span> · 0 open threads
+          </div>
+        </div>
+        <div class="stamp is-healthy">
+          <div class="stamp-ring"></div>
+          <div class="stamp-glyph">
+            <span class="symbol">●</span>OK
+          </div>
+        </div>
+      </article>
+
+      <!-- CAUTION ENTRY ───────────────────────────────────────────── -->
+      <article class="entry">
+        <div class="margin-note">
+          dirty since 11:04 — head moved while reconcile was<br />in flight
+        </div>
+        <div class="entry-no">
+          <strong>92388</strong>
+          11:02
+        </div>
+        <div class="entry-body">
+          <div class="repo">vercel / examples</div>
+          <div class="title">add example: tRPC with Vercel Functions</div>
+          <div class="entry-status">
+            <div class="status-label is-caution">Re-reconcile pending</div>
+            <span style="color: var(--ink-soft)">·</span>
+            <span style="color: var(--ink-mid); font-family: var(--sans)"
+              >dirty for 28m</span
+            >
+          </div>
+          <div class="entry-meta">
+            <span class="branch">jackson/trpc-example</span> · 2 specialized
+            reviewers stale on previous SHA
+          </div>
+        </div>
+        <div class="stamp is-caution">
+          <div class="stamp-ring"></div>
+          <div class="stamp-glyph">
+            <span class="symbol">▲</span>CHK
+          </div>
+        </div>
+      </article>
+
+      <!-- BLOCKED ENTRY ───────────────────────────────────────────── -->
+      <article class="entry">
+        <div class="entry-no">
+          <strong>92350</strong>
+          08:47
+        </div>
+        <div class="entry-body">
+          <div class="repo">jacksondr5 / orchestrator</div>
+          <div class="title">refactor: extract reviewer-pack loader</div>
+          <div class="entry-status">
+            <div class="status-label is-blocked">Blocked</div>
+            <span style="color: var(--ink-soft)">·</span>
+            <span style="color: var(--ink-mid); font-family: var(--sans)"
+              >GitError ‘invalid credentials’ after 3 retries</span
+            >
+          </div>
+          <div class="entry-meta">
+            <span class="branch">jackson/reviewer-pack-refactor</span> ·
+            workflow paused, awaiting operator
+          </div>
+        </div>
+        <div class="stamp is-blocked">
+          <div class="stamp-ring"></div>
+          <div class="stamp-glyph">
+            <span class="symbol">✕</span>HOLD
+          </div>
+        </div>
+      </article>
+
+      <!-- DEFERRED ENTRY ──────────────────────────────────────────── -->
+      <article class="entry" style="border-bottom: 2px solid var(--rule-strong)">
+        <div class="entry-no">
+          <strong>92301</strong>
+          yesterday
+        </div>
+        <div class="entry-body">
+          <div class="repo">jacksondr5 / orchestrator</div>
+          <div class="title">chore: bump temporal-sdk to 1.13</div>
+          <div class="entry-status">
+            <div class="status-label is-deferred">Deferred to Linear</div>
+            <span style="color: var(--ink-soft)">·</span>
+            <span style="color: var(--ink-mid); font-family: var(--sans)"
+              >ENG-2241 · scope decision recorded</span
+            >
+          </div>
+          <div class="entry-meta">
+            <span class="branch">renovate/temporal-sdk</span> · last reconciled
+            1d 4h ago
+          </div>
+        </div>
+        <div class="stamp is-deferred">
+          <div class="stamp-ring"></div>
+          <div class="stamp-glyph">
+            <span class="symbol">◇</span>DEF
+          </div>
+        </div>
+      </article>
+
+      <!-- DETAIL ──────────────────────────────────────────────────── -->
+      <section class="detail">
+        <div class="detail-eyebrow">
+          Pull Request · vercel / next.js · #92413
+        </div>
+        <h2 class="detail-title">feat: streaming RSC into the App Router shell</h2>
+
+        <div class="signal-stack">
+          <span class="glyph is-live">✦</span>
+          <span class="signal-row">
+            <strong>Under review</strong> ·
+            <em>reviewing CodeRabbit feedback (3 of 4 logged)</em>
+          </span>
+          <span class="glyph is-caution">▲</span>
+          <span class="signal-row">
+            <strong>Re-reconcile pending</strong> · <em>dirty since 14:18</em>
+          </span>
+          <span class="glyph">·</span>
+          <span class="signal-row">
+            Latest entry: <em>completed 12s ago, fixed 2 of 4 threads</em>
+          </span>
+        </div>
+
+        <div class="actions">
+          <button class="btn is-primary">Re-evaluate now</button>
+          <button class="btn is-ghost">Inspect →</button>
+        </div>
+
+        <!-- Reviewer summary -->
+        <div class="reviewers">
+          <h3>On this SHA</h3>
+          <div class="reviewer-row ok">
+            <div class="marker"></div>
+            <div class="name">security</div>
+            <div class="summary">no findings, no code changes</div>
+          </div>
+          <div class="reviewer-row ok">
+            <div class="marker"></div>
+            <div class="name">perf</div>
+            <div class="summary">no findings</div>
+          </div>
+          <div class="reviewer-row warn">
+            <div class="marker"></div>
+            <div class="name">a11y</div>
+            <div class="summary">2 findings · see stream</div>
+          </div>
+        </div>
+
+        <!-- Stream -->
+        <div class="stream">
+          <article class="event live is-live">
+            <div class="event-line">
+              <span class="when">14:32:08</span>
+              <span class="verb">working</span>
+            </div>
+            <h4 class="event-headline">Fixing failing checks</h4>
+            <p class="event-quote">
+              “ESLint reported 3 errors in apps/web/components/event-cards.tsx,
+              all unused-imports after the activity stream split. Removing them
+              should be safe.”
+            </p>
+            <span class="expand">See agent reasoning</span>
+          </article>
+
+          <article class="event healthy">
+            <div class="event-line">
+              <span class="when">14:14:52</span>
+              <span class="verb">reviewed</span>
+            </div>
+            <h4 class="event-headline">
+              Reviewed CodeRabbit feedback — fixed 3 of 4 threads
+            </h4>
+            <div class="commit-chip">
+              <span class="glyph">§</span>
+              <div>
+                <span class="label">Commit</span
+                ><span class="sha">7c2f4e1a</span
+                ><span class="arrow">↗</span>
+                <span class="subject"
+                  >fix(rsc): replace manual debounce with useDeferredValue per
+                  CodeRabbit guidance</span
+                >
+              </div>
+              <span style="color: var(--ink-soft); font-family: var(--mono); font-size: 11px"
+                >+12 −4 · 3 files</span
+              >
+            </div>
+            <span class="expand">See full reasoning</span>
+          </article>
+
+          <article class="event deferred">
+            <div class="event-line">
+              <span class="when">14:10:02</span>
+              <span class="verb">deferred</span>
+            </div>
+            <h4 class="event-headline">Deferred to Linear: ENG-2241</h4>
+            <p class="event-quote">
+              “Refactor of legacy useDebounce hook is out of scope for this PR.
+              Filing follow-up so it’s not lost.”
+            </p>
+          </article>
+
+          <article class="event error">
+            <div class="event-line">
+              <span class="when">14:01:18</span>
+              <span class="verb">error</span>
+            </div>
+            <h4 class="event-headline">
+              Auth token expired refreshing workspace
+            </h4>
+            <p class="event-trace">
+              3 retries · last: GitError 'invalid credentials' (.git/config) ·
+              fixCheck phase, workflowId pr-92413
+            </p>
+            <span class="expand">See last attempt</span>
+          </article>
+        </div>
+      </section>
+
+      <!-- APPENDIX: PALETTE ──────────────────────────────────────── -->
+      <section class="appendix">
+        <h3>Palette</h3>
+        <div class="swatches">
+          <div class="swatch">
+            <div class="chip" style="background: var(--page)"></div>
+            <div>
+              <div class="name">Indigo Page</div>
+              <div class="role">canvas</div>
+              <div class="oklch">oklch(0.18 0.045 265)</div>
+            </div>
+          </div>
+          <div class="swatch">
+            <div class="chip" style="background: var(--ink)"></div>
+            <div>
+              <div class="name">Cream Ink</div>
+              <div class="role">primary text</div>
+              <div class="oklch">oklch(0.93 0.014 80)</div>
+            </div>
+          </div>
+          <div class="swatch">
+            <div class="chip" style="background: var(--lapis)"></div>
+            <div>
+              <div class="name">Lapis</div>
+              <div class="role">live</div>
+              <div class="oklch">oklch(0.74 0.16 245)</div>
+            </div>
+          </div>
+          <div class="swatch">
+            <div class="chip" style="background: var(--settled-sage)"></div>
+            <div>
+              <div class="name">Settled Sage</div>
+              <div class="role">healthy</div>
+              <div class="oklch">oklch(0.76 0.08 150)</div>
+            </div>
+          </div>
+          <div class="swatch">
+            <div class="chip" style="background: var(--madder)"></div>
+            <div>
+              <div class="name">Madder</div>
+              <div class="role">caution / margin notes</div>
+              <div class="oklch">oklch(0.72 0.16 35)</div>
+            </div>
+          </div>
+          <div class="swatch">
+            <div class="chip" style="background: var(--garnet)"></div>
+            <div>
+              <div class="name">Garnet</div>
+              <div class="role">blocked</div>
+              <div class="oklch">oklch(0.60 0.20 22)</div>
+            </div>
+          </div>
+          <div class="swatch">
+            <div class="chip" style="background: var(--heather)"></div>
+            <div>
+              <div class="name">Heather</div>
+              <div class="role">deferred / handoff</div>
+              <div class="oklch">oklch(0.68 0.10 295)</div>
+            </div>
+          </div>
+          <div class="swatch">
+            <div class="chip" style="background: var(--page-tint)"></div>
+            <div>
+              <div class="name">Page Tint</div>
+              <div class="role">hover / inset</div>
+              <div class="oklch">oklch(0.22 0.04 265)</div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </body>
+</html>
