@@ -172,9 +172,10 @@ function handleAccept(id, variantNum, lines, targetFile, paramValues) {
     }
     replacement.push(indent + (isJsx ? '`}</style>' : '</style>'));
     if (paramValues && Object.keys(paramValues).length > 0) {
+      const encodedParamValues = Buffer.from(JSON.stringify(paramValues), 'utf-8').toString('base64');
       // Preserve the user's knob positions for the carbonize-cleanup agent
       // to bake into the final CSS when it collapses scoped rules.
-      replacement.push(indent + commentSyntax.open + ' impeccable-param-values ' + id + ': ' + JSON.stringify(paramValues) + ' ' + commentSyntax.close);
+      replacement.push(indent + commentSyntax.open + ' impeccable-param-values ' + id + ': ' + encodedParamValues + ' ' + commentSyntax.close);
     }
     replacement.push(indent + commentSyntax.open + ' impeccable-carbonize-end ' + id + ' ' + commentSyntax.close);
   }

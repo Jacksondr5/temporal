@@ -381,10 +381,11 @@ export function patchCspMeta(content, port) {
     let patched = original;
     patched = appendOriginToDirective(patched, 'script-src', origin);
     patched = appendOriginToDirective(patched, 'connect-src', origin);
-    // The shader overlay during 'generating' creates a screenshot via
-    // URL.createObjectURL, producing a `blob:` URL — img-src 'self' rejects
-    // those. Add `blob:` so the overlay doesn't throw a CSP violation.
-    patched = appendOriginToDirective(patched, 'img-src', 'blob:');
+    // Only extend existing img-src directives. Creating one can narrow pages
+    // that currently inherit broader image sources from default-src.
+    if (/(^|;)\s*img-src\s+/i.test(original)) {
+      patched = appendOriginToDirective(patched, 'img-src', 'blob:');
+    }
     if (patched === original) continue;
 
     const newContentAttr = `content=${contentAttr.quote}${patched}${contentAttr.quote}`;

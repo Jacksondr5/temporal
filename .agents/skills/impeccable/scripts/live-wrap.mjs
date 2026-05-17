@@ -457,6 +457,10 @@ function searchDir(dir, query, seen, depth, genOpts) {
  * openers (e.g. `<section\n  className="..."\n>`) are recognised.
  */
 const OPENER_RE = /<([A-Za-z][A-Za-z0-9]*)(?=[\s/>]|$)/;
+const VOID_TAGS = new Set([
+  'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input',
+  'link', 'meta', 'param', 'source', 'track', 'wbr',
+]);
 
 /**
  * Find the element's start and end line in the file.
@@ -602,9 +606,23 @@ function findClosingLine(lines, start) {
   if (!openMatch) return start; // caller passed a non-opener; nothing to span
 
   const tagName = openMatch[1];
+  if (VOID_TAGS.has(tagName.toLowerCase())) return start;
+
+  let openerEndLine = start;
+  let openerChunk = lines[start] || '';
+  while (!openerChunk.includes('>') && openerEndLine + 1 < lines.length && openerEndLine - start < 20) {
+    openerEndLine += 1;
+    openerChunk += '\n' + lines[openerEndLine];
+  }
+  const openerCloseIdx = openerChunk.indexOf('>');
+  if (openerCloseIdx !== -1) {
+    const openerText = openerChunk.slice(0, openerCloseIdx + 1);
+    if (/\/\s*>$/.test(openerText.trim())) return openerEndLine;
+  }
+
   let depth = 0;
   const openRe = new RegExp('<' + tagName + '(?=[\\s/>]|$)', 'g');
-  const selfCloseRe = new RegExp('<' + tagName + '[^>]*/>', 'g');
+  const selfCloseRe = new RegExp('<' + tagName + '[^>]*\\s*/>', 'g');
   const closeRe = new RegExp('</' + tagName + '\\s*>', 'g');
 
   for (let i = start; i < lines.length; i++) {

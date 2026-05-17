@@ -127,6 +127,16 @@
           box-shadow: 0 0 14px 4px var(--brass-bloom);
         }
       }
+      @media (prefers-reduced-motion: reduce) {
+        .crest::after,
+        .watch-state::before,
+        .indicator.is-live .dot,
+        .event.is-live::before {
+          animation: none;
+          transition: none;
+          box-shadow: none;
+        }
+      }
       .logotype {
         font-family: var(--serif);
         font-weight: 600;
@@ -162,6 +172,11 @@
       .nav-links a.is-active {
         color: var(--brass);
         border-color: var(--brass);
+      }
+      .chip:focus-visible,
+      .expand:focus-visible {
+        outline: 2px solid var(--brass);
+        outline-offset: 2px;
       }
 
       .watch-state {
@@ -220,6 +235,11 @@
         border-bottom: 1px solid var(--rule);
       }
       .chip {
+        appearance: none;
+        background: none;
+        border-left: none;
+        border-right: none;
+        border-top: none;
         font-size: 12px;
         font-weight: 600;
         text-transform: uppercase;
@@ -647,6 +667,10 @@
       }
       .expand {
         display: inline-block;
+        appearance: none;
+        background: none;
+        border: none;
+        padding: 0;
         font-family: var(--mono);
         font-size: 11px;
         font-weight: 500;
@@ -795,16 +819,16 @@
       </header>
 
       <div class="chips">
-        <div class="chip is-active">
+        <button class="chip is-active" type="button">
           Open<span class="count">12</span>
-        </div>
-        <div class="chip">
+        </button>
+        <button class="chip" type="button">
           Ask the operator<span class="count">2</span>
-        </div>
-        <div class="chip">
+        </button>
+        <button class="chip" type="button">
           Recently merged<span class="count">8</span>
-        </div>
-        <div class="chip">All<span class="count">204</span></div>
+        </button>
+        <button class="chip" type="button">All<span class="count">204</span></button>
       </div>
 
       <!-- ENTRIES ──────────────────────────────────────────────────── -->
@@ -1027,7 +1051,7 @@
               all unused-imports left over from the activity stream split.
               Removing them should be safe, and not affect runtime behavior.”
             </p>
-            <span class="expand">See agent reasoning</span>
+            <button class="expand" type="button">See agent reasoning</button>
           </article>
 
           <article class="event healthy">
@@ -1047,7 +1071,7 @@
               </div>
               <div class="stats">+12 −4 · 3 files</div>
             </div>
-            <span class="expand">See full reasoning</span>
+            <button class="expand" type="button">See full reasoning</button>
           </article>
 
           <article class="event deferred">
@@ -1074,7 +1098,7 @@
               3 retries · last: GitError 'invalid credentials' (.git/config) ·
               fixCheck phase, workflowId pr-92413
             </p>
-            <span class="expand">See last attempt</span>
+            <button class="expand" type="button">See last attempt</button>
           </article>
         </div>
       </section>

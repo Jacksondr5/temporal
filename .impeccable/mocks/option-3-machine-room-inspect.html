@@ -51,7 +51,7 @@
         background: var(--charcoal);
         color: var(--cream);
         font-family: var(--mono);
-        font-size: 13px;
+        font-size: 14px;
         line-height: 1.55;
         -webkit-font-smoothing: antialiased;
       }
@@ -149,6 +149,12 @@
       .back-link:hover {
         color: var(--phosphor);
         border-color: var(--phosphor);
+      }
+      .back-link:focus-visible {
+        color: var(--phosphor);
+        border-color: var(--phosphor);
+        outline: 2px solid var(--phosphor);
+        outline-offset: 2px;
       }
       .station-status {
         font-family: var(--mono);
@@ -296,6 +302,12 @@
         border-color: var(--phosphor);
         color: var(--phosphor);
       }
+      .btn:focus-visible {
+        border-color: var(--phosphor);
+        color: var(--phosphor);
+        outline: 2px solid var(--phosphor);
+        outline-offset: 2px;
+      }
       .btn.is-primary {
         background: var(--phosphor);
         color: var(--charcoal-deep);
@@ -399,6 +411,11 @@
         66%,
         100% {
           opacity: 0.55;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .led.is-live {
+          animation: none;
         }
       }
       .led.is-healthy {

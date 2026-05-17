@@ -12,12 +12,18 @@ function readServerInfo() {
 
 async function fetchServerStatus(info) {
   if (!info) return null;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 3000);
   try {
-    const res = await fetch(`http://localhost:${info.port}/status?token=${info.token}`);
+    const res = await fetch(`http://localhost:${info.port}/status?token=${info.token}`, {
+      signal: controller.signal,
+    });
     if (!res.ok) return null;
     return await res.json();
   } catch {
     return null;
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
@@ -43,5 +49,8 @@ export async function statusCli() {
 
 const _running = process.argv[1];
 if (_running?.endsWith('live-status.mjs') || _running?.endsWith('live-status.mjs/')) {
-  statusCli();
+  statusCli().catch((err) => {
+    console.error(err?.message || err);
+    process.exitCode = 1;
+  });
 }

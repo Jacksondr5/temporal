@@ -569,7 +569,7 @@ function normalizeFontRole(raw) {
 
 function parseTypeBullet(bullet) {
   // - **Display** (family, weight 300, italic, clamp(...), line-height 1): purpose
-  const m = bullet.match(/^\*\*(.+?)\*\*\s*\(([^)]+)\):\s*(.*)$/);
+  const m = bullet.match(/^\*\*(.+?)\*\*\s*\((.*?)\):\s*(.*)$/);
   if (!m) return null;
   const name = m[1].trim();
   const specs = m[2].split(',').map((s) => s.trim());
@@ -624,7 +624,7 @@ function extractInlineShadows(text) {
   const re = /box-shadow\s*:\s*([^`;\n]+)/gi;
   let m;
   while ((m = re.exec(text)) !== null) {
-    const value = m[1].replace(/[`.)]+$/, '').trim();
+    const value = m[1].replace(/[`.,;:\s]+$/, '').trim();
     if (!value) continue;
     // Name heuristic: the noun immediately before the shadow phrase.
     // e.g. "an extra-diffused shadow: ..." -> "extra-diffused shadow"

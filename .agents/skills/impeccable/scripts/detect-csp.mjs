@@ -186,7 +186,8 @@ function walk(root, dir, depth, visit) {
         body = buf.slice(0, n).toString('utf-8');
       } finally { fs.closeSync(fd); }
     } catch { continue; }
-    visit(abs, path.relative(root, abs), body);
+    const rel = path.relative(root, abs).split(path.sep).join('/');
+    visit(abs, rel, body);
   }
 }
 
