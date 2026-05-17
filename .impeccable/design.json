@@ -1,0 +1,470 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-05-06T00:00:00.000Z",
+  "title": "Design System: PR Review Operator",
+  "extensions": {
+    "colorMeta": {
+      "charcoal": {
+        "role": "neutral",
+        "displayName": "Charcoal",
+        "canonical": "oklch(0.16 0.012 50)",
+        "tonalRamp": [
+          "oklch(0.10 0.008 50)",
+          "oklch(0.13 0.010 50)",
+          "oklch(0.16 0.012 50)",
+          "oklch(0.21 0.014 55)",
+          "oklch(0.28 0.016 55)",
+          "oklch(0.42 0.016 55)",
+          "oklch(0.62 0.014 60)",
+          "oklch(0.92 0.008 75)"
+        ]
+      },
+      "panel": {
+        "role": "neutral",
+        "displayName": "Panel",
+        "canonical": "oklch(0.21 0.014 55)",
+        "tonalRamp": [
+          "oklch(0.13 0.010 55)",
+          "oklch(0.17 0.012 55)",
+          "oklch(0.21 0.014 55)",
+          "oklch(0.25 0.016 55)",
+          "oklch(0.32 0.014 55)",
+          "oklch(0.42 0.016 55)",
+          "oklch(0.62 0.014 60)",
+          "oklch(0.92 0.008 75)"
+        ]
+      },
+      "inspector-canvas": {
+        "role": "neutral",
+        "displayName": "Inspector Canvas",
+        "canonical": "oklch(0.15 0.01 240)",
+        "tonalRamp": [
+          "oklch(0.10 0.008 240)",
+          "oklch(0.12 0.008 240)",
+          "oklch(0.15 0.01 240)",
+          "oklch(0.20 0.012 245)",
+          "oklch(0.28 0.014 245)",
+          "oklch(0.42 0.016 245)",
+          "oklch(0.62 0.014 240)",
+          "oklch(0.92 0.008 240)"
+        ]
+      },
+      "cream": {
+        "role": "neutral",
+        "displayName": "Cream",
+        "canonical": "oklch(0.92 0.008 75)",
+        "tonalRamp": [
+          "oklch(0.30 0.012 75)",
+          "oklch(0.45 0.012 75)",
+          "oklch(0.55 0.012 65)",
+          "oklch(0.65 0.012 70)",
+          "oklch(0.75 0.012 70)",
+          "oklch(0.85 0.010 75)",
+          "oklch(0.92 0.008 75)",
+          "oklch(0.97 0.005 75)"
+        ]
+      },
+      "phosphor": {
+        "role": "primary",
+        "displayName": "Phosphor",
+        "canonical": "oklch(0.83 0.16 75)",
+        "tonalRamp": [
+          "oklch(0.30 0.10 75)",
+          "oklch(0.42 0.13 75)",
+          "oklch(0.55 0.15 75)",
+          "oklch(0.62 0.12 75)",
+          "oklch(0.72 0.16 75)",
+          "oklch(0.83 0.16 75)",
+          "oklch(0.90 0.14 75)",
+          "oklch(0.96 0.10 80)"
+        ]
+      },
+      "scope-green": {
+        "role": "secondary",
+        "displayName": "Scope Green",
+        "canonical": "oklch(0.74 0.16 145)",
+        "tonalRamp": [
+          "oklch(0.25 0.08 145)",
+          "oklch(0.38 0.12 145)",
+          "oklch(0.50 0.14 145)",
+          "oklch(0.60 0.15 145)",
+          "oklch(0.74 0.16 145)",
+          "oklch(0.84 0.14 145)",
+          "oklch(0.92 0.10 145)",
+          "oklch(0.97 0.06 145)"
+        ]
+      },
+      "caution-yellow": {
+        "role": "secondary",
+        "displayName": "Caution Yellow",
+        "canonical": "oklch(0.85 0.18 95)",
+        "tonalRamp": [
+          "oklch(0.30 0.10 95)",
+          "oklch(0.45 0.14 95)",
+          "oklch(0.58 0.16 95)",
+          "oklch(0.70 0.18 95)",
+          "oklch(0.78 0.18 95)",
+          "oklch(0.85 0.18 95)",
+          "oklch(0.92 0.14 95)",
+          "oklch(0.97 0.08 95)"
+        ]
+      },
+      "oxide-red": {
+        "role": "secondary",
+        "displayName": "Oxide Red",
+        "canonical": "oklch(0.62 0.20 30)",
+        "tonalRamp": [
+          "oklch(0.20 0.10 30)",
+          "oklch(0.32 0.14 30)",
+          "oklch(0.45 0.18 30)",
+          "oklch(0.55 0.20 30)",
+          "oklch(0.62 0.20 30)",
+          "oklch(0.74 0.18 30)",
+          "oklch(0.86 0.14 30)",
+          "oklch(0.95 0.07 30)"
+        ]
+      },
+      "indigo-fold": {
+        "role": "tertiary",
+        "displayName": "Indigo Fold",
+        "canonical": "oklch(0.55 0.14 280)",
+        "tonalRamp": [
+          "oklch(0.18 0.08 280)",
+          "oklch(0.30 0.10 280)",
+          "oklch(0.42 0.12 280)",
+          "oklch(0.55 0.14 280)",
+          "oklch(0.66 0.14 280)",
+          "oklch(0.78 0.12 280)",
+          "oklch(0.88 0.08 280)",
+          "oklch(0.96 0.04 280)"
+        ]
+      },
+      "station-blue": {
+        "role": "tertiary",
+        "displayName": "Station Blue",
+        "canonical": "oklch(0.62 0.12 240)",
+        "tonalRamp": [
+          "oklch(0.20 0.06 240)",
+          "oklch(0.32 0.08 240)",
+          "oklch(0.45 0.10 240)",
+          "oklch(0.55 0.12 240)",
+          "oklch(0.62 0.12 240)",
+          "oklch(0.74 0.12 240)",
+          "oklch(0.86 0.08 240)",
+          "oklch(0.95 0.04 240)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Page-level subject titles (PR detail header). Mixed case."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "List-view page heads. UPPERCASE, tracked."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Row primaries (PR subject inside a station-row)."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Default text and agent reasoning prose. Capped at 80ch."
+      },
+      "meta": {
+        "displayName": "Meta",
+        "purpose": "Telemetry rows, signal-cell sub-text."
+      },
+      "mono": {
+        "displayName": "Mono",
+        "purpose": "Technical key/value data, SHAs, paths, traces."
+      },
+      "inspector-title": {
+        "displayName": "Inspector Title",
+        "purpose": "PR detail title in Inspector mode only — typography flips to mono to signal the mode shift."
+      },
+      "micro": {
+        "displayName": "Micro",
+        "purpose": "Eyebrow labels and panel header bars. UPPERCASE, tracked."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Button text, state tags, filter chips. UPPERCASE, condensed sans, tracked."
+      }
+    },
+    "shadows": [
+      {
+        "name": "phosphor-bloom-live",
+        "value": "0 0 0 1px oklch(0.42 0.016 55), 0 0 12px 2px oklch(0.83 0.16 75 / 0.4)",
+        "purpose": "Applied only to .led.is-live and adjacent live indicators. The 1px ring grounds the LED on its surface; the 12px-radius bloom communicates 'live, right now'."
+      },
+      {
+        "name": "status-halo-healthy",
+        "value": "0 0 0 1px oklch(0.42 0.016 55), 0 0 4px 1px oklch(0.74 0.16 145 / 0.35)",
+        "purpose": "Dim halo on healthy LEDs."
+      },
+      {
+        "name": "status-halo-caution",
+        "value": "0 0 0 1px oklch(0.42 0.016 55), 0 0 4px 1px oklch(0.85 0.18 95 / 0.35)",
+        "purpose": "Dim halo on caution LEDs."
+      },
+      {
+        "name": "status-halo-blocked",
+        "value": "0 0 0 1px oklch(0.42 0.016 55), 0 0 4px 1px oklch(0.62 0.20 30 / 0.35)",
+        "purpose": "Dim halo on blocked LEDs."
+      }
+    ],
+    "motion": [
+      {
+        "name": "led-tick",
+        "value": "led-tick 1.4s steps(1) infinite",
+        "purpose": "Live LED pulse. Hard step (no smooth easing) at 65/35% duty cycle, communicating mechanical instrumentation rather than smooth UI animation. Keyframes: 0%–65% opacity 1.0, 66%–100% opacity 0.55."
+      },
+      {
+        "name": "ease-mechanical",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Default easing for hover/state transitions. Quart-out curve so transitions settle quickly without overshoot. Never bounce, never elastic."
+      },
+      {
+        "name": "duration-state",
+        "value": "180ms",
+        "purpose": "Default transition duration for hover, focus, active state changes."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "@media (prefers-reduced-motion: reduce) { animation: none !important; }",
+        "purpose": "All motion (LED tick, halo bloom, hover transitions) collapses to static when the OS preference is set. Status remains conveyed via shape AND color."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "minimum",
+        "value": "1280px",
+        "purpose": "Minimum supported viewport. Below this, the 4-column telemetry on PR rows compresses unfavorably. The system is desktop-first."
+      },
+      {
+        "name": "standard",
+        "value": "1536px",
+        "purpose": "Standard desktop. Telemetry sits at full width, detail body splits into stream + 380px right rail."
+      },
+      {
+        "name": "wide",
+        "value": "1920px",
+        "purpose": "Wide desktop. Inspector tech grid fits comfortably as 4-column; outputs panel renders as 3-column horizontal."
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The high-emphasis action button. Phosphor-amber background, charcoal-deep text, sharp rectangular shape. Live by being the action the operator most wants to take.",
+      "html": "<button class=\"ds-btn-primary\">Re-evaluate now</button>",
+      "css": ".ds-btn-primary { font-family: \"IBM Plex Sans Condensed\", Inter, system-ui, sans-serif; font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.14em; padding: 10px 22px; border: 1px solid oklch(0.83 0.16 75); background: oklch(0.83 0.16 75); color: oklch(0.13 0.01 50); cursor: pointer; border-radius: 0; transition: background 180ms cubic-bezier(0.16, 1, 0.3, 1); } .ds-btn-primary:hover { background: oklch(0.88 0.16 75); border-color: oklch(0.88 0.16 75); } .ds-btn-primary:focus-visible { outline: 2px solid oklch(0.83 0.16 75); outline-offset: 2px; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Outlined button for non-primary actions. Cream text on transparent ground; hover swaps to phosphor border and text.",
+      "html": "<button class=\"ds-btn-secondary\">Inspect →</button>",
+      "css": ".ds-btn-secondary { font-family: \"IBM Plex Sans Condensed\", Inter, system-ui, sans-serif; font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.14em; padding: 10px 22px; border: 1px solid oklch(0.42 0.016 55); background: transparent; color: oklch(0.92 0.008 75); cursor: pointer; border-radius: 0; transition: border-color 180ms cubic-bezier(0.16, 1, 0.3, 1), color 180ms cubic-bezier(0.16, 1, 0.3, 1); } .ds-btn-secondary:hover { border-color: oklch(0.83 0.16 75); color: oklch(0.83 0.16 75); } .ds-btn-secondary:focus-visible { outline: 2px solid oklch(0.83 0.16 75); outline-offset: 2px; }"
+    },
+    {
+      "name": "Tech Button",
+      "kind": "button",
+      "refersTo": "button-tech",
+      "description": "Mono-typography small button for inspector-mode actions. Always paired with a destination glyph (↗ for opens-in-new-tab, → for in-app).",
+      "html": "<button class=\"ds-btn-tech\">view raw JSON ↗</button>",
+      "css": ".ds-btn-tech { font-family: \"JetBrains Mono\", ui-monospace, Menlo, monospace; font-weight: 500; font-size: 11.5px; padding: 6px 12px; border: 1px solid oklch(0.42 0.016 55); background: transparent; color: oklch(0.92 0.008 75); cursor: pointer; border-radius: 0; letter-spacing: 0.04em; transition: border-color 180ms cubic-bezier(0.16, 1, 0.3, 1), color 180ms cubic-bezier(0.16, 1, 0.3, 1); } .ds-btn-tech:hover { border-color: oklch(0.83 0.16 75); color: oklch(0.83 0.16 75); }"
+    },
+    {
+      "name": "Filter Chip · Active",
+      "kind": "chip",
+      "refersTo": "chip-filter-active",
+      "description": "Active filter selection. Phosphor-amber fill, charcoal text, condensed-sans label, mono count.",
+      "html": "<button class=\"ds-chip-filter is-active\">Open <span class=\"ct\">012</span></button>",
+      "css": ".ds-chip-filter { font-family: \"IBM Plex Sans Condensed\", Inter, system-ui, sans-serif; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.12em; padding: 8px 14px; color: oklch(0.75 0.012 70); cursor: pointer; border-radius: 0; background: transparent; border: none; } .ds-chip-filter.is-active { color: oklch(0.13 0.01 50); background: oklch(0.83 0.16 75); } .ds-chip-filter .ct { margin-left: 6px; font-family: \"JetBrains Mono\", ui-monospace, Menlo, monospace; font-size: 11px; font-weight: 400; }"
+    },
+    {
+      "name": "StatusMark · Live",
+      "kind": "custom",
+      "refersTo": "status-vocabulary.live",
+      "description": "The canonical live LED. Filled phosphor square 12×12, with 1px rule border and 12px phosphor bloom, ticking on a 1.4s hard-step animation. Same primitive everywhere a 'live' status appears.",
+      "html": "<span class=\"ds-led ds-led--live\" aria-label=\"Live\"></span>",
+      "css": ".ds-led--live { display: inline-block; width: 12px; height: 12px; background: oklch(0.83 0.16 75); border-radius: 0; box-shadow: 0 0 0 1px oklch(0.42 0.016 55), 0 0 12px 2px oklch(0.83 0.16 75 / 0.4); animation: ds-led-tick 1.4s steps(1) infinite; } @keyframes ds-led-tick { 0%, 65% { opacity: 1; } 66%, 100% { opacity: 0.55; } } @media (prefers-reduced-motion: reduce) { .ds-led--live { animation: none; opacity: 1; } }"
+    },
+    {
+      "name": "StatusMark · Healthy",
+      "kind": "custom",
+      "refersTo": "status-vocabulary.healthy",
+      "description": "Healthy / settled. Filled scope-green circle 12×12. Static.",
+      "html": "<span class=\"ds-led ds-led--healthy\" aria-label=\"Healthy\"></span>",
+      "css": ".ds-led--healthy { display: inline-block; width: 12px; height: 12px; background: oklch(0.74 0.16 145); border-radius: 50%; box-shadow: 0 0 0 1px oklch(0.42 0.016 55), 0 0 4px 1px oklch(0.74 0.16 145 / 0.35); }"
+    },
+    {
+      "name": "StatusMark · Caution",
+      "kind": "custom",
+      "refersTo": "status-vocabulary.caution",
+      "description": "Dirty / re-run pending / stale. Filled caution-yellow triangle, point up.",
+      "html": "<span class=\"ds-led ds-led--caution\" aria-label=\"Caution\"></span>",
+      "css": ".ds-led--caution { display: inline-block; width: 14px; height: 12px; background: oklch(0.85 0.18 95); clip-path: polygon(50% 0%, 0% 100%, 100% 100%); }"
+    },
+    {
+      "name": "StatusMark · Blocked",
+      "kind": "custom",
+      "refersTo": "status-vocabulary.blocked",
+      "description": "Blocked / held / errored. Solid oxide-red horizontal bar.",
+      "html": "<span class=\"ds-led ds-led--blocked\" aria-label=\"Blocked\"></span>",
+      "css": ".ds-led--blocked { display: inline-block; width: 14px; height: 4px; background: oklch(0.62 0.20 30); border-radius: 0; box-shadow: 0 0 0 1px oklch(0.42 0.016 55); }"
+    },
+    {
+      "name": "StatusMark · Deferred",
+      "kind": "custom",
+      "refersTo": "status-vocabulary.deferred",
+      "description": "Deferred / handed off (Linear). Hollow indigo-fold diamond.",
+      "html": "<span class=\"ds-led ds-led--deferred\" aria-label=\"Deferred\"></span>",
+      "css": ".ds-led--deferred { display: inline-block; width: 12px; height: 12px; background: transparent; border: 1.5px solid oklch(0.55 0.14 280); transform: rotate(45deg); border-radius: 0; }"
+    },
+    {
+      "name": "StatusMark · Reviewer",
+      "kind": "custom",
+      "refersTo": "status-vocabulary.reviewer",
+      "description": "Specialized reviewer event. Filled station-blue small square, smaller than the lifecycle LEDs to differentiate.",
+      "html": "<span class=\"ds-led ds-led--reviewer\" aria-label=\"Reviewer\"></span>",
+      "css": ".ds-led--reviewer { display: inline-block; width: 8px; height: 8px; background: oklch(0.62 0.12 240); border-radius: 0; box-shadow: 0 0 0 1px oklch(0.42 0.016 55); }"
+    },
+    {
+      "name": "StatusMark · Idle",
+      "kind": "custom",
+      "refersTo": "status-vocabulary.idle",
+      "description": "Idle / nothing-to-do. Hollow cream-soft circle.",
+      "html": "<span class=\"ds-led ds-led--idle\" aria-label=\"Idle\"></span>",
+      "css": ".ds-led--idle { display: inline-block; width: 12px; height: 12px; background: transparent; border: 1.5px solid oklch(0.55 0.012 65); border-radius: 50%; }"
+    },
+    {
+      "name": "StatusMark · Skipped",
+      "kind": "custom",
+      "refersTo": "status-vocabulary.skipped",
+      "description": "Intentionally skipped. Hollow cream-soft circle, dimmed to 50% opacity.",
+      "html": "<span class=\"ds-led ds-led--skipped\" aria-label=\"Skipped\"></span>",
+      "css": ".ds-led--skipped { display: inline-block; width: 12px; height: 12px; background: transparent; border: 1.5px solid oklch(0.55 0.012 65); border-radius: 50%; opacity: 0.5; }"
+    },
+    {
+      "name": "Commit Chip",
+      "kind": "card",
+      "refersTo": "commit-chip",
+      "description": "First-class visual primitive for an agent-pushed commit. Bordered inset on charcoal-up with a 1px scope-green left border. Layout: leading icon + uppercase label + short SHA in phosphor + commit subject in body sans + change-stats right-aligned in mono.",
+      "html": "<div class=\"ds-commit-chip\"><span class=\"label\">▲ Commit</span><span class=\"sha\">7c2f4e1a</span><span class=\"subject\">fix(rsc): replace manual debounce with useDeferredValue per CodeRabbit guidance</span><span class=\"stats\">+12 −4 · 3 files</span></div>",
+      "css": ".ds-commit-chip { display: grid; grid-template-columns: auto auto 1fr auto; gap: 16px; align-items: center; padding: 12px 16px; background: oklch(0.20 0.014 55); border: 1px solid oklch(0.74 0.16 145); border-radius: 0; max-width: 100%; } .ds-commit-chip .label { font-family: \"IBM Plex Sans Condensed\", Inter, system-ui, sans-serif; font-weight: 700; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.20em; color: oklch(0.74 0.16 145); white-space: nowrap; } .ds-commit-chip .sha { font-family: \"JetBrains Mono\", ui-monospace, Menlo, monospace; font-size: 13px; font-weight: 500; color: oklch(0.83 0.16 75); } .ds-commit-chip .subject { font-family: Inter, system-ui, sans-serif; font-size: 13px; color: oklch(0.92 0.008 75); line-height: 1.4; } .ds-commit-chip .stats { font-family: \"JetBrains Mono\", ui-monospace, Menlo, monospace; font-size: 10.5px; color: oklch(0.55 0.012 65); white-space: nowrap; }"
+    },
+    {
+      "name": "Stack Trace Block",
+      "kind": "custom",
+      "refersTo": "stack-trace",
+      "description": "The error-story canvas for stack traces. Charcoal-deep surface, oxide-red top border, mono 12px / 1.65, max 432px tall (~24 visible lines), wraps long paths, never produces horizontal scroll.",
+      "html": "<pre class=\"ds-stack-trace\"><span class=\"err\">GitError: invalid credentials (HTTP 401)</span>\n    at <span class=\"frame\">authenticatedFetch</span> (<span class=\"path\">apps/orchestrator/integrations/github/fetch.ts</span>:<span class=\"line\">87</span>)\n    at <span class=\"frame\">refreshWorkspace</span> (<span class=\"path\">apps/orchestrator/activities/refresh-workspace.ts</span>:<span class=\"line\">42</span>)</pre>",
+      "css": ".ds-stack-trace { font-family: \"JetBrains Mono\", ui-monospace, Menlo, monospace; font-size: 12px; line-height: 1.65; background: oklch(0.13 0.01 50); border: 1px solid oklch(0.32 0.014 55); border-top: 2px solid oklch(0.62 0.20 30); padding: 12px 16px; max-height: 432px; overflow-x: hidden; overflow-y: auto; white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhere; color: oklch(0.75 0.012 70); margin: 0; } .ds-stack-trace .err { color: oklch(0.62 0.20 30); font-weight: 500; } .ds-stack-trace .frame { color: oklch(0.92 0.008 75); } .ds-stack-trace .path { color: oklch(0.55 0.012 65); } .ds-stack-trace .line { color: oklch(0.83 0.16 75); }"
+    },
+    {
+      "name": "Panel",
+      "kind": "card",
+      "refersTo": "panel",
+      "description": "The canonical 'rack'. A bordered tonal surface with a header bar. No drop shadow. Used wherever a card would have appeared in a more conventional design.",
+      "html": "<section class=\"ds-panel\"><header class=\"ds-panel-head\">Reviewers · this SHA</header><div class=\"ds-panel-body\">…</div></section>",
+      "css": ".ds-panel { background: oklch(0.21 0.014 55); border: 1px solid oklch(0.32 0.014 55); border-radius: 0; } .ds-panel-head { padding: 10px 18px; font-family: \"JetBrains Mono\", ui-monospace, Menlo, monospace; font-weight: 500; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.20em; color: oklch(0.83 0.16 75); background: oklch(0.20 0.014 55); border-bottom: 1px solid oklch(0.32 0.014 55); } .ds-panel-body { padding: 14px 18px; color: oklch(0.92 0.008 75); }"
+    },
+    {
+      "name": "Mode Band (Inspector)",
+      "kind": "custom",
+      "refersTo": "mode-band-inspector",
+      "description": "The sticky 4px diagonal-stripe band along the top of the viewport that signals Inspector mode. Caution-yellow stripes against charcoal. Visible at all scroll positions.",
+      "html": "<div class=\"ds-mode-band\" aria-hidden=\"true\"></div>",
+      "css": ".ds-mode-band { position: sticky; top: 0; z-index: 5; height: 4px; background: repeating-linear-gradient(-45deg, oklch(0.85 0.18 95) 0, oklch(0.85 0.18 95) 8px, oklch(0.16 0.012 50) 8px, oklch(0.16 0.012 50) 14px); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Machine Room",
+    "overview": "The interface is a 1970s-flavored computer operations room reimagined for an autonomous-agent age. The user is at a workstation, on a desktop monitor, watching a fleet of pull requests being worked on by AI agents and reading what the agents wrote about each one. The aesthetic borrows from mission-control consoles, oscilloscope readouts, and flight-data recorders, not from the SaaS observability dashboards or the editorial-typographic Linear-likes that dominate this category. The ground is a warm charcoal, never blue-black. The dominant accent is phosphor amber, never cyan. The typography is industrial: a condensed sans for instrument-panel chrome, a humanist sans for human prose, a geometric mono for technical readouts. There are no rounded corners and no decorative shadows.\n\nThe system is full-bleed at desktop widths, because the user is at desktop widths. The page does not max-width to a centered column; PR rows stretch across the screen and carry telemetry on the right of every row. The vocabulary is data-dense without being noisy: density comes from whitespace, weight, and tonal layering, not from shrinking type.\n\nThe design is committed to two reading modes that share one chrome family but feel unmistakably distinct from across the room. Operator is the default — operator-friendly verbs, hidden internal phase enums, no SHAs unless asked. Inspector flips the title typography to mono, exposes every internal field in a 4-column technical-signals grid, and marks itself with a sticky diagonal-stripe band along the top of the page. The mode shift is structural, not a quiet badge.",
+    "keyCharacteristics": [
+      "Warm charcoal canvas, never blue-black or pure black.",
+      "One dominant accent (phosphor amber) reserved exclusively for 'live.'",
+      "Hard edges by default. Border-radius zero. Rounded corners are not part of this design language.",
+      "Three type families with non-overlapping roles: condensed sans for chrome, humanist sans for prose, geometric mono for technical data.",
+      "Tonal layering carries depth. Drop shadows are reserved for the phosphor glow on live indicators.",
+      "Density at desktop widths. Telemetry pinned to the right of every PR row.",
+      "Mode (Operator vs Inspector) signaled by chrome, not by a label."
+    ],
+    "rules": [
+      {
+        "name": "The Phosphor Reservation Rule",
+        "body": "Phosphor amber is reserved for 'live' exclusively. Live PRs, live LEDs, live indicators in the rack, primary action buttons (which are themselves live). The dominance is the point — when the eye sees phosphor, it means something is happening right now.",
+        "section": "colors"
+      },
+      {
+        "name": "The One Color One Shape Rule",
+        "body": "Each status concept maps to exactly one color and exactly one shape. The mapping is identical across every screen and every component. WCAG 2.2 AA: status is never communicated by color alone.",
+        "section": "colors"
+      },
+      {
+        "name": "The No-Black Rule",
+        "body": "The canvas is oklch(0.16 0.012 50). It is never #000. Every neutral is tinted toward the warm hue family so the dark surface reads as warm charcoal, not gunmetal. Inspector mode breaks this with a deliberate cool tilt to 240°, signaling its different mood.",
+        "section": "colors"
+      },
+      {
+        "name": "The Three-Role Rule",
+        "body": "Condensed sans is for chrome (labels, headlines, state tags, button text). Humanist sans is for prose (agent reasoning, summaries, body text). Geometric mono is for technical data (SHAs, traces, key/value telemetry). Crossing roles is forbidden.",
+        "section": "typography"
+      },
+      {
+        "name": "The Reading Cap Rule",
+        "body": "Agent prose elements (.quote, .reasoning-quote, narrative summaries) cap at 80ch. Technical content — stack traces, retry lists, telemetry tables, commit chips, raw JSON — uses the full available width. The cap applies to prose, not to data.",
+        "section": "typography"
+      },
+      {
+        "name": "The Inspector Mono Rule",
+        "body": "In Inspector mode, the PR detail's title flips to JetBrains Mono. Operator mode keeps it in IBM Plex Sans Condensed. The typography difference signals which mode the user is in.",
+        "section": "typography"
+      },
+      {
+        "name": "The No-Shadow Rule",
+        "body": "Drop shadows on cards, panels, buttons, modals, dropdowns are forbidden. Surfaces that lift on hover do so by tonal change, not by shadow.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Phosphor Glow Exception",
+        "body": "The only legitimate use of box-shadow outside zero-blur rings is the phosphor bloom on live indicators. If something is going to glow, it is going to mean 'live.' Otherwise it is going to be flat.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do use phosphor amber exclusively for 'live.' If something is glowing, it means it is happening right now.",
+      "Do make every status concept distinguishable by shape AND color. Color-blind users must be able to read the system without text labels (WCAG 2.2 AA).",
+      "Do keep agent reasoning in humanist-sans body typography (Inter, 14px / 1.55). It is the most valuable text on the screen.",
+      "Do show signals stacked, not synthesized. Multiple short status lines beat one synthesized English sentence whenever the synthesis would lie about the underlying state.",
+      "Do hard-edge everything. Border-radius is 0. Rounded corners are not part of this design language.",
+      "Do pin technical telemetry to the right of every PR row in a 4-column key/value mono grid. The telemetry is not optional; it is part of the row's identity.",
+      "Do mark Inspector mode unambiguously: the diagonal-stripe band, the caution-yellow chrome, and the JetBrains Mono title together signal the mode from across the room.",
+      "Do show the full text of an error including its complete stack trace. No truncation, no horizontal scroll.",
+      "Do use full viewport width on desktop. The user is at a workstation; a centered narrow column wastes their screen."
+    ],
+    "donts": [
+      "Don't look like a generic SaaS observability dashboard (DataDog, Grafana, Datadog clones). No big-number-with-tiny-label hero stats. No identical 4-up card grids. No gradient accents.",
+      "Don't look like a raw debug console (GitHub Actions log walls, the Temporal Web UI's default). No 'everything is a badge with a timestamp.' No flat tables of internal field names without operator-language translation.",
+      "Don't look like a consumer-warm or playful tool. No soft pastels, no illustrated empty states, no mascot-energy microcopy, no rounded-everything chrome.",
+      "Don't look like an enterprise admin console (ServiceNow, Jira admin). No dense gray tables with blue underlined links. No three-tab settings hierarchies.",
+      "Don't use drop shadows on chrome. Depth comes from tonal layering, not from blur. The phosphor glow on live LEDs is the only exception.",
+      "Don't use rounded corners as decoration. Border-radius is 0 on virtually every component.",
+      "Don't wrap stack traces in horizontal scroll. They always wrap with pre-wrap + overflow-wrap: anywhere.",
+      "Don't let prose stretch past 80ch. Agent reasoning must remain readable.",
+      "Don't synthesize a single English sentence when multiple signals are in conflict (dirty AND blocked, retrying AND partial-success). Surface the signals stacked.",
+      "Don't show internal phase enums (handling_code_rabbit, running_special_reviewers) in Operator mode. Translate them via docs/design/status-vocabulary.md. Inspector shows the verbatim internal value.",
+      "Don't show SHAs in Operator mode. SHAs are an Inspector concern.",
+      "Don't use cyan, blue-black, or pure black anywhere. The charcoal is warm. The accent is phosphor amber, not phosphor green and not terminal cyan.",
+      "Don't mix the three type families' roles. Condensed sans is for chrome only. Humanist sans is for prose only. Mono is for technical data only.",
+      "Don't wrap everything in a max-width container. The system is desktop-first and full-bleed."
+    ]
+  }
+}

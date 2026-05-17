@@ -1,0 +1,1154 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Operator UI · The Watch Office</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --walnut: oklch(0.18 0.018 50);
+        --walnut-deep: oklch(0.14 0.016 50);
+        --walnut-mid: oklch(0.24 0.018 55);
+        --walnut-up: oklch(0.28 0.018 55);
+        --cream: oklch(0.94 0.01 80);
+        --cream-dim: oklch(0.78 0.012 75);
+        --cream-soft: oklch(0.6 0.015 70);
+        --rule: oklch(0.32 0.018 55);
+        --rule-strong: oklch(0.44 0.022 60);
+
+        --brass: oklch(0.78 0.16 70);
+        --brass-deep: oklch(0.62 0.16 65);
+        --brass-bloom: oklch(0.78 0.16 70 / 0.32);
+
+        --ledger-blue: oklch(0.62 0.12 240);
+        --oxidized-green: oklch(0.66 0.1 145);
+        --oxide-red: oklch(0.6 0.18 25);
+
+        --serif: "Fraunces", "Domaine", "Source Serif 4", Georgia, serif;
+        --sans: "Inter", "Söhne", system-ui, sans-serif;
+        --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        background: var(--walnut);
+        color: var(--cream);
+        font-family: var(--sans);
+        font-size: 15px;
+        line-height: 1.5;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      /* ── lamp glow background ─────────────────────────────────────── */
+      body::before {
+        content: "";
+        position: fixed;
+        inset: -20% -10% auto auto;
+        width: 60%;
+        height: 60%;
+        background: radial-gradient(
+          ellipse at top right,
+          oklch(0.4 0.08 70 / 0.35) 0%,
+          oklch(0.3 0.06 60 / 0.18) 30%,
+          transparent 60%
+        );
+        pointer-events: none;
+        z-index: 0;
+      }
+      .page {
+        position: relative;
+        z-index: 1;
+        max-width: 920px;
+        margin: 0 auto;
+        padding: 40px 56px 120px;
+      }
+
+      /* ── Nav ──────────────────────────────────────────────────────── */
+      .nav {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 0 28px;
+        margin-bottom: 28px;
+        border-bottom: 1px solid var(--rule);
+      }
+      .nav-brand {
+        display: flex;
+        align-items: baseline;
+        gap: 16px;
+      }
+      .crest {
+        width: 28px;
+        height: 28px;
+        border: 1.5px solid var(--brass);
+        border-radius: 50%;
+        position: relative;
+        flex-shrink: 0;
+      }
+      .crest::before {
+        content: "";
+        position: absolute;
+        inset: 4px;
+        border: 1px solid var(--brass);
+        border-radius: 50%;
+        opacity: 0.6;
+      }
+      .crest::after {
+        content: "";
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 6px;
+        height: 6px;
+        margin: -3px 0 0 -3px;
+        background: var(--brass);
+        border-radius: 50%;
+        animation: brass-bloom 4s ease-in-out infinite;
+      }
+      @keyframes brass-bloom {
+        0%,
+        100% {
+          box-shadow: 0 0 6px 1px var(--brass-bloom);
+        }
+        50% {
+          box-shadow: 0 0 14px 4px var(--brass-bloom);
+        }
+      }
+      .logotype {
+        font-family: var(--serif);
+        font-weight: 600;
+        font-size: 22px;
+        letter-spacing: -0.005em;
+        color: var(--cream);
+      }
+      .logotype small {
+        display: block;
+        font-family: var(--sans);
+        font-size: 10.5px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.18em;
+        color: var(--cream-soft);
+        margin-top: 2px;
+      }
+
+      .nav-links {
+        display: flex;
+        gap: 32px;
+        font-size: 12.5px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.14em;
+      }
+      .nav-links a {
+        color: var(--cream-dim);
+        text-decoration: none;
+        padding-bottom: 4px;
+        border-bottom: 1px solid transparent;
+      }
+      .nav-links a.is-active {
+        color: var(--brass);
+        border-color: var(--brass);
+      }
+
+      .watch-state {
+        font-family: var(--sans);
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.18em;
+        color: var(--brass);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .watch-state::before {
+        content: "";
+        width: 10px;
+        height: 10px;
+        background: var(--brass);
+        border-radius: 50%;
+        box-shadow: 0 0 8px 2px var(--brass-bloom);
+        animation: brass-bloom 4s ease-in-out infinite;
+      }
+
+      /* ── Page heading ─────────────────────────────────────────────── */
+      .eyebrow {
+        font-size: 10.5px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.22em;
+        color: var(--cream-soft);
+      }
+      h1.title {
+        font-family: var(--serif);
+        font-weight: 500;
+        font-size: 34px;
+        letter-spacing: -0.02em;
+        line-height: 1.1;
+        margin: 8px 0 6px;
+      }
+      h1.title em {
+        color: var(--brass);
+        font-style: italic;
+        font-weight: 500;
+      }
+      .meta {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--cream-soft);
+      }
+
+      /* ── Filter chips: brass underlines ───────────────────────────── */
+      .chips {
+        display: flex;
+        gap: 28px;
+        margin: 30px 0 26px;
+        border-bottom: 1px solid var(--rule);
+      }
+      .chip {
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.14em;
+        padding: 10px 0;
+        color: var(--cream-dim);
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        margin-bottom: -1px;
+      }
+      .chip.is-active {
+        color: var(--brass);
+        border-color: var(--brass);
+      }
+      .chip .count {
+        margin-left: 6px;
+        font-family: var(--mono);
+        font-size: 11.5px;
+        color: var(--cream-soft);
+        font-weight: 400;
+        letter-spacing: 0;
+        text-transform: none;
+      }
+
+      /* ── Entries ─────────────────────────────────────────────────── */
+      .entry {
+        display: grid;
+        grid-template-columns: 1fr 88px;
+        gap: 32px;
+        padding: 22px 0 24px;
+        border-bottom: 1px solid var(--rule);
+        position: relative;
+      }
+      .entry::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: -1px;
+        height: 1px;
+        background: var(--brass);
+        transform: scaleX(0);
+        transform-origin: left;
+        transition: transform 280ms cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      .entry.is-live::before {
+        transform: scaleX(0.45);
+      }
+      .entry-meta-line {
+        font-family: var(--mono);
+        font-size: 11.5px;
+        color: var(--cream-soft);
+        margin-bottom: 6px;
+        display: flex;
+        gap: 14px;
+        align-items: baseline;
+      }
+      .entry-meta-line .pr {
+        color: var(--brass);
+      }
+      .entry-meta-line .repo {
+        color: var(--cream-dim);
+      }
+      .entry-title {
+        font-family: var(--serif);
+        font-weight: 500;
+        font-size: 21px;
+        line-height: 1.28;
+        letter-spacing: -0.01em;
+        margin: 0 0 14px;
+        max-width: 60ch;
+      }
+      .entry-state {
+        display: flex;
+        align-items: baseline;
+        gap: 12px;
+        font-size: 13.5px;
+        color: var(--cream-dim);
+      }
+      .entry-state .label {
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        font-size: 11.5px;
+      }
+      .entry-state .label.is-live {
+        color: var(--brass);
+      }
+      .entry-state .label.is-healthy {
+        color: var(--oxidized-green);
+      }
+      .entry-state .label.is-caution {
+        color: oklch(0.78 0.14 65);
+      }
+      .entry-state .label.is-blocked {
+        color: var(--oxide-red);
+      }
+      .entry-state .label.is-deferred {
+        color: var(--ledger-blue);
+      }
+
+      .entry-stamp {
+        font-family: var(--mono);
+        font-size: 10.5px;
+        color: var(--cream-soft);
+        text-transform: uppercase;
+        letter-spacing: 0.16em;
+        text-align: right;
+        line-height: 1.4;
+        padding-top: 4px;
+      }
+      .entry-stamp .when {
+        font-family: var(--serif);
+        font-style: italic;
+        font-size: 16px;
+        font-weight: 500;
+        color: var(--cream);
+        text-transform: none;
+        letter-spacing: 0;
+        display: block;
+        margin-bottom: 4px;
+      }
+      .entry-stamp .when.is-live {
+        color: var(--brass);
+      }
+
+      /* ── Indicator: lamp / flame / hold / spent ──────────────────── */
+      .indicator {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-family: var(--mono);
+        font-size: 11.5px;
+        font-weight: 500;
+        letter-spacing: 0.04em;
+      }
+      .indicator .dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: currentColor;
+      }
+      .indicator.is-live {
+        color: var(--brass);
+      }
+      .indicator.is-live .dot {
+        box-shadow: 0 0 8px 2px var(--brass-bloom);
+        animation: brass-bloom 4s ease-in-out infinite;
+      }
+      .indicator.is-healthy {
+        color: var(--oxidized-green);
+      }
+      .indicator.is-caution {
+        color: oklch(0.78 0.14 65);
+      }
+      .indicator.is-blocked {
+        color: var(--oxide-red);
+      }
+      .indicator.is-deferred {
+        color: var(--ledger-blue);
+      }
+      .indicator.is-blocked .dot {
+        clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+        border-radius: 0;
+        width: 11px;
+        height: 9px;
+      }
+      .indicator.is-deferred .dot {
+        background: transparent;
+        border: 1.5px solid currentColor;
+        transform: rotate(45deg);
+        border-radius: 1px;
+      }
+      .indicator.is-healthy .dot {
+        background: transparent;
+        border: 1.5px solid currentColor;
+      }
+
+      /* ── PR Detail header ─────────────────────────────────────────── */
+      .detail {
+        margin-top: 80px;
+        padding-top: 36px;
+        border-top: 1px solid var(--rule-strong);
+        position: relative;
+      }
+      .detail::before {
+        content: "";
+        position: absolute;
+        top: -1px;
+        left: 0;
+        width: 100px;
+        height: 3px;
+        background: var(--brass);
+      }
+      .detail-eyebrow {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--brass);
+        text-transform: uppercase;
+        letter-spacing: 0.18em;
+      }
+      .detail-title {
+        font-family: var(--serif);
+        font-weight: 500;
+        font-size: 42px;
+        letter-spacing: -0.02em;
+        line-height: 1.08;
+        margin: 10px 0 28px;
+        max-width: 22ch;
+      }
+
+      .signal-stack {
+        display: grid;
+        gap: 6px;
+        margin-bottom: 28px;
+      }
+      .signal-row {
+        display: grid;
+        grid-template-columns: 24px 1fr;
+        gap: 14px;
+        align-items: baseline;
+        font-size: 14.5px;
+      }
+      .signal-row .glyph {
+        text-align: center;
+        font-family: var(--mono);
+        font-size: 14px;
+        line-height: 1;
+        padding-top: 2px;
+      }
+      .signal-row .glyph.is-live {
+        color: var(--brass);
+      }
+      .signal-row .glyph.is-caution {
+        color: oklch(0.78 0.14 65);
+      }
+      .signal-row strong {
+        font-weight: 600;
+        color: var(--cream);
+      }
+      .signal-row em {
+        font-style: italic;
+        color: var(--cream-dim);
+        font-family: var(--serif);
+      }
+      .signal-row .micro {
+        font-family: var(--mono);
+        color: var(--cream-soft);
+        font-size: 12px;
+      }
+
+      .actions {
+        display: flex;
+        gap: 14px;
+        margin-bottom: 36px;
+      }
+      .btn {
+        font-family: var(--sans);
+        font-size: 12.5px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.14em;
+        padding: 11px 22px;
+        border: 1px solid var(--cream-dim);
+        background: transparent;
+        color: var(--cream);
+        cursor: pointer;
+        border-radius: 2px;
+        transition:
+          background 180ms ease-out,
+          border-color 180ms ease-out,
+          color 180ms ease-out;
+      }
+      .btn:hover {
+        border-color: var(--brass);
+        color: var(--brass);
+      }
+      .btn.is-primary {
+        background: var(--brass);
+        border-color: var(--brass);
+        color: var(--walnut-deep);
+      }
+      .btn.is-primary:hover {
+        background: oklch(0.84 0.15 70);
+        border-color: oklch(0.84 0.15 70);
+        color: var(--walnut-deep);
+      }
+      .btn.is-ghost {
+        border-color: var(--rule-strong);
+        color: var(--cream-dim);
+      }
+
+      /* ── Reviewer summary ────────────────────────────────────────── */
+      .reviewers {
+        margin: 0 0 32px;
+        padding: 18px 22px 20px;
+        background: var(--walnut-mid);
+        border: 1px solid var(--rule);
+        border-left: 1px solid var(--brass);
+        border-radius: 2px;
+      }
+      .reviewers h3 {
+        font-family: var(--mono);
+        font-size: 10.5px;
+        text-transform: uppercase;
+        letter-spacing: 0.2em;
+        color: var(--brass);
+        margin: 0 0 12px;
+        font-weight: 500;
+      }
+      .reviewer-row {
+        display: grid;
+        grid-template-columns: 88px 1fr auto;
+        gap: 18px;
+        align-items: baseline;
+        padding: 8px 0;
+        font-size: 13.5px;
+        border-top: 1px solid var(--rule);
+      }
+      .reviewer-row:first-of-type {
+        border-top: none;
+        padding-top: 4px;
+      }
+      .reviewer-row .name {
+        font-family: var(--mono);
+        color: var(--cream);
+        font-weight: 500;
+      }
+      .reviewer-row .summary {
+        color: var(--cream-dim);
+      }
+
+      /* ── Activity stream ──────────────────────────────────────────── */
+      .stream {
+        position: relative;
+        padding-left: 40px;
+      }
+      .stream::before {
+        content: "";
+        position: absolute;
+        top: 6px;
+        bottom: 24px;
+        left: 7px;
+        width: 1px;
+        background: var(--rule);
+      }
+
+      .event {
+        position: relative;
+        padding: 4px 0 30px;
+      }
+      .event::before {
+        content: "";
+        position: absolute;
+        left: -40px;
+        top: 14px;
+        width: 13px;
+        height: 13px;
+        border-radius: 50%;
+        background: var(--walnut);
+        border: 1.5px solid currentColor;
+      }
+      .event.is-live::before {
+        background: currentColor;
+        box-shadow: 0 0 0 4px oklch(0.78 0.16 70 / 0.18);
+        animation: brass-bloom 4s ease-in-out infinite;
+      }
+      .event.live {
+        color: var(--brass);
+      }
+      .event.healthy {
+        color: var(--oxidized-green);
+      }
+      .event.error {
+        color: var(--oxide-red);
+      }
+      .event.deferred {
+        color: var(--ledger-blue);
+      }
+
+      .event-line {
+        display: flex;
+        gap: 16px;
+        align-items: baseline;
+        font-size: 12.5px;
+        color: var(--cream-soft);
+      }
+      .event-line .when {
+        font-family: var(--mono);
+        min-width: 88px;
+        color: var(--cream-dim);
+      }
+      .event-line .verb {
+        font-family: var(--mono);
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.16em;
+        font-size: 11px;
+        color: currentColor;
+      }
+      .event-headline {
+        margin: 8px 0 6px;
+        font-family: var(--serif);
+        font-size: 19.5px;
+        line-height: 1.3;
+        color: var(--cream);
+        font-weight: 500;
+        letter-spacing: -0.005em;
+      }
+      .event-quote {
+        font-family: var(--serif);
+        font-style: italic;
+        color: var(--cream-dim);
+        margin: 0;
+        font-size: 16px;
+        line-height: 1.5;
+        max-width: 60ch;
+      }
+      .event-trace {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--cream-soft);
+        margin: 0;
+        line-height: 1.55;
+      }
+      .expand {
+        display: inline-block;
+        font-family: var(--mono);
+        font-size: 11px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.16em;
+        color: var(--cream-soft);
+        margin-top: 12px;
+        cursor: pointer;
+      }
+      .expand::before {
+        content: "▾  ";
+        color: var(--brass);
+      }
+
+      /* ── Commit chip ─────────────────────────────────────────────── */
+      .commit-chip {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        gap: 16px;
+        align-items: center;
+        padding: 14px 18px;
+        margin: 14px 0 4px;
+        background: var(--walnut-mid);
+        border: 1px solid var(--rule);
+        border-radius: 3px;
+        position: relative;
+        max-width: 600px;
+      }
+      .commit-chip::before {
+        content: "";
+        position: absolute;
+        top: -1px;
+        bottom: -1px;
+        left: 0;
+        width: 2px;
+        background: var(--brass);
+        border-radius: 3px 0 0 3px;
+      }
+      .commit-chip .label {
+        font-family: var(--mono);
+        font-size: 10.5px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.18em;
+        color: var(--brass);
+        white-space: nowrap;
+      }
+      .commit-chip .body {
+        font-family: var(--serif);
+        font-size: 15.5px;
+        color: var(--cream);
+        line-height: 1.4;
+        font-style: italic;
+      }
+      .commit-chip .body .sha {
+        font-family: var(--mono);
+        font-style: normal;
+        font-size: 13.5px;
+        color: var(--brass);
+        margin-right: 12px;
+        font-weight: 500;
+      }
+      .commit-chip .stats {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--cream-soft);
+        white-space: nowrap;
+      }
+
+      /* ── Palette appendix ─────────────────────────────────────────── */
+      .appendix {
+        margin-top: 80px;
+        padding-top: 32px;
+        border-top: 1px solid var(--rule-strong);
+      }
+      .appendix h3 {
+        font-family: var(--mono);
+        font-size: 11px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.22em;
+        color: var(--brass);
+        margin: 0 0 18px;
+      }
+      .swatches {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 14px 22px;
+      }
+      .swatch {
+        display: grid;
+        grid-template-columns: 56px 1fr;
+        gap: 14px;
+        align-items: stretch;
+        font-size: 12px;
+        line-height: 1.45;
+      }
+      .swatch .chip {
+        height: 56px;
+        border: 1px solid var(--rule);
+        margin: 0;
+        padding: 0;
+        cursor: default;
+        border-radius: 2px;
+      }
+      .swatch .name {
+        font-weight: 600;
+        color: var(--cream);
+      }
+      .swatch .role {
+        color: var(--cream-soft);
+      }
+      .swatch .oklch {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--cream-soft);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <!-- NAV ──────────────────────────────────────────────────────── -->
+      <nav class="nav">
+        <div class="nav-brand">
+          <div class="crest" aria-hidden="true"></div>
+          <div class="logotype">
+            Watch Office
+            <small>pr-review · convex live</small>
+          </div>
+        </div>
+        <div class="nav-links">
+          <a href="#" class="is-active">Watch</a>
+          <a href="#">Policies</a>
+          <a href="#">Reviewers</a>
+        </div>
+        <div class="watch-state">On watch</div>
+      </nav>
+
+      <!-- HOME ─────────────────────────────────────────────────────── -->
+      <header>
+        <div class="eyebrow">Pull Requests on Watch</div>
+        <h1 class="title">12 open · <em>2 ask for the operator</em></h1>
+        <div class="meta">
+          tuesday · 2026-05-05 14:32:18 UTC · last sweep 14s ago
+        </div>
+      </header>
+
+      <div class="chips">
+        <div class="chip is-active">
+          Open<span class="count">12</span>
+        </div>
+        <div class="chip">
+          Ask the operator<span class="count">2</span>
+        </div>
+        <div class="chip">
+          Recently merged<span class="count">8</span>
+        </div>
+        <div class="chip">All<span class="count">204</span></div>
+      </div>
+
+      <!-- ENTRIES ──────────────────────────────────────────────────── -->
+      <article class="entry is-live">
+        <div>
+          <div class="entry-meta-line">
+            <span class="pr">#92413</span>
+            <span class="repo">vercel / next.js</span>
+            <span>jackson/streaming-rsc</span>
+          </div>
+          <h2 class="entry-title">
+            feat: streaming RSC into the App Router shell
+          </h2>
+          <div class="entry-state">
+            <div class="indicator is-live">
+              <div class="dot"></div>
+              ON WATCH
+            </div>
+            <span style="color: var(--cream-soft)">·</span>
+            <span style="color: var(--cream-dim)"
+              >reviewing CodeRabbit feedback · 3 of 4 logged</span
+            >
+          </div>
+        </div>
+        <div class="entry-stamp">
+          <span class="when is-live">14:32</span>
+          last entry 4m ago
+        </div>
+      </article>
+
+      <article class="entry">
+        <div>
+          <div class="entry-meta-line">
+            <span class="pr">#92402</span>
+            <span class="repo">vercel / next.js</span>
+            <span>jackson/turbo-fix-dyn</span>
+          </div>
+          <h2 class="entry-title">
+            fix(turbopack): resolve dynamic import edge case
+          </h2>
+          <div class="entry-state">
+            <div class="indicator is-healthy">
+              <div class="dot"></div>
+              SETTLED
+            </div>
+            <span style="color: var(--cream-soft)">·</span>
+            <span style="color: var(--cream-dim)"
+              >completed 22m ago · 0 open threads</span
+            >
+          </div>
+        </div>
+        <div class="entry-stamp">
+          <span class="when">13:18</span>
+          last entry 22m
+        </div>
+      </article>
+
+      <article class="entry">
+        <div>
+          <div class="entry-meta-line">
+            <span class="pr">#92388</span>
+            <span class="repo">vercel / examples</span>
+            <span>jackson/trpc-example</span>
+          </div>
+          <h2 class="entry-title">add example: tRPC with Vercel Functions</h2>
+          <div class="entry-state">
+            <div class="indicator is-caution">
+              <div class="dot"></div>
+              RE-LOG PENDING
+            </div>
+            <span style="color: var(--cream-soft)">·</span>
+            <span style="color: var(--cream-dim)"
+              >dirty since 14:04 — head moved during sweep</span
+            >
+          </div>
+        </div>
+        <div class="entry-stamp">
+          <span class="when">11:02</span>
+          dirty 28m
+        </div>
+      </article>
+
+      <article class="entry">
+        <div>
+          <div class="entry-meta-line">
+            <span class="pr">#92350</span>
+            <span class="repo">jacksondr5 / orchestrator</span>
+            <span>jackson/reviewer-pack-refactor</span>
+          </div>
+          <h2 class="entry-title">refactor: extract reviewer-pack loader</h2>
+          <div class="entry-state">
+            <div class="indicator is-blocked">
+              <div class="dot"></div>
+              HOLD
+            </div>
+            <span style="color: var(--cream-soft)">·</span>
+            <span style="color: var(--cream-dim)"
+              >GitError ‘invalid credentials’ after 3 retries</span
+            >
+          </div>
+        </div>
+        <div class="entry-stamp">
+          <span class="when">08:47</span>
+          held 5h 45m
+        </div>
+      </article>
+
+      <article class="entry" style="border-bottom: 1px solid var(--rule-strong)">
+        <div>
+          <div class="entry-meta-line">
+            <span class="pr">#92301</span>
+            <span class="repo">jacksondr5 / orchestrator</span>
+            <span>renovate/temporal-sdk</span>
+          </div>
+          <h2 class="entry-title">chore: bump temporal-sdk to 1.13</h2>
+          <div class="entry-state">
+            <div class="indicator is-deferred">
+              <div class="dot"></div>
+              HANDED OFF
+            </div>
+            <span style="color: var(--cream-soft)">·</span>
+            <span style="color: var(--cream-dim)"
+              >to ENG-2241 · scope decision logged</span
+            >
+          </div>
+        </div>
+        <div class="entry-stamp">
+          <span class="when">yesterday</span>
+          last sweep 1d 4h
+        </div>
+      </article>
+
+      <!-- DETAIL ─────────────────────────────────────────────────── -->
+      <section class="detail">
+        <div class="detail-eyebrow">
+          vercel / next.js · pr #92413 · entry no. 2,418
+        </div>
+        <h2 class="detail-title">
+          feat: streaming RSC into the App Router shell
+        </h2>
+
+        <div class="signal-stack">
+          <div class="signal-row">
+            <span class="glyph is-live">⊙</span>
+            <span
+              ><strong>On watch.</strong>
+              <em>Reviewing CodeRabbit feedback, 3 of 4 logged.</em></span
+            >
+          </div>
+          <div class="signal-row">
+            <span class="glyph is-caution">⚠</span>
+            <span
+              ><strong>Re-log pending.</strong>
+              <em>Dirty since 14:18, head moved during the last sweep.</em></span
+            >
+          </div>
+          <div class="signal-row">
+            <span class="glyph">·</span>
+            <span class="micro"
+              >Last entry: completed 12s ago · fixed 2 of 4 threads · pushed
+              1 commit</span
+            >
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="btn is-primary">Re-evaluate now</button>
+          <button class="btn is-ghost">Inspect →</button>
+        </div>
+
+        <!-- Reviewer summary -->
+        <div class="reviewers">
+          <h3>Reviewers on this SHA</h3>
+          <div class="reviewer-row">
+            <div class="name">security</div>
+            <div class="summary">
+              <span style="color: var(--oxidized-green)"
+                >no findings, no code changes.</span
+              >
+            </div>
+            <div class="indicator is-healthy">
+              <div class="dot"></div>
+              CLEAR
+            </div>
+          </div>
+          <div class="reviewer-row">
+            <div class="name">perf</div>
+            <div class="summary">
+              <span style="color: var(--oxidized-green)">no findings.</span>
+            </div>
+            <div class="indicator is-healthy">
+              <div class="dot"></div>
+              CLEAR
+            </div>
+          </div>
+          <div class="reviewer-row">
+            <div class="name">a11y</div>
+            <div class="summary">
+              <span style="color: oklch(0.78 0.14 65)"
+                >2 findings, both inline focus-management gaps.</span
+              >
+            </div>
+            <div class="indicator is-caution">
+              <div class="dot"></div>
+              SEE LOG
+            </div>
+          </div>
+        </div>
+
+        <!-- Stream -->
+        <div class="stream">
+          <article class="event live is-live">
+            <div class="event-line">
+              <span class="when">14:32:08</span>
+              <span class="verb">on watch</span>
+            </div>
+            <h4 class="event-headline">Fixing failing checks</h4>
+            <p class="event-quote">
+              “ESLint reported three errors in apps/web/components/event-cards.tsx,
+              all unused-imports left over from the activity stream split.
+              Removing them should be safe, and not affect runtime behavior.”
+            </p>
+            <span class="expand">See agent reasoning</span>
+          </article>
+
+          <article class="event healthy">
+            <div class="event-line">
+              <span class="when">14:14:52</span>
+              <span class="verb">logged</span>
+            </div>
+            <h4 class="event-headline">
+              Reviewed CodeRabbit feedback · fixed 3 of 4 threads
+            </h4>
+            <div class="commit-chip">
+              <div class="label">Commit logged</div>
+              <div class="body">
+                <span class="sha">7c2f4e1a</span>
+                fix(rsc): replace manual debounce with useDeferredValue per
+                CodeRabbit guidance
+              </div>
+              <div class="stats">+12 −4 · 3 files</div>
+            </div>
+            <span class="expand">See full reasoning</span>
+          </article>
+
+          <article class="event deferred">
+            <div class="event-line">
+              <span class="when">14:10:02</span>
+              <span class="verb">handed off</span>
+            </div>
+            <h4 class="event-headline">Deferred to Linear: ENG-2241</h4>
+            <p class="event-quote">
+              “Refactor of the legacy useDebounce hook is out of scope for this
+              PR. Filing follow-up so it doesn’t get lost.”
+            </p>
+          </article>
+
+          <article class="event error">
+            <div class="event-line">
+              <span class="when">14:01:18</span>
+              <span class="verb">held</span>
+            </div>
+            <h4 class="event-headline">
+              Auth token expired refreshing workspace
+            </h4>
+            <p class="event-trace">
+              3 retries · last: GitError 'invalid credentials' (.git/config) ·
+              fixCheck phase, workflowId pr-92413
+            </p>
+            <span class="expand">See last attempt</span>
+          </article>
+        </div>
+      </section>
+
+      <!-- APPENDIX ─────────────────────────────────────────────────── -->
+      <section class="appendix">
+        <h3>Palette · the watch office</h3>
+        <div class="swatches">
+          <div class="swatch">
+            <div class="chip" style="background: var(--walnut)"></div>
+            <div>
+              <div class="name">Walnut</div>
+              <div class="role">canvas</div>
+              <div class="oklch">oklch(0.18 0.018 50)</div>
+            </div>
+          </div>
+          <div class="swatch">
+            <div class="chip" style="background: var(--cream)"></div>
+            <div>
+              <div class="name">Cream</div>
+              <div class="role">primary text</div>
+              <div class="oklch">oklch(0.94 0.010 80)</div>
+            </div>
+          </div>
+          <div class="swatch">
+            <div class="chip" style="background: var(--brass)"></div>
+            <div>
+              <div class="name">Brass</div>
+              <div class="role">live · dominant</div>
+              <div class="oklch">oklch(0.78 0.16 70)</div>
+            </div>
+          </div>
+          <div class="swatch">
+            <div class="chip" style="background: var(--oxidized-green)"></div>
+            <div>
+              <div class="name">Oxidized Green</div>
+              <div class="role">healthy</div>
+              <div class="oklch">oklch(0.66 0.10 145)</div>
+            </div>
+          </div>
+          <div class="swatch">
+            <div class="chip" style="background: oklch(0.78 0.14 65)"></div>
+            <div>
+              <div class="name">Pale Brass</div>
+              <div class="role">caution</div>
+              <div class="oklch">oklch(0.78 0.14 65)</div>
+            </div>
+          </div>
+          <div class="swatch">
+            <div class="chip" style="background: var(--oxide-red)"></div>
+            <div>
+              <div class="name">Oxide Red</div>
+              <div class="role">blocked</div>
+              <div class="oklch">oklch(0.60 0.18 25)</div>
+            </div>
+          </div>
+          <div class="swatch">
+            <div class="chip" style="background: var(--ledger-blue)"></div>
+            <div>
+              <div class="name">Ledger Blue</div>
+              <div class="role">deferred / handoff</div>
+              <div class="oklch">oklch(0.62 0.12 240)</div>
+            </div>
+          </div>
+          <div class="swatch">
+            <div class="chip" style="background: var(--walnut-mid)"></div>
+            <div>
+              <div class="name">Walnut Mid</div>
+              <div class="role">panel surface</div>
+              <div class="oklch">oklch(0.24 0.018 55)</div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </body>
+</html>
