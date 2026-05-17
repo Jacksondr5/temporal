@@ -3,6 +3,10 @@ import type {
   CodeRabbitAgentExecution,
   CodeRabbitAgentRunInput,
 } from '../domain/agentRuntime.js';
+import {
+  CODEX_REFRESH_TOKEN_REUSED_MESSAGE,
+  isCodexRefreshTokenReusedFailure,
+} from '../domain/codexAuthErrors.js';
 import { createAgentRuntimeClient } from '../integrations/agentRuntime.js';
 import { createWorkspaceManager } from '../integrations/workspace.js';
 import { withActivityHeartbeat } from './withActivityHeartbeat.js';
@@ -25,8 +29,18 @@ export async function runCodeRabbitAgent(
     workspaceManager,
   });
 
-  return await withActivityHeartbeat(
-    'runCodeRabbitAgent',
-    async () => await runtime.runCodeRabbitBatch(input),
-  );
+  return await withActivityHeartbeat('runCodeRabbitAgent', async () => {
+    try {
+      return await runtime.runCodeRabbitBatch(input);
+    } catch (error) {
+      if (isCodexRefreshTokenReusedFailure(error)) {
+        console.warn(
+          '[codex code-rabbit] Codex authentication failed because the mounted refresh token was already used. Re-authenticate Codex on the orchestrator host.',
+        );
+        throw new Error(CODEX_REFRESH_TOKEN_REUSED_MESSAGE);
+      }
+
+      throw error;
+    }
+  });
 }
