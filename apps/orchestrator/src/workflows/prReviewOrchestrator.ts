@@ -13,6 +13,10 @@ import type {
   MergeConflictAgentExecution,
   SpecializedReviewerExecution,
 } from '../domain/agentRuntime.js';
+import {
+  CODEX_REFRESH_TOKEN_REUSED_MESSAGE,
+  isCodexRefreshTokenReusedFailure,
+} from '../domain/codexAuthErrors.js';
 import type {
   PullRequestLifecycleState,
   PullRequestSnapshot,
@@ -211,6 +215,17 @@ function toErrorMessage(error: unknown, fallback: string): string {
 
 function toErrorStack(error: unknown): string | null {
   return error instanceof Error ? (error.stack ?? null) : null;
+}
+
+function toCodeRabbitAgentErrorMessage(
+  error: unknown,
+  fallback: string,
+): string {
+  if (isCodexRefreshTokenReusedFailure(error)) {
+    return CODEX_REFRESH_TOKEN_REUSED_MESSAGE;
+  }
+
+  return toErrorMessage(error, fallback);
 }
 
 function buildTerminalSummary(
@@ -809,10 +824,10 @@ export async function prReviewOrchestratorWorkflow(
           detailsJson: toCodeRabbitRunDetails(execution),
         });
       } catch (error) {
-        const message =
-          error instanceof Error
-            ? error.message
-            : 'Unknown Code Rabbit execution failure.';
+        const message = toCodeRabbitAgentErrorMessage(
+          error,
+          'Unknown Code Rabbit execution failure.',
+        );
         const errorStack = toErrorStack(error);
         await recordWorkflowError({
           repoSlug,
