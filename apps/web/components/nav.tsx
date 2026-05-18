@@ -2,13 +2,17 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useConvexConnectionState } from "convex/react";
+import { GitPullRequest, Radio, Settings } from "lucide-react";
 import { cn } from "../lib/utils";
-import { GitPullRequest, Settings, Radio } from "lucide-react";
+import { StatusMark } from "./status-mark";
 
 const navItems = [
   { href: "/", label: "Pull Requests", icon: GitPullRequest },
   { href: "/policies", label: "Policies", icon: Settings },
 ] as const;
+
+const CONVEX_URL = process.env.NEXT_PUBLIC_CONVEX_URL;
 
 export function Nav() {
   const pathname = usePathname();
@@ -48,6 +52,7 @@ export function Nav() {
               <Link
                 key={href}
                 href={href}
+                aria-current={isActive ? "page" : undefined}
                 className={cn(
                   "font-chrome flex items-center gap-2 border border-transparent px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.16em] transition-colors",
                   isActive
@@ -62,16 +67,35 @@ export function Nav() {
           })}
         </nav>
 
-        <div className="flex items-center gap-2 font-mono text-micro uppercase tracking-[0.18em] text-muted-foreground sm:ml-auto">
-          <span
-            className={cn(
-              "inline-block h-3 w-3 animate-led-tick",
-              isInspector ? "bg-status-caution" : "bg-status-live",
-            )}
-          />
-          {isInspector ? "Inspect" : "Live"}
-        </div>
+        <ConnectionStateIndicator isInspector={isInspector} />
       </div>
     </header>
+  );
+}
+
+function ConnectionStateIndicator({ isInspector }: { isInspector: boolean }) {
+  if (!CONVEX_URL) return null;
+  return <ConnectionStateIndicatorInner isInspector={isInspector} />;
+}
+
+function ConnectionStateIndicatorInner({
+  isInspector,
+}: {
+  isInspector: boolean;
+}) {
+  const state = useConvexConnectionState();
+  const isConnected = state.isWebSocketConnected;
+  const status = isInspector ? "caution" : isConnected ? "live" : "caution";
+  const label = isInspector ? "Inspect" : isConnected ? "Live" : "Reconnecting";
+
+  return (
+    <span
+      role="status"
+      aria-live="polite"
+      className="flex items-center gap-2 font-mono text-micro uppercase tracking-[0.18em] text-muted-foreground sm:ml-auto"
+    >
+      <StatusMark status={status} size="sm" label={null} />
+      {label}
+    </span>
   );
 }

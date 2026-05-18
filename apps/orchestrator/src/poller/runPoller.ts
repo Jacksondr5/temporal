@@ -70,11 +70,16 @@ function hasPendingSignalsLimitMessage(value: unknown): boolean {
     (entry): entry is string => typeof entry === 'string',
   );
 
-  return candidates.some(
-    (message) =>
+  return candidates.some((message) => {
+    const normalizedMessage = message.toLowerCase();
+    return (
       message.includes('PENDING_SIGNALS_LIMIT_EXCEEDED') ||
-      message.toLowerCase().includes('pending signals limit'),
-  );
+      normalizedMessage.includes('pending signals limit') ||
+      normalizedMessage.includes(
+        'exceeded workflow execution limit for signal events',
+      )
+    );
+  });
 }
 
 function isSignalEventLimitError(error: unknown): boolean {
