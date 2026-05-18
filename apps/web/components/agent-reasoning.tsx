@@ -15,7 +15,7 @@ import { StatusMark } from "./status-mark";
  * `<AgentReasoning />` — prose-quality renderer for the Story-layer reasoning
  * fields produced by an agent run.
  *
- * Per the operator UI redesign, agent reasoning is the product (Principle 3).
+ * Per `PRODUCT.md`, agent reasoning is the product.
  * The fields rendered here are:
  *
  * - `investigationSummary`        — what the agent looked into
@@ -82,7 +82,7 @@ export function AgentReasoning({
   }
 
   return (
-    <div className={cn("space-y-4", className)}>
+    <div className={cn("max-w-[80ch] space-y-4", className)}>
       {hasInvestigation && (
         <ReasoningSection title="Investigation">
           <ReasoningProse text={investigationSummary as string} />
@@ -133,10 +133,7 @@ export function AgentReasoning({
         <ReasoningSection title={`Findings (${findings!.length})`}>
           <ul className="space-y-3">
             {findings!.map((finding, index) => (
-              <FindingRow
-                key={`${finding.title}-${index}`}
-                finding={finding}
-              />
+              <FindingRow key={`${finding.title}-${index}`} finding={finding} />
             ))}
           </ul>
         </ReasoningSection>
@@ -192,7 +189,7 @@ function ReasoningProse({ text }: { text: string }) {
 
 function CheckOutcomeRow({ outcome }: { outcome: CheckOutcome }) {
   return (
-    <li className="rounded-md border border-border-hairline bg-surface-inset/40 p-3">
+    <li className="border border-border-hairline bg-surface-inset/40 p-3">
       <div className="flex items-center gap-2">
         <code className="text-mono-sm font-mono text-foreground/85">
           {outcome.checkName}
@@ -210,7 +207,7 @@ function CheckOutcomeRow({ outcome }: { outcome: CheckOutcome }) {
 function ThreadOutcomeRow({ outcome }: { outcome: ThreadOutcome }) {
   const status = mapDispositionToStatus(outcome.disposition);
   return (
-    <li className="rounded-md border border-border-hairline bg-surface-inset/40 p-3">
+    <li className="border border-border-hairline bg-surface-inset/40 p-3">
       <div className="flex flex-wrap items-center gap-2">
         <StatusMark status={status} size="sm" label={null} />
         <code className="text-mono-sm font-mono text-foreground/85">
@@ -236,7 +233,7 @@ function ThreadOutcomeRow({ outcome }: { outcome: ThreadOutcome }) {
 
 function FindingRow({ finding }: { finding: ReviewerFinding }) {
   return (
-    <li className="rounded-md border border-border-hairline bg-surface-inset/40 p-3">
+    <li className="border border-border-hairline bg-surface-inset/40 p-3">
       <p className="text-body font-medium text-foreground">{finding.title}</p>
       <OutcomeLines
         action={finding.actionSummary}
@@ -248,7 +245,7 @@ function FindingRow({ finding }: { finding: ReviewerFinding }) {
 
 function HandoffRow({ item }: { item: HandoffItem }) {
   return (
-    <li className="rounded-md border border-border-hairline bg-surface-inset/40 px-3 py-2">
+    <li className="border border-border-hairline bg-surface-inset/40 px-3 py-2">
       <div className="flex items-baseline gap-2">
         <StatusMark status="deferred" size="sm" label={null} />
         <code className="text-mono-sm font-mono text-status-deferred">
@@ -289,8 +286,7 @@ function OutcomeLines({
 function OutcomeLine({ label, text }: { label: string; text: string }) {
   return (
     <p className="text-meta leading-relaxed text-foreground/80">
-      <span className="font-medium text-muted-foreground">{label}:</span>{" "}
-      {text}
+      <span className="font-medium text-muted-foreground">{label}:</span> {text}
     </p>
   );
 }

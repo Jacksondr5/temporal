@@ -17,9 +17,9 @@ import { cn } from "../lib/utils";
 /**
  * `<PrHeaderOperator />` — the Operator-mode header for the PR detail page.
  *
- * Implements `docs/product/operator-ui-redesign.md` →
- * "Component Patterns" → "PR detail header — Operator", and Principle 8
- * ("Surface the signals, do not synthesize the verdict").
+ * Implements `docs/design/operator-and-inspector-modes.md` and
+ * `docs/design/status-vocabulary.md`: health first, operator language by
+ * default, and Inspector as the route for raw internals.
  *
  * Layout:
  *
@@ -113,18 +113,19 @@ export function PrHeaderOperator({
     manualRequestStatusTime,
   });
 
-  const titleIsEmpty = title.trim().length === 0;
+  const titleText = typeof title === "string" ? title.trim() : "";
+  const titleIsEmpty = titleText.length === 0;
 
   return (
-    <header className="space-y-4">
+    <header className="border border-border-hairline bg-surface-panel">
       <Link
         href="/"
-        className="inline-flex items-center gap-1.5 text-meta text-muted-foreground transition-colors hover:text-foreground"
+        className="inline-flex items-center gap-1.5 border-b border-border-hairline bg-surface-charcoal-up px-4 py-2 text-meta text-muted-foreground transition-colors hover:text-foreground"
       >
         <ArrowLeft className="h-3.5 w-3.5" aria-hidden /> All PRs
       </Link>
 
-      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
+      <div className="flex flex-col items-start gap-4 px-4 py-4 sm:flex-row sm:justify-between">
         <div className="min-w-0 flex-1 space-y-1.5">
           <div className="flex flex-wrap items-center gap-2 text-meta">
             <span className="font-medium text-foreground/80">{repoSlug}</span>
@@ -137,22 +138,22 @@ export function PrHeaderOperator({
               rel="noopener noreferrer"
               aria-label="Open PR on GitHub"
               title="Open PR on GitHub"
-              className="inline-flex h-5 w-5 items-center justify-center rounded text-muted-foreground transition hover:bg-foreground/5 hover:text-foreground"
+              className="inline-flex h-5 w-5 items-center justify-center border border-transparent text-muted-foreground transition hover:border-border-strong hover:text-foreground"
             >
               <ExternalLink className="h-3.5 w-3.5" aria-hidden />
             </a>
           </div>
           <h1
             className={cn(
-              "font-mono-narrative text-display font-semibold leading-tight",
+              "font-chrome text-display font-bold leading-tight tracking-[0.005em]",
               titleIsEmpty && "italic text-muted-foreground",
             )}
           >
-            {titleIsEmpty ? "(untitled pull request)" : title}
+            {titleIsEmpty ? "(untitled pull request)" : titleText}
           </h1>
         </div>
 
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex w-full shrink-0 flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
           <Button
             type="button"
             variant={manualPending ? "secondary" : "outline"}
@@ -173,7 +174,7 @@ export function PrHeaderOperator({
           {inspectHref ? (
             <Link
               href={inspectHref}
-              className="inline-flex h-7 items-center gap-1 rounded-[min(var(--radius-md),12px)] border border-border bg-background px-2.5 text-[0.8rem] font-medium text-foreground transition-colors hover:bg-muted"
+              className="font-chrome inline-flex h-7 items-center gap-1 border border-border-strong bg-transparent px-3 text-[10px] font-bold uppercase tracking-[0.18em] text-foreground transition-colors hover:border-primary hover:text-primary"
             >
               Inspect
               <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
@@ -182,10 +183,17 @@ export function PrHeaderOperator({
         </div>
       </div>
 
-      <SignalStack signals={signals} ariaLabel="PR status signals" />
+      <SignalStack
+        signals={signals}
+        ariaLabel="PR status signals"
+        className="border-t border-border-hairline bg-surface-charcoal-up px-4 py-3"
+      />
 
       {manualRequestError && (
-        <p role="alert" className="text-meta text-status-blocked">
+        <p
+          role="alert"
+          className="border-t border-status-blocked bg-surface-charcoal-deep px-4 py-3 text-meta text-status-blocked"
+        >
           {manualRequestError}
         </p>
       )}
@@ -218,20 +226,24 @@ function buildOperatorSignals({
   // from `mapPhaseToStatus`; the prose label comes from `operatorPhaseLabel`.
   const phaseStatus = mapPhaseToStatus(pr.currentPhase);
   const phaseHeadline = phaseStatus === "live" ? "Live" : "Idle";
+  const phaseLabel = operatorPhaseLabel(pr.currentPhase);
+  const statusSummary = operatorStatusSummary(pr.statusSummary);
   signals.push({
     key: "phase",
     status: phaseStatus,
     text: (
       <>
         <span className="font-medium text-foreground">{phaseHeadline}</span>
-        <Separator type="middot" />
-        <span className="text-foreground/85">
-          {operatorPhaseLabel(pr.currentPhase)}
-        </span>
-        {pr.statusSummary ? (
+        {phaseLabel !== phaseHeadline ? (
           <>
             <Separator type="middot" />
-            <span className="text-muted-foreground">{pr.statusSummary}</span>
+            <span className="text-foreground/85">{phaseLabel}</span>
+          </>
+        ) : null}
+        {statusSummary ? (
+          <>
+            <Separator type="middot" />
+            <span className="text-muted-foreground">{statusSummary}</span>
           </>
         ) : null}
       </>
@@ -239,10 +251,8 @@ function buildOperatorSignals({
   });
 
   // ── Dirty / blocked ────────────────────────────────────────────────────
-  // Per the redesign doc, blocked is the harder fail and gets the triangle
-  // mark; dirty is transient and gets the caution circle. `blockedReason`
-  // takes precedence: a PR can be both dirty and blocked, and "blocked"
-  // is the operator's primary concern.
+  // Blocked is the harder fail and gets the canonical blocked mark. Dirty is
+  // transient and gets the caution mark. If both are true, blocked leads.
   if (pr.blockedReason) {
     signals.push({
       key: "blocked",
@@ -250,7 +260,7 @@ function buildOperatorSignals({
       text: (
         <>
           <span className="font-medium text-foreground">Blocked</span>
-          <Separator type="emdash" />
+          <Separator type="detail" />
           <span className="text-foreground/85">{pr.blockedReason}</span>
         </>
       ),
@@ -262,7 +272,7 @@ function buildOperatorSignals({
       text: (
         <>
           <span className="font-medium text-foreground">Dirty</span>
-          <Separator type="emdash" />
+          <Separator type="detail" />
           <span className="text-foreground/85">re-reconcile pending</span>
         </>
       ),
@@ -282,8 +292,9 @@ function buildOperatorSignals({
       status: runStatus,
       text: (
         <>
-          <span className="text-foreground/85">Latest run:</span>
-          <span className="ml-1 font-medium text-foreground">{runLabel}</span>
+          <span className="text-foreground/85">Latest run</span>
+          <Separator type="detail" />
+          <span className="font-medium text-foreground">{runLabel}</span>
           {runTime ? (
             <>
               <Separator type="middot" />
@@ -292,7 +303,7 @@ function buildOperatorSignals({
           ) : null}
           {latestRun.summary ? (
             <>
-              <Separator type="emdash" />
+              <Separator type="detail" />
               <span className="text-foreground/85">{latestRun.summary}</span>
             </>
           ) : null}
@@ -336,15 +347,20 @@ function buildOperatorSignals({
 }
 
 /**
- * Inline separator rendered between segments of a single signal line. The
- * middot (·) is used between equally-weighted segments; the em-dash (—) is
- * used to introduce subordinate detail (a reason, a summary). Centralized
- * so all signals share the exact same spacing and color treatment.
+ * Inline separator rendered between segments of a single signal line.
  */
-function Separator({ type }: { type: "middot" | "emdash" }) {
+function Separator({ type }: { type: "middot" | "detail" }) {
   return (
     <span className="mx-1.5 text-muted-foreground" aria-hidden>
-      {type === "middot" ? "·" : "—"}
+      {type === "middot" ? "·" : ":"}
     </span>
   );
+}
+
+function operatorStatusSummary(summary: string | null): string | null {
+  if (!summary) return null;
+  const translated = operatorPhaseLabel(summary);
+  if (translated !== summary) return translated;
+  if (/^[a-z]+(?:_[a-z0-9]+)+$/.test(summary)) return null;
+  return summary;
 }
