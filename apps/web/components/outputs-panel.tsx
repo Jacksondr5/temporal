@@ -104,7 +104,10 @@ export function OutputsPanel({
   return (
     <section
       aria-label="Outputs"
-      className={cn("space-y-3", className)}
+      className={cn(
+        "border border-border-strong bg-surface-inspector-panel",
+        className,
+      )}
       data-mode="inspector"
     >
       <PanelHeader count={totalKnown + others.length} />
@@ -112,7 +115,7 @@ export function OutputsPanel({
       {!hasAny ? (
         <EmptyState />
       ) : (
-        <div className="space-y-5">
+        <div className="grid grid-cols-1 gap-px bg-border-hairline p-px xl:grid-cols-3">
           {commits.length > 0 && (
             <CommitGroup repoSlug={repoSlug} artifacts={commits} />
           )}
@@ -146,10 +149,12 @@ export function OutputsPanel({
 
 function PanelHeader({ count }: { count: number }) {
   return (
-    <div className="flex items-center gap-2 pt-4">
-      <Package className="h-4 w-4 text-muted-foreground" aria-hidden />
-      <h2 className="text-sm font-sans font-medium text-foreground">Outputs</h2>
-      <span className="text-[11px] font-mono text-muted-foreground tabular-nums">
+    <div className="flex items-center gap-2 border-b border-border-hairline bg-surface-charcoal-deep px-3 py-2">
+      <Package className="h-4 w-4 text-status-caution" aria-hidden />
+      <h2 className="font-mono text-micro uppercase tracking-[0.18em] text-status-caution">
+        Technical Output Rack
+      </h2>
+      <span className="font-mono text-micro tabular-nums text-muted-foreground">
         ({count})
       </span>
     </div>
@@ -158,7 +163,7 @@ function PanelHeader({ count }: { count: number }) {
 
 function EmptyState() {
   return (
-    <div className="flex flex-col items-center justify-center rounded-none border border-border/60 bg-card/50 py-10 font-sans text-muted-foreground">
+    <div className="m-3 flex flex-col items-center justify-center border border-border/60 bg-surface-inspector py-10 font-sans text-muted-foreground">
       <Package className="h-7 w-7 mb-3 opacity-30" aria-hidden />
       <p className="text-sm">No outputs produced yet.</p>
     </div>
@@ -317,12 +322,12 @@ function GroupShell({
   children: React.ReactNode;
 }) {
   return (
-    <div className="space-y-2">
-      <div className="flex items-center gap-2">
-        <h3 className="text-[11px] font-sans font-semibold uppercase tracking-wider text-muted-foreground">
+    <div className="min-w-0 bg-surface-inspector p-3">
+      <div className="mb-2 flex items-center gap-2 border-b border-border-hairline pb-2">
+        <h3 className="font-mono text-micro uppercase tracking-[0.18em] text-muted-foreground">
           {label}
         </h3>
-        <span className="text-[11px] font-mono text-muted-foreground tabular-nums">
+        <span className="font-mono text-micro tabular-nums text-muted-foreground">
           ({count})
         </span>
       </div>
@@ -363,7 +368,7 @@ function ArtifactRow({
   const hasSummary = trimmedSummary.length > 0;
 
   return (
-    <div className="flex items-start gap-2 rounded-md border border-border/60 bg-card/50 px-3 py-2">
+    <div className="flex items-start gap-2 border border-border/60 bg-surface-inspector-panel px-3 py-2">
       {Icon && (
         <Icon
           className={cn(
@@ -398,7 +403,7 @@ function ArtifactRow({
           target="_blank"
           rel="noopener noreferrer"
           aria-label={ariaLabel}
-          className="ml-auto inline-flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground transition hover:bg-foreground/5 hover:text-foreground"
+          className="ml-auto inline-flex h-5 w-5 shrink-0 items-center justify-center border border-transparent text-muted-foreground transition hover:border-border-strong hover:text-foreground"
         >
           <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
         </a>

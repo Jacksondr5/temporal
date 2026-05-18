@@ -1193,22 +1193,27 @@ function InspectorMetaStrip({
   if (!hasContent) return null;
 
   return (
-    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 pt-1 text-mono-sm font-mono tabular-nums text-muted-foreground">
-      {phase && <InspectorEnumChip value={phase} />}
-      {status && <InspectorEnumChip value={status} />}
-      {provider && <InspectorKv label="provider" value={provider} />}
-      {workspacePath && (
-        <InspectorKv label="ws" value={workspacePath} title={workspacePath} />
-      )}
-      {reviewerPack && <ReviewerPackChip pack={reviewerPack} />}
-      {usage && <InspectorUsageBadge usage={usage} />}
+    <div className="mt-2 border border-border-hairline bg-surface-inspector-panel">
+      <div className="border-b border-border-hairline bg-surface-charcoal-deep px-2 py-1 font-mono text-micro uppercase tracking-[0.18em] text-status-caution">
+        Tech drawer
+      </div>
+      <div className="flex flex-wrap bg-surface-inspector text-mono-sm font-mono tabular-nums text-muted-foreground">
+        {phase && <InspectorEnumChip value={phase} />}
+        {status && <InspectorEnumChip value={status} />}
+        {provider && <InspectorKv label="provider" value={provider} />}
+        {workspacePath && (
+          <InspectorKv label="ws" value={workspacePath} title={workspacePath} />
+        )}
+        {reviewerPack && <ReviewerPackChip pack={reviewerPack} />}
+        {usage && <InspectorUsageBadge usage={usage} />}
+      </div>
     </div>
   );
 }
 
 function InspectorEnumChip({ value }: { value: string }) {
   return (
-    <code className="bg-surface-inset px-1.5 py-0.5 text-foreground/80">
+    <code className="min-w-0 flex-[1_1_220px] border-b border-r border-border-hairline bg-surface-inspector px-2 py-1.5 text-foreground/80 break-all">
       {value}
     </code>
   );
@@ -1226,7 +1231,7 @@ function InspectorKv({
   return (
     <span
       title={title ?? value}
-      className="inline-flex max-w-[28ch] items-baseline gap-1 truncate"
+      className="inline-flex min-w-0 flex-[1_1_220px] items-baseline gap-1 border-b border-r border-border-hairline bg-surface-inspector px-2 py-1.5"
     >
       <span className="text-muted-foreground/60">{label}:</span>
       <span className="truncate text-foreground/80">{value}</span>
@@ -1251,7 +1256,7 @@ function InspectorUsageBadge({ usage }: { usage: TokenUsage }) {
           ? `, ${usage.cachedInputTokens?.toLocaleString()} cached input`
           : ""
       }`}
-      className="inline-flex items-center gap-1.5 bg-surface-inset px-1.5 py-0.5"
+      className="inline-flex min-w-0 flex-[1_1_220px] items-center gap-1.5 border-b border-r border-border-hairline bg-surface-inspector px-2 py-1.5"
     >
       <Cpu className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden />
       <span className="text-foreground/80">
@@ -1285,7 +1290,7 @@ function ReviewerPackChip({ pack }: { pack: ReviewerPack }) {
       title={`pack: ${pack.repoPath} · entry: ${pack.entrypointPath}${
         pack.repoCommitSha ? ` · commit: ${pack.repoCommitSha}` : ""
       }${knowledgeFiles > 0 ? ` · ${knowledgeFiles} knowledge files` : ""}`}
-      className="inline-flex items-center gap-1 bg-surface-inset px-1.5 py-0.5"
+      className="inline-flex min-w-0 flex-[1_1_220px] items-center gap-1 border-b border-r border-border-hairline bg-surface-inspector px-2 py-1.5"
     >
       <Package className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden />
       <span className="max-w-[18ch] truncate text-foreground/80">
@@ -1357,7 +1362,7 @@ function InspectorCommandsList({ commands }: { commands: readonly string[] }) {
         type="button"
         onClick={() => setOpen((p) => !p)}
         aria-expanded={open}
-        className="inline-flex items-center gap-1.5 text-micro font-semibold uppercase tracking-wider text-muted-foreground transition hover:text-foreground"
+        className="inline-flex items-center gap-1.5 border border-border-hairline px-2 py-1 font-mono text-micro uppercase tracking-[0.18em] text-muted-foreground transition hover:border-status-caution hover:text-status-caution"
       >
         <Terminal className="h-3 w-3" aria-hidden />
         Commands ({commands.length})
@@ -1368,7 +1373,7 @@ function InspectorCommandsList({ commands }: { commands: readonly string[] }) {
         )}
       </button>
       {open && (
-        <div className="mt-1.5 space-y-0.5 border border-border-hairline bg-surface-inset p-2">
+        <div className="mt-1.5 space-y-0.5 border border-border-hairline bg-surface-charcoal-deep p-2">
           {commands.map((cmd, i) => (
             <div
               key={i}
@@ -1398,7 +1403,7 @@ function InspectorJsonToggle({ label, json }: { label: string; json: string }) {
         type="button"
         onClick={() => setOpen((p) => !p)}
         aria-expanded={open}
-        className="inline-flex items-center gap-1.5 text-micro font-semibold uppercase tracking-wider text-muted-foreground transition hover:text-foreground"
+        className="inline-flex items-center gap-1.5 border border-border-hairline px-2 py-1 font-mono text-micro uppercase tracking-[0.18em] text-muted-foreground transition hover:border-status-caution hover:text-status-caution"
       >
         <Code className="h-3 w-3" aria-hidden />
         {label}

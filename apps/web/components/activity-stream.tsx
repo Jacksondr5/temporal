@@ -369,7 +369,7 @@ function ActivityStreamSkeleton() {
           <li key={index} className="relative">
             <span
               aria-hidden
-              className="pointer-events-none absolute -left-6 top-3.5 h-3 w-3 bg-surface-panel"
+              className="pointer-events-none absolute -left-6 top-3.5 h-3 w-3 border border-border-hairline bg-surface-panel"
             />
             <div className="h-14 w-full animate-shimmer" />
           </li>

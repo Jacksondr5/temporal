@@ -193,7 +193,7 @@ function ShaButton({
       type="button"
       onClick={onCopy}
       title={sha}
-      className="px-1.5 py-0.5 font-mono text-mono-sm tabular-nums text-status-live transition hover:bg-foreground/5"
+      className="border border-transparent px-1.5 py-0.5 font-mono text-mono-sm tabular-nums text-status-live transition hover:border-border-strong"
     >
       {shortSha(sha)}
     </button>
@@ -229,7 +229,7 @@ function ShaPair({
         type="button"
         onClick={onCopy}
         title={sha}
-        className="px-1.5 py-0.5 text-status-live transition hover:bg-foreground/5"
+        className="border border-transparent px-1.5 py-0.5 text-status-live transition hover:border-border-strong"
       >
         {shortSha(sha)}
       </button>

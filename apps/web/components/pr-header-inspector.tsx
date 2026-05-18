@@ -1,7 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { ArrowLeft, ExternalLink, RotateCw } from "lucide-react";
+import { ExternalLink, RotateCw } from "lucide-react";
 import { Button } from "./ui/button";
 import {
   TechnicalSignalBlock,
@@ -63,12 +62,22 @@ export interface PrHeaderInspectorProps {
   /** Branch name, current HEAD SHA, and the rest of the technical signals. */
   technical: {
     branchName: string;
-    headSha: string;
+    targetHeadSha: string;
+    observedCommitSha: string | null;
     currentPhase: string;
     lifecycleState: string;
     dirty: boolean;
+    blockedReason: string | null;
+    statusSummary: string | null;
+    hasBlockingError: boolean;
     workflowId: string;
+    runId: string | null;
+    manualClaimedAt: string | null;
+    manualEventKind: string | null;
+    latestRunPhase: string | null;
+    latestRunStatus: string | null;
     lastReconciledAt: string | null;
+    policyId: string | null;
   };
   manualEvent: TechnicalSignalBlockManualEvent;
   manualRequestState: ManualRequestState | null;
@@ -95,23 +104,17 @@ export function PrHeaderInspector({
   const manualLabel = manualPending ? "Re-evaluate queued" : "Re-evaluate now";
 
   const githubUrl = `https://github.com/${repoSlug}/pull/${prNumber}`;
-  const operatorHref = `/pr/${encodeURIComponent(repoSlug)}/${prNumber}`;
-
   const titleIsEmpty = title.trim().length === 0;
 
   return (
     <header className="space-y-4">
-      <Link
-        href={operatorHref}
-        className="inline-flex items-center gap-1.5 text-meta font-sans text-muted-foreground transition-colors hover:text-foreground"
-      >
-        <ArrowLeft className="h-3.5 w-3.5" aria-hidden /> Operator view
-      </Link>
-
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
         <div className="min-w-0 flex-1 space-y-1.5">
           <div className="flex flex-wrap items-center gap-2 text-meta">
-            <span className="font-medium text-foreground/80">{repoSlug}</span>
+            <span className="border border-status-caution/55 bg-status-caution/10 px-2 py-1 font-mono text-micro uppercase tracking-[0.18em] text-status-caution">
+              Inspector
+            </span>
+            <span className="font-mono text-foreground/80">{repoSlug}</span>
             <span className="font-mono tabular-nums text-foreground/80">
               #{prNumber}
             </span>
@@ -121,14 +124,14 @@ export function PrHeaderInspector({
               rel="noopener noreferrer"
               aria-label="Open PR on GitHub"
               title="Open PR on GitHub"
-              className="inline-flex h-5 w-5 items-center justify-center rounded text-muted-foreground transition hover:bg-foreground/5 hover:text-foreground"
+              className="inline-flex h-6 w-6 items-center justify-center border border-border-hairline text-muted-foreground transition hover:border-status-caution hover:text-status-caution"
             >
               <ExternalLink className="h-3.5 w-3.5" aria-hidden />
             </a>
           </div>
           <h1
             className={cn(
-              "font-mono text-display font-semibold leading-tight",
+              "font-mono text-[22px] font-semibold leading-[1.25] tracking-normal text-foreground md:text-[24px]",
               titleIsEmpty && "italic text-muted-foreground",
             )}
           >
@@ -159,13 +162,23 @@ export function PrHeaderInspector({
 
       <TechnicalSignalBlock
         branchName={technical.branchName}
-        headSha={technical.headSha}
+        targetHeadSha={technical.targetHeadSha}
+        observedCommitSha={technical.observedCommitSha}
         currentPhase={technical.currentPhase}
         lifecycleState={technical.lifecycleState}
         dirty={technical.dirty}
+        blockedReason={technical.blockedReason}
+        statusSummary={technical.statusSummary}
+        hasBlockingError={technical.hasBlockingError}
         manualEvent={manualEvent}
         workflowId={technical.workflowId}
+        runId={technical.runId}
+        manualClaimedAt={technical.manualClaimedAt}
+        manualEventKind={technical.manualEventKind}
+        latestRunPhase={technical.latestRunPhase}
+        latestRunStatus={technical.latestRunStatus}
         lastReconciledAt={technical.lastReconciledAt}
+        policyId={technical.policyId}
       />
 
       {manualRequestError && (

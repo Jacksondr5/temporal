@@ -56,96 +56,148 @@ export interface TechnicalSignalBlockManualEvent {
 
 export interface TechnicalSignalBlockProps {
   branchName: string;
-  headSha: string;
+  targetHeadSha: string;
+  observedCommitSha: string | null;
   currentPhase: string;
   lifecycleState: string;
   dirty: boolean;
+  blockedReason: string | null;
+  statusSummary: string | null;
+  hasBlockingError: boolean;
   manualEvent: TechnicalSignalBlockManualEvent;
   workflowId: string;
+  runId: string | null;
+  manualClaimedAt: string | null;
+  manualEventKind: string | null;
+  latestRunPhase: string | null;
+  latestRunStatus: string | null;
   lastReconciledAt: string | null;
+  policyId: string | null;
   className?: string;
 }
 
 export function TechnicalSignalBlock({
   branchName,
-  headSha,
+  targetHeadSha,
+  observedCommitSha,
   currentPhase,
   lifecycleState,
   dirty,
+  blockedReason,
+  statusSummary,
+  hasBlockingError,
   manualEvent,
   workflowId,
+  runId,
+  manualClaimedAt,
+  manualEventKind,
+  latestRunPhase,
+  latestRunStatus,
   lastReconciledAt,
+  policyId,
   className,
 }: TechnicalSignalBlockProps) {
+  const shaPair = observedCommitSha
+    ? `${targetHeadSha} → ${observedCommitSha}`
+    : targetHeadSha;
+
   return (
     <section
       aria-label="Technical signals"
       className={cn(
-        "rounded-none border border-border-strong bg-surface-inset px-4 py-3 font-mono text-mono-sm",
+        "border border-border-strong bg-surface-inspector-panel font-mono text-mono-sm",
         className,
       )}
     >
-      <dl className="grid grid-cols-[max-content_minmax(0,1fr)] gap-x-6 gap-y-2">
-        <Row label="BRANCH">
-          <span className="text-foreground" title={branchName}>
-            {branchName}
-          </span>
-        </Row>
-
-        <Row label="HEAD">
-          <HeadShaValue sha={headSha} />
-        </Row>
-
-        <Row label="PHASE">
-          <span className="text-foreground">{currentPhase}</span>
-        </Row>
-
-        <Row label="LIFECYCLE">
-          <span className="text-foreground">{lifecycleState}</span>
-        </Row>
-
-        <Row label="DIRTY">
+      <div className="border-b border-border-hairline bg-surface-charcoal-deep px-3 py-2">
+        <h2 className="font-mono text-micro uppercase tracking-[0.18em] text-status-caution">
+          Technical Signals · pullRequests
+        </h2>
+      </div>
+      <dl className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
+        <SignalCell label="branchName" value={branchName} />
+        <SignalCell label="currentPhase" value={currentPhase} />
+        <SignalCell label="lifecycleState" value={lifecycleState} />
+        <SignalCell label="dirty">
           <BooleanValue value={dirty} />
-        </Row>
-
-        <Row label="MANUAL EVENT">
-          <ManualEventValue manualEvent={manualEvent} />
-        </Row>
-
-        <Row label="WORKFLOW">
-          <span className="text-foreground" title={workflowId}>
-            {workflowId}
-          </span>
-        </Row>
-
-        <Row label="RECONCILED">
+        </SignalCell>
+        <SignalCell label="targetHeadSha">
+          <HeadShaValue sha={targetHeadSha} />
+        </SignalCell>
+        <SignalCell label="observedCommitSha">
+          {observedCommitSha ? (
+            <HeadShaValue sha={observedCommitSha} />
+          ) : (
+            <EmptyValue />
+          )}
+        </SignalCell>
+        <SignalCell label="shaPair" value={shaPair} />
+        <SignalCell label="blockedReason">
+          {blockedReason ? (
+            <span className="text-status-blocked">{blockedReason}</span>
+          ) : (
+            <EmptyValue />
+          )}
+        </SignalCell>
+        <SignalCell label="statusSummary">
+          {statusSummary ? <span>{statusSummary}</span> : <EmptyValue />}
+        </SignalCell>
+        <SignalCell label="hasBlockingError">
+          <BooleanValue value={hasBlockingError} />
+        </SignalCell>
+        <SignalCell label="workflowId" value={workflowId} />
+        <SignalCell label="runId">
+          {runId ? <span>{runId}</span> : <EmptyValue />}
+        </SignalCell>
+        <SignalCell label="manualClaimedAt">
+          {manualClaimedAt ? <span>{manualClaimedAt}</span> : <EmptyValue />}
+        </SignalCell>
+        <SignalCell label="manualEvent">
+          <ManualEventValue
+            manualEvent={manualEvent}
+            manualEventKind={manualEventKind}
+          />
+        </SignalCell>
+        <SignalCell label="latestRunPhase">
+          {latestRunPhase ? <span>{latestRunPhase}</span> : <EmptyValue />}
+        </SignalCell>
+        <SignalCell label="latestRunStatus">
+          {latestRunStatus ? <span>{latestRunStatus}</span> : <EmptyValue />}
+        </SignalCell>
+        <SignalCell label="lastReconciledAt">
           <ReconciledValue lastReconciledAt={lastReconciledAt} />
-        </Row>
+        </SignalCell>
+        <SignalCell label="policyId">
+          {policyId ? <span>{policyId}</span> : <EmptyValue />}
+        </SignalCell>
       </dl>
     </section>
   );
 }
 
-/* ──────────────────────────────────────────────────────────────────────────
-   Row primitive — keeps every label/value pair on the same baseline so the
-   grid reads as a tabular block rather than a list of mismatched rows.
-   ────────────────────────────────────────────────────────────────────── */
-
-function Row({
+function SignalCell({
   label,
+  value,
   children,
 }: {
   label: string;
-  children: React.ReactNode;
+  value?: string | null;
+  children?: React.ReactNode;
 }) {
   return (
-    <>
-      <dt className="text-micro font-sans font-semibold uppercase tracking-wider text-muted-foreground">
+    <div className="min-w-0 border-b border-r border-border-hairline px-3 py-3">
+      <dt className="font-mono text-micro uppercase tracking-[0.18em] text-muted-foreground">
         {label}
       </dt>
-      <dd className="min-w-0 break-all text-foreground/90">{children}</dd>
-    </>
+      <dd className="mt-1 min-w-0 break-all text-foreground/90">
+        {children ?? value ?? <EmptyValue />}
+      </dd>
+    </div>
   );
+}
+
+function EmptyValue() {
+  return <span className="text-muted-foreground">null</span>;
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -179,7 +231,7 @@ function HeadShaValue({ sha }: { sha: string }) {
           type="button"
           onClick={handleCopy}
           aria-label={copied ? "SHA copied" : "Copy full SHA"}
-          className="inline-flex h-5 w-5 items-center justify-center rounded text-muted-foreground transition hover:bg-foreground/5 hover:text-foreground"
+          className="inline-flex h-5 w-5 items-center justify-center border border-transparent text-muted-foreground transition hover:border-border-strong hover:text-foreground"
         >
           {copied ? (
             <Check className="h-3.5 w-3.5 text-status-healthy" aria-hidden />
@@ -218,16 +270,25 @@ function BooleanValue({ value }: { value: boolean }) {
 
 function ManualEventValue({
   manualEvent,
+  manualEventKind,
 }: {
   manualEvent: TechnicalSignalBlockManualEvent;
+  manualEventKind?: string | null;
 }) {
   if (manualEvent.state === null) {
-    return <span className="text-muted-foreground">none</span>;
+    return (
+      <span className="text-muted-foreground">
+        {manualEventKind ?? "null"}
+      </span>
+    );
   }
 
   return (
     <div className="flex flex-col gap-0.5">
       <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+        {manualEventKind ? (
+          <span className="text-muted-foreground">{manualEventKind}</span>
+        ) : null}
         <span className="text-foreground">{manualEvent.state}</span>
         {manualEvent.claimedAt ? (
           <>
