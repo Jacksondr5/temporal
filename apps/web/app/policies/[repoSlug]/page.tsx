@@ -28,26 +28,12 @@ import {
   Settings,
   Trash2,
 } from "lucide-react";
+import { StatusMark } from "../../../components/status-mark";
 import { cn } from "../../../lib/utils";
 
 /**
- * Policy editor — see `docs/product/operator-ui-redesign.md`
- * → "Per-Screen Direction" → "Policy editor".
- *
- * Key shifts from the previous design:
- *
- *   - The Save button moves out of the page header and into a sticky bar
- *     at the bottom of the viewport that only appears while the form is
- *     dirty. The bar shows a one-line summary of what will change so the
- *     operator can see the scope of the diff before committing.
- *   - The Status Checks list is grouped by source (Checks API vs Commit
- *     Status) with a filter chip above the list. Filtering scopes the
- *     visible group; "All" renders both with sub-headers.
- *   - Specialized reviewer cards now follow the layered-detail principle:
- *     ID, run policy, and description sit on the surface, while prompt ID
- *     and file globs are tucked behind a `Configure` expand. Newly added
- *     reviewers default to expanded so the operator can finish wiring them
- *     up immediately.
+ * Machine Room policy editor. This route keeps policy behavior unchanged and
+ * moves the form chrome onto the shared hard-edged operational primitives.
  */
 
 interface ReviewerDraft {
@@ -108,8 +94,8 @@ export default function PolicyEditPage() {
   if (detail === undefined) {
     return (
       <div className="space-y-6">
-        <div className="h-4 w-24 rounded animate-shimmer" />
-        <div className="h-9 w-72 rounded animate-shimmer" />
+        <div className="h-4 w-24 animate-shimmer" />
+        <div className="h-9 w-72 animate-shimmer" />
         <div className="h-64 w-full rounded-none animate-shimmer" />
       </div>
     );
@@ -372,14 +358,9 @@ function PolicyEditForm({
     };
   }, [initialReviewers, initialStatusCheckSelections]);
 
-  /* ── reviewer mutators ── */
-
   const addReviewer = useCallback(() => {
     setReviewers((prev) => {
       const newKey = `new-${Date.now()}-${prev.length}`;
-      // Newly added reviewers default to expanded so the operator can
-      // immediately fill in the prompt ID and globs (the layered-detail
-      // fields). Existing reviewers stay collapsed by default.
       setExpandedReviewerKeys((expanded) => {
         const next = new Set(expanded);
         next.add(newKey);
@@ -432,8 +413,6 @@ function PolicyEditForm({
       return next;
     });
   }, []);
-
-  /* ── discard / save ── */
 
   const handleDiscard = useCallback(() => {
     setEnabled(initialEnabled);
@@ -503,8 +482,6 @@ function PolicyEditForm({
     }
   };
 
-  /* ── status check filtering / grouping ── */
-
   const groupedStatusChecks = useMemo(() => {
     const groups: Record<StatusCheckSource, StatusCheckSummary[]> = {
       check_run: [],
@@ -532,15 +509,14 @@ function PolicyEditForm({
 
   return (
     <div className="space-y-6 pb-24">
-      {/* Header — Save button is gone; the sticky bar handles save. */}
       <div>
         <Link
           href="/policies"
-          className="mb-3 inline-flex items-center gap-2 text-meta text-muted-foreground transition-colors hover:text-primary"
+          className="mb-3 inline-flex items-center gap-2 font-chrome text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:text-primary"
         >
           <ArrowLeft className="size-3.5" /> Policies
         </Link>
-        <h1 className="text-display font-semibold tracking-tight text-foreground">
+        <h1 className="font-chrome text-display font-semibold tracking-[0.005em] text-foreground">
           {decodedSlug}
         </h1>
         <p className="mt-1 text-meta text-muted-foreground">
@@ -548,14 +524,20 @@ function PolicyEditForm({
         </p>
       </div>
 
-      {/* Repository enabled toggle */}
       <Section title="Repository">
         <div className="flex items-center justify-between gap-4">
-          <div>
-            <p className="text-body text-foreground">Enable polling</p>
-            <p className="mt-0.5 text-meta text-muted-foreground">
-              When disabled, the poller skips this repository.
-            </p>
+          <div className="flex min-w-0 items-center gap-3">
+            <StatusMark
+              status={enabled ? "healthy" : "skipped"}
+              size="md"
+              label={null}
+            />
+            <div className="min-w-0">
+              <p className="text-body text-foreground">Enable polling</p>
+              <p className="mt-0.5 text-meta text-muted-foreground">
+                When disabled, the poller skips this repository.
+              </p>
+            </div>
           </div>
           <Switch
             checked={enabled}
@@ -565,14 +547,19 @@ function PolicyEditForm({
         </div>
       </Section>
 
-      {/* Check classifications */}
       <Section title="Status Checks">
         <div className="space-y-4">
-          <StatusCheckFilterBar
-            active={statusCheckFilter}
-            counts={statusCheckCounts}
-            onChange={setStatusCheckFilter}
-          />
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="mt-0.5 text-meta text-muted-foreground">
+              Grouped by source. Checked rows are treated as fixable by the
+              orchestrator.
+            </p>
+            <StatusCheckFilterBar
+              active={statusCheckFilter}
+              counts={statusCheckCounts}
+              onChange={setStatusCheckFilter}
+            />
+          </div>
 
           {detail.statusChecks.length === 0 ? (
             <StatusChecksEmptyState />
@@ -584,7 +571,7 @@ function PolicyEditForm({
                   <StatusCheckGroup
                     key={source}
                     source={source}
-                    showHeader={statusCheckFilter === "all"}
+                    showHeader={true}
                     checks={checks}
                     selections={statusCheckSelections}
                     onToggle={(name, value) =>
@@ -601,7 +588,6 @@ function PolicyEditForm({
         </div>
       </Section>
 
-      {/* Specialized reviewers */}
       <Section
         title="Specialized Reviewers"
         action={
@@ -609,7 +595,7 @@ function PolicyEditForm({
             variant="outline"
             size="sm"
             onClick={addReviewer}
-            className="gap-1.5 border-border-hairline text-meta hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
+            className="gap-1.5 border-border-strong text-[10px] hover:border-primary hover:bg-transparent hover:text-primary"
           >
             <Plus className="size-3.5" /> Add reviewer
           </Button>
@@ -634,7 +620,6 @@ function PolicyEditForm({
         )}
       </Section>
 
-      {/* Sticky save bar — appears only while the form is dirty. */}
       <SaveBar
         visible={isDirty}
         summary={dirtyParts.join(" · ")}
@@ -663,7 +648,7 @@ function StatusCheckFilterBar({
     <div
       role="group"
       aria-label="Filter status checks by source"
-      className="flex flex-wrap items-center gap-1.5"
+      className="flex flex-wrap items-center gap-1 border border-border-hairline bg-surface-charcoal-up p-1"
     >
       {STATUS_CHECK_FILTERS.map((filter) => {
         const isActive = filter === active;
@@ -674,11 +659,11 @@ function StatusCheckFilterBar({
             aria-pressed={isActive}
             onClick={() => onChange(filter)}
             className={cn(
-              "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-meta font-medium transition-colors",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
+              "inline-flex h-8 items-center gap-2 border px-3 font-chrome text-[11px] font-bold uppercase tracking-[0.18em] transition-colors",
+              "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
               isActive
-                ? "border-transparent bg-foreground text-surface-canvas"
-                : "border-border-hairline bg-surface-panel text-muted-foreground hover:bg-surface-panel-hover hover:text-foreground",
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-transparent bg-transparent text-muted-foreground hover:border-border-strong hover:text-foreground",
             )}
           >
             <span>{STATUS_CHECK_FILTER_LABELS[filter]}</span>
@@ -686,7 +671,7 @@ function StatusCheckFilterBar({
               className={cn(
                 "tabular-nums text-mono-sm",
                 isActive
-                  ? "text-surface-canvas/70"
+                  ? "text-primary-foreground/70"
                   : "text-muted-foreground/70",
               )}
             >
@@ -714,11 +699,14 @@ function StatusCheckGroup({
 }) {
   if (checks.length === 0) {
     return (
-      <div className="space-y-2">
+      <div className="border border-border-hairline bg-surface-charcoal-up">
         {showHeader && (
-          <GroupHeader label={STATUS_CHECK_SOURCE_LABELS[source]} />
+          <GroupHeader
+            label={STATUS_CHECK_SOURCE_LABELS[source]}
+            count={checks.length}
+          />
         )}
-        <p className="text-meta text-muted-foreground">
+        <p className="px-3 py-4 text-meta text-muted-foreground">
           No checks of this type yet.
         </p>
       </div>
@@ -726,15 +714,20 @@ function StatusCheckGroup({
   }
 
   return (
-    <div className="space-y-2">
-      {showHeader && <GroupHeader label={STATUS_CHECK_SOURCE_LABELS[source]} />}
-      <div className="divide-y divide-border-hairline overflow-hidden rounded-md border border-border-hairline">
+    <div className="border border-border-hairline bg-surface-charcoal-up">
+      {showHeader && (
+        <GroupHeader
+          label={STATUS_CHECK_SOURCE_LABELS[source]}
+          count={checks.length}
+        />
+      )}
+      <div className="divide-y divide-border-hairline">
         {checks.map((check) => {
           const checked = selections[check.name] ?? false;
           return (
             <label
               key={check.name}
-              className="flex min-h-12 cursor-pointer items-center gap-3 px-3 py-2.5 transition-colors hover:bg-surface-panel-hover"
+              className="grid min-h-12 cursor-pointer grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-3 py-2.5 transition-colors hover:bg-surface-panel-hover"
             >
               <Checkbox
                 checked={checked}
@@ -743,16 +736,19 @@ function StatusCheckGroup({
                 }
                 aria-label={`Mark ${check.name} as fixable`}
               />
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-mono text-mono-sm text-foreground">
+              <div className="min-w-0">
+                <div className="truncate font-mono text-mono-sm text-foreground">
                   {check.name}
                 </div>
               </div>
-              {checked && (
-                <span className="shrink-0 text-micro font-semibold uppercase tracking-[0.08em] text-status-healthy">
-                  Fixable
-                </span>
-              )}
+              <span
+                className={cn(
+                  "shrink-0 font-chrome text-[11px] font-bold uppercase tracking-[0.18em]",
+                  checked ? "text-status-healthy" : "text-muted-foreground",
+                )}
+              >
+                {checked ? "Fixable" : "Observe"}
+              </span>
             </label>
           );
         })}
@@ -761,10 +757,15 @@ function StatusCheckGroup({
   );
 }
 
-function GroupHeader({ label }: { label: string }) {
+function GroupHeader({ label, count }: { label: string; count: number }) {
   return (
-    <div className="text-micro font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-      {label}
+    <div className="flex items-center justify-between border-b border-border-hairline bg-surface-panel px-3 py-2">
+      <span className="font-mono text-micro uppercase tracking-[0.18em] text-muted-foreground">
+        {label}
+      </span>
+      <span className="font-mono text-mono-sm tabular-nums text-muted-foreground">
+        {count}
+      </span>
     </div>
   );
 }
@@ -828,28 +829,30 @@ function ReviewerCard({
   return (
     <div
       aria-labelledby={headingId}
-      className="rounded-md border border-border-hairline bg-surface-inset/40 p-4"
+      className="border border-border-hairline bg-surface-charcoal-up"
     >
-      <div className="flex items-start justify-between gap-3">
-        <span
-          id={headingId}
-          className="text-micro font-semibold uppercase tracking-[0.08em] text-muted-foreground"
-        >
-          Reviewer #{index + 1}
-        </span>
+      <div className="flex items-center justify-between gap-3 border-b border-border-hairline bg-surface-panel px-4 py-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <StatusMark status="reviewer" size="sm" label={null} />
+          <span
+            id={headingId}
+            className="font-mono text-micro uppercase tracking-[0.18em] text-muted-foreground"
+          >
+            Reviewer {index + 1}
+          </span>
+        </div>
         <Button
           variant="ghost"
-          size="sm"
+          size="icon-sm"
           onClick={onRemove}
           aria-label={`Remove reviewer #${index + 1}`}
-          className="size-7 p-0 text-status-blocked/80 hover:bg-status-blocked/10 hover:text-status-blocked"
+          className="text-status-blocked/80 hover:bg-status-blocked/10 hover:text-status-blocked"
         >
           <Trash2 className="size-3.5" />
         </Button>
       </div>
 
-      {/* Surface fields: ID, run policy, description. */}
-      <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_220px]">
         <FieldGroup label="ID" htmlFor={idInputId}>
           <Input
             id={idInputId}
@@ -864,16 +867,18 @@ function ReviewerCard({
             id={runPolicyInputId}
             value={reviewer.runPolicy}
             onChange={(e) => onChange("runPolicy", e.target.value)}
-            className="flex h-9 w-full rounded-md border border-border-hairline bg-surface-panel px-3 py-1 text-body text-foreground transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/40"
+            className="flex h-8 w-full border border-border-hairline bg-surface-panel px-3 py-1 text-body text-foreground transition-colors focus-visible:border-ring focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
           >
             <option value="once_per_sha">Once per SHA</option>
             <option value="once_per_pr">Once per PR</option>
           </select>
         </FieldGroup>
-      </div>
 
-      <div className="mt-3">
-        <FieldGroup label="Description" htmlFor={descriptionInputId}>
+        <FieldGroup
+          label="Description"
+          htmlFor={descriptionInputId}
+          className="lg:col-span-2"
+        >
           <Input
             id={descriptionInputId}
             value={reviewer.description}
@@ -884,14 +889,13 @@ function ReviewerCard({
         </FieldGroup>
       </div>
 
-      {/* Configure expand: prompt ID + file globs. */}
-      <div className="mt-3">
+      <div className="border-t border-border-hairline px-4 py-3">
         <button
           type="button"
           onClick={onToggleExpanded}
           aria-expanded={expanded}
           aria-controls={detailsId}
-          className="inline-flex items-center gap-1.5 rounded-md px-1 py-0.5 text-meta text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+          className="inline-flex items-center gap-1.5 font-chrome text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
         >
           <ChevronDown
             className={cn(
@@ -906,7 +910,7 @@ function ReviewerCard({
         {expanded && (
           <div
             id={detailsId}
-            className="mt-3 space-y-3 border-t border-border-hairline pt-3"
+            className="mt-3 grid grid-cols-1 gap-3 border-t border-border-hairline pt-3 lg:grid-cols-2"
           >
             <FieldGroup label="Prompt ID" htmlFor={promptIdInputId}>
               <Input
@@ -965,7 +969,7 @@ function SaveBar({
         visible || saveStatus !== "idle" ? "translate-y-0" : "translate-y-full",
       )}
     >
-      <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center gap-3 px-6 py-3">
+      <div className="flex w-full flex-wrap items-center gap-3 px-6 py-3">
         <div
           role="status"
           aria-live={saveStatus === "error" ? "assertive" : "polite"}
@@ -1041,8 +1045,10 @@ function Section({
 }) {
   return (
     <section className="overflow-hidden rounded-none border border-border-hairline bg-surface-panel">
-      <div className="flex items-center justify-between gap-3 border-b border-border-hairline px-4 py-3">
-        <h2 className="text-title font-medium text-foreground">{title}</h2>
+      <div className="flex items-center justify-between gap-3 border-b border-border-hairline bg-surface-charcoal-up px-4 py-3">
+        <h2 className="font-chrome text-title font-semibold text-foreground">
+          {title}
+        </h2>
         {action}
       </div>
       <div className="px-4 py-4">{children}</div>
@@ -1055,15 +1061,20 @@ function FieldGroup({
   htmlFor,
   description,
   children,
+  className,
 }: {
   label: string;
   htmlFor: string;
   description?: string;
   children: React.ReactNode;
+  className?: string;
 }) {
   return (
-    <div className="space-y-1.5">
-      <Label htmlFor={htmlFor} className="text-meta text-foreground/80">
+    <div className={cn("space-y-1.5", className)}>
+      <Label
+        htmlFor={htmlFor}
+        className="font-mono text-micro uppercase tracking-[0.18em] text-muted-foreground"
+      >
         {label}
       </Label>
       {description && (
