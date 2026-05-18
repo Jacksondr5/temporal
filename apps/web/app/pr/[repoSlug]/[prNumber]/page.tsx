@@ -127,8 +127,8 @@ export default function PullRequestDetailPage({
       <div className="space-y-6">
         <div className="h-5 w-32 rounded animate-shimmer" />
         <div className="h-8 w-72 rounded animate-shimmer" />
-        <div className="h-24 w-full rounded-lg animate-shimmer" />
-        <div className="h-96 w-full rounded-lg animate-shimmer" />
+        <div className="h-24 w-full rounded-none animate-shimmer" />
+        <div className="h-96 w-full rounded-none animate-shimmer" />
       </div>
     );
   }
@@ -231,7 +231,7 @@ export default function PullRequestDetailPage({
           {threads.map((thread) => (
             <div
               key={thread._id}
-              className="rounded-lg border border-border/60 bg-card/50 overflow-hidden"
+              className="rounded-none border border-border/60 bg-card/50 overflow-hidden"
             >
               <div className="flex items-center justify-between px-4 py-2.5 border-b border-border/40 bg-card/80">
                 <div className="flex items-center gap-2 min-w-0">
@@ -259,7 +259,7 @@ export default function PullRequestDetailPage({
                     </span>
                   </span>
                   {thread.isResolved && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-400 ring-1 ring-inset ring-emerald-500/20">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-status-healthy/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-status-healthy ring-1 ring-inset ring-status-healthy/20">
                       Resolved
                     </span>
                   )}
@@ -378,7 +378,7 @@ function EmptyState({
   text: string;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-lg border border-border/60 bg-card/50 py-12 text-muted-foreground">
+    <div className="flex flex-col items-center justify-center rounded-none border border-border/60 bg-card/50 py-12 text-muted-foreground">
       <Icon className="h-7 w-7 mb-3 opacity-30" />
       <p className="text-sm">{text}</p>
     </div>

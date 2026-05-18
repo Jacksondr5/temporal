@@ -12,20 +12,35 @@ const navItems = [
 
 export function Nav() {
   const pathname = usePathname();
+  const isInspector = pathname.includes("/inspect");
 
   return (
-    <header className="border-b border-border/60 bg-card/80 backdrop-blur-md sticky top-0 z-50">
-      <div className="mx-auto flex h-14 max-w-7xl items-center gap-8 px-6">
-        <Link href="/" className="flex items-center gap-2.5 group">
-          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/15 ring-1 ring-primary/30 group-hover:bg-primary/25 transition-colors">
-            <Radio className="h-3.5 w-3.5 text-primary" />
+    <header className="sticky top-0 z-50 border-b border-border-hairline bg-surface-charcoal-up">
+      {isInspector && (
+        <div
+          className="h-1"
+          style={{
+            background:
+              "repeating-linear-gradient(-45deg, oklch(0.85 0.18 95) 0, oklch(0.85 0.18 95) 8px, oklch(0.16 0.012 50) 8px, oklch(0.16 0.012 50) 14px)",
+          }}
+        />
+      )}
+      <div className="flex min-h-14 flex-wrap items-center gap-x-5 gap-y-2 px-4 py-2 sm:px-6">
+        <Link href="/" className="group flex items-center gap-2.5">
+          <div className="flex h-7 w-7 items-center justify-center border border-border-strong bg-surface-panel transition-colors group-hover:border-primary">
+            <Radio
+              className={cn(
+                "h-3.5 w-3.5",
+                isInspector ? "text-status-caution" : "text-status-live",
+              )}
+            />
           </div>
-          <span className="font-semibold tracking-tight text-foreground">
+          <span className="font-chrome text-[13px] font-bold uppercase tracking-[0.18em] text-foreground">
             PR Review
           </span>
         </Link>
 
-        <nav className="flex items-center gap-0.5">
+        <nav className="flex min-w-0 flex-wrap items-center gap-1">
           {navItems.map(({ href, label, icon: Icon }) => {
             const isActive =
               href === "/" ? pathname === "/" : pathname.startsWith(href);
@@ -34,10 +49,10 @@ export function Nav() {
                 key={href}
                 href={href}
                 className={cn(
-                  "flex items-center gap-2 rounded-md px-3 py-1.5 text-[13px] font-medium transition-all",
+                  "font-chrome flex items-center gap-2 border border-transparent px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.16em] transition-colors",
                   isActive
-                    ? "bg-primary/10 text-primary ring-1 ring-primary/20"
-                    : "text-muted-foreground hover:bg-accent hover:text-foreground",
+                    ? "border-primary text-primary"
+                    : "text-muted-foreground hover:border-border-strong hover:text-foreground",
                 )}
               >
                 <Icon className="h-3.5 w-3.5" />
@@ -47,9 +62,14 @@ export function Nav() {
           })}
         </nav>
 
-        <div className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
-          <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500 animate-status-pulse" />
-          Live
+        <div className="flex items-center gap-2 font-mono text-micro uppercase tracking-[0.18em] text-muted-foreground sm:ml-auto">
+          <span
+            className={cn(
+              "inline-block h-3 w-3 animate-led-tick",
+              isInspector ? "bg-status-caution" : "bg-status-live",
+            )}
+          />
+          {isInspector ? "Inspect" : "Live"}
         </div>
       </div>
     </header>

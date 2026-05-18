@@ -158,7 +158,7 @@ function PanelHeader({ count }: { count: number }) {
 
 function EmptyState() {
   return (
-    <div className="flex flex-col items-center justify-center rounded-lg border border-border/60 bg-card/50 py-10 font-sans text-muted-foreground">
+    <div className="flex flex-col items-center justify-center rounded-none border border-border/60 bg-card/50 py-10 font-sans text-muted-foreground">
       <Package className="h-7 w-7 mb-3 opacity-30" aria-hidden />
       <p className="text-sm">No outputs produced yet.</p>
     </div>

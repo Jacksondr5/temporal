@@ -21,7 +21,7 @@ import { cn } from "../lib/utils";
  * > adds a sibling block exposing the technical signals: branch name,
  * > current HEAD SHA, internal phase enum, internal lifecycle enum, dirty
  * > flag, manual event state, manual claim freshness, workflow ID, last
- * > reconciled timestamp. All in `Monaspace Neon`. A back affordance routes
+ * > reconciled timestamp. All in `JetBrains Mono`. A back affordance routes
  * > to `/pr/[slug]/[num]`."
  *
  * Layout:

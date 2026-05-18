@@ -28,7 +28,7 @@ export default function PoliciesListPage() {
         )}
       </div>
 
-      <div className="rounded-lg border border-border/60 bg-card/50 overflow-hidden">
+      <div className="rounded-none border border-border/60 bg-card/50 overflow-hidden">
         {/* Table header */}
         <div className="grid grid-cols-[1fr_80px_90px_90px_80px_70px_32px] gap-4 px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border/60 bg-card/80">
           <span>Repository</span>
@@ -88,8 +88,8 @@ export default function PoliciesListPage() {
                 </div>
 
                 {repo.enabled ? (
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-400 ring-1 ring-inset ring-emerald-500/20 w-fit">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-status-healthy/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-status-healthy ring-1 ring-inset ring-status-healthy/20 w-fit">
+                    <span className="h-1.5 w-1.5 rounded-full bg-status-healthy" />
                     On
                   </span>
                 ) : (

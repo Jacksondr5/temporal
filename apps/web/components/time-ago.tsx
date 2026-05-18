@@ -66,7 +66,7 @@ export function TimeAgo({
       title={date ?? "Never"}
       className={cn(
         "text-[13px] font-mono tabular-nums",
-        recent ? "text-emerald-400" : "text-muted-foreground",
+        recent ? "text-status-healthy" : "text-muted-foreground",
         className,
       )}
     >

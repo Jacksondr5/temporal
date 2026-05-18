@@ -6,16 +6,9 @@ export type { StatusKind };
 /**
  * `<StatusMark />` — the canonical shape+color primitive for the operator UI.
  *
- * Each `StatusKind` owns one shape (rendered as inline SVG so size and stroke
- * stay crisp at any DPI) and one color (driven by the `--status-*` tokens
- * defined in `globals.css`). Per Principle 4 ("Motion encodes liveness"),
- * the mark itself never animates — motion lives on `<StatusRail />`. The
- * color and shape are sufficient on their own to disambiguate the eight
- * canonical states even when the surrounding surface is static.
- *
- * Sizes:
- *   - `sm`: 8px — inline use in dense rows (PR row signal block, etc.).
- *   - `md`: 12px — timeline dots, header signal stack, default.
+ * Source of truth: `docs/design/status-vocabulary.md`. Each kind owns one
+ * color and one visually orthogonal shape. The live square is the only mark
+ * with motion and glow; reduced-motion users get the same square statically.
  */
 
 export type StatusMarkSize = "sm" | "md";
@@ -31,11 +24,6 @@ export interface StatusMarkProps {
    */
   label?: string | null;
 }
-
-const SIZE_PX: Record<StatusMarkSize, number> = {
-  sm: 8,
-  md: 12,
-};
 
 const STATUS_TEXT_CLASS: Record<StatusKind, string> = {
   live: "text-status-live",
@@ -65,8 +53,8 @@ export function StatusMark({
   className,
   label,
 }: StatusMarkProps) {
-  const px = SIZE_PX[size];
-  const accessibleLabel = label === null ? undefined : (label ?? DEFAULT_LABELS[status]);
+  const accessibleLabel =
+    label === null ? undefined : (label ?? DEFAULT_LABELS[status]);
   const isDecorative = label === null;
 
   return (
@@ -74,118 +62,62 @@ export function StatusMark({
       className={cn(
         "inline-flex shrink-0 items-center justify-center",
         STATUS_TEXT_CLASS[status],
-        // Skipped is rendered at reduced opacity ("Hollow circle, dim").
-        status === "skipped" && "opacity-60",
+        size === "sm" && "scale-75",
         className,
       )}
-      // The status color lives in CSS; expose it to consumers that want to
-      // tint sibling elements (e.g. a rail) via `var(--mark-color)` without
-      // re-deriving the kind.
       style={{ ["--mark-color" as string]: "currentColor" }}
       role={isDecorative ? "presentation" : "img"}
       aria-label={accessibleLabel}
       aria-hidden={isDecorative ? true : undefined}
     >
-      <Shape status={status} px={px} />
+      <Shape status={status} />
     </span>
   );
 }
 
-/* ──────────────────────────────────────────────────────────────────────────
-   Shape primitives. Each is rendered in a square viewBox of side 12 so the
-   visual weight stays consistent across kinds; only the size attribute
-   changes when scaling up or down.
-   ────────────────────────────────────────────────────────────────────── */
-function Shape({ status, px }: { status: StatusKind; px: number }) {
-  // The SVG viewBox is fixed; px controls the rendered size.
-  const common = {
-    width: px,
-    height: px,
-    viewBox: "0 0 12 12",
-    "aria-hidden": true,
-    focusable: false,
-  } as const;
-
+function Shape({ status }: { status: StatusKind }) {
   switch (status) {
     case "live":
-      // Filled disc with a darker pupil — visually distinct from the plain
-      // filled circles used by `healthy`/`caution` so an at-a-glance scan
-      // identifies "this surface is alive" before motion is read.
       return (
-        <svg {...common}>
-          <circle cx="6" cy="6" r="5" fill="currentColor" />
-          <circle cx="6" cy="6" r="1.5" className="fill-surface-canvas" />
-        </svg>
+        <span
+          className="block h-3 w-3 bg-current animate-led-tick"
+          style={{
+            boxShadow:
+              "0 0 0 1px oklch(0.42 0.016 55), 0 0 12px 2px oklch(0.83 0.16 75 / 0.4)",
+          }}
+        />
       );
 
     case "healthy":
+      return <span className="block h-3 w-3 rounded-full bg-current" />;
+
     case "caution":
-      // Plain filled disc.
       return (
-        <svg {...common}>
-          <circle cx="6" cy="6" r="4.5" fill="currentColor" />
-        </svg>
+        <span
+          className="block h-3 w-3.5 bg-current"
+          style={{ clipPath: "polygon(50% 0%, 0% 100%, 100% 100%)" }}
+        />
       );
 
     case "idle":
-      // Hollow disc.
       return (
-        <svg {...common}>
-          <circle
-            cx="6"
-            cy="6"
-            r="4"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-          />
-        </svg>
+        <span className="block h-3 w-3 rounded-full border-[1.5px] border-current bg-transparent" />
       );
 
     case "blocked":
-      // Filled equilateral-ish triangle pointing up. Slight inset from the
-      // edges keeps it visually balanced next to the circles.
-      return (
-        <svg {...common}>
-          <path d="M6 1 L11 10.5 L1 10.5 Z" fill="currentColor" />
-        </svg>
-      );
+      return <span className="block h-1 w-3.5 bg-current" />;
 
     case "deferred":
-      // Hollow diamond — communicates "passed elsewhere" / handoff.
       return (
-        <svg {...common}>
-          <path
-            d="M6 1 L11 6 L6 11 L1 6 Z"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-          />
-        </svg>
+        <span className="block h-3 w-3 rotate-45 border-[1.5px] border-current bg-transparent" />
       );
 
     case "reviewer":
-      // Filled square — the only orthogonal shape; reads as a "tile" of
-      // reviewer activity.
-      return (
-        <svg {...common}>
-          <rect x="1.75" y="1.75" width="8.5" height="8.5" fill="currentColor" />
-        </svg>
-      );
+      return <span className="block h-2 w-2 bg-current" />;
 
     case "skipped":
-      // Hollow disc; the surrounding span dims it via `opacity-60`.
       return (
-        <svg {...common}>
-          <circle
-            cx="6"
-            cy="6"
-            r="4"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-          />
-        </svg>
+        <span className="block h-3 w-3 rounded-full border-[1.5px] border-current bg-transparent opacity-50" />
       );
   }
 }

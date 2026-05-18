@@ -53,7 +53,7 @@ export default function PolicyEditPage() {
       <div className="space-y-6">
         <div className="h-5 w-32 rounded animate-shimmer" />
         <div className="h-8 w-72 rounded animate-shimmer" />
-        <div className="h-64 w-full rounded-lg animate-shimmer" />
+        <div className="h-64 w-full rounded-none animate-shimmer" />
       </div>
     );
   }
@@ -272,7 +272,7 @@ function PolicyEditForm({
                   {checked && (
                     <Badge
                       variant="secondary"
-                      className="bg-emerald-500/10 text-[10px] uppercase tracking-wider text-emerald-400 ring-1 ring-inset ring-emerald-500/20"
+                      className="bg-status-healthy/10 text-[10px] uppercase tracking-wider text-status-healthy ring-1 ring-inset ring-status-healthy/20"
                     >
                       Fixable
                     </Badge>
@@ -407,7 +407,7 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-lg border border-border/60 bg-card/50 overflow-hidden">
+    <div className="rounded-none border border-border/60 bg-card/50 overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3 border-b border-border/40 bg-card/80">
         <span className="text-sm font-medium text-foreground">{title}</span>
         {action}
