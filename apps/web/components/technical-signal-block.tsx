@@ -10,8 +10,8 @@ import type { ManualRequestState } from "./pr-header-operator";
  * `<TechnicalSignalBlock />` — the Inspector-mode sibling block of the PR
  * detail header.
  *
- * Implements `docs/product/operator-ui-redesign.md` →
- * "Component Patterns" → "PR detail header — Inspector":
+ * Implements the Inspector mode contract from
+ * `docs/design/operator-and-inspector-modes.md`:
  *
  * > "The Inspector header keeps the same title and Re-evaluate action and
  * > adds a sibling block exposing the technical signals: branch name,

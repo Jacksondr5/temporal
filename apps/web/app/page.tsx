@@ -18,8 +18,8 @@ import {
 } from "../components/pr-row";
 
 /**
- * Operator-mode home page — see `docs/product/operator-ui-redesign.md`
- * → "Per-Screen Direction" → "Home page".
+ * Operator-mode home page — see `PRODUCT.md`, `DESIGN.md`, and
+ * `docs/design/operator-and-inspector-modes.md`.
  *
  * The page surfaces tracked PRs as a stack of layered rows with a status
  * rail and operator-language signals. Filter chips at the top scope the
@@ -73,8 +73,8 @@ function counterLine(
 ): string {
   switch (filter) {
     case "open":
-      // Calling out the actionable subset on the default filter mirrors
-      // the example in the redesign doc: "12 open · 2 need attention".
+      // Calling out the actionable subset on the default filter keeps the
+      // glance question answerable without changing filters.
       return counts["needs-attention"] > 0
         ? `${counts.open} open · ${counts["needs-attention"]} need attention`
         : `${counts.open} open`;

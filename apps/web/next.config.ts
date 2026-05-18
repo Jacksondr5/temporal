@@ -7,6 +7,14 @@ const convexRoot = path.resolve(projectRoot, "../../convex");
 
 const nextConfig: NextConfig = {
   transpilePackages: ["convex"],
+  async rewrites() {
+    return [
+      {
+        source: "/_playground/status",
+        destination: "/playground/status",
+      },
+    ];
+  },
   webpack: (config) => {
     config.resolve ??= {};
     config.resolve.alias = {
