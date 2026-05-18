@@ -8,8 +8,8 @@ import { cn } from "../lib/utils";
  * `<ReviewerSummary />` — compact current-SHA reviewer outcome block that
  * lives above the activity stream on PR detail.
  *
- * Per `docs/product/operator-ui-redesign.md` → "Component Patterns" →
- * "Reviewer summary widget", reviewer outcomes for the PR's current SHA
+ * Per `docs/design/operator-and-inspector-modes.md`, reviewer outcomes for
+ * the PR's current head
  * deserve to be visible at a glance instead of buried in the timeline. This
  * widget renders one row per reviewer (the most recent run for that
  * reviewer on the current `pr.headSha`), composed of:
@@ -70,16 +70,16 @@ export function ReviewerSummary({
   return (
     <section
       className={cn(
-        "rounded-none border border-border/60 bg-card/50 px-4 py-3",
+        "border border-border-hairline bg-surface-panel px-4 py-3",
         className,
       )}
       aria-labelledby="reviewer-summary-heading"
     >
       <h2
         id="reviewer-summary-heading"
-        className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
+        className="font-chrome text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground"
       >
-        Reviewers on this SHA
+        Reviewers on current head
       </h2>
       <ul className="mt-2 space-y-1.5">
         {rows.map((row) => (
@@ -103,9 +103,9 @@ function ReviewerSummaryRow({ row }: { row: ReviewerSummaryRowData }) {
       <a
         href={href}
         className={cn(
-          "group flex items-center gap-2 rounded-md px-2 py-1 -mx-2",
+          "group -mx-2 flex items-center gap-2 border border-transparent px-2 py-1",
           "text-xs transition-colors",
-          "hover:bg-primary/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
+          "hover:border-border-strong hover:bg-surface-panel-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
         )}
       >
         <StatusMark status="reviewer" size="sm" label={null} />
@@ -149,7 +149,7 @@ function ReviewerOutcomeGlyph({ outcome }: { outcome: ReviewerOutcome }) {
           <span className="tabular-nums">
             {outcome.count} finding{outcome.count === 1 ? "" : "s"}
           </span>
-          <span className="text-muted-foreground/70"> — see stream</span>
+          <span className="text-muted-foreground/70">· see stream</span>
         </span>
       );
     case "running":

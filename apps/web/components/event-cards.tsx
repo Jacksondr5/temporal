@@ -10,7 +10,6 @@ import {
   Eye,
   Forward,
   Package,
-  RotateCw,
   Terminal,
   Zap,
 } from "lucide-react";
@@ -149,7 +148,7 @@ function EventCardShell({
   return (
     <div
       className={cn(
-        "relative rounded-md border border-border-hairline bg-surface-panel/60",
+        "relative border border-border-hairline bg-surface-panel",
         className,
       )}
       aria-label={ariaLabel}
@@ -166,7 +165,7 @@ function EventCardShell({
               {verb}
             </span>
             {summary && (
-              <span className="min-w-0 flex-1 truncate text-meta text-muted-foreground">
+              <span className="min-w-0 flex-1 text-meta text-muted-foreground">
                 {summary}
               </span>
             )}
@@ -181,7 +180,7 @@ function EventCardShell({
             onClick={() => setExpanded((p) => !p)}
             aria-label={expanded ? "Collapse event" : "Expand event"}
             aria-expanded={expanded}
-            className="ml-auto inline-flex h-6 w-6 shrink-0 items-center justify-center rounded text-muted-foreground transition hover:bg-foreground/5 hover:text-foreground"
+            className="ml-auto inline-flex h-6 w-6 shrink-0 items-center justify-center border border-transparent text-muted-foreground transition hover:border-border-strong hover:text-foreground"
           >
             {expanded ? (
               <ChevronDown className="h-4 w-4" aria-hidden />
@@ -258,7 +257,7 @@ export function AgentRunEventCard({
             )}
           </>
         }
-        ariaLabel={`Agent run ${run.phase} ${run.status}`}
+        ariaLabel={`Agent run ${verb}`}
       />
     );
   }
@@ -289,10 +288,7 @@ export function AgentRunEventCard({
   const operatorStory = renderAgentRunStoryLayer(details);
   const inspectorExtras =
     mode === "inspector" ? (
-      <RunInspectorExpandedExtras
-        details={details}
-        rawJson={run.detailsJson}
-      />
+      <RunInspectorExpandedExtras details={details} rawJson={run.detailsJson} />
     ) : null;
   const expandedBody = composeExpandedBody(operatorStory, inspectorExtras);
 
@@ -304,7 +300,7 @@ export function AgentRunEventCard({
       summary={summary}
       collapsedExtras={composeCollapsedExtras(inspectorMeta, commitChip)}
       expandedBody={expandedBody}
-      ariaLabel={`Agent run ${run.phase} ${run.status}`}
+      ariaLabel={`Agent run ${verb}`}
     />
   );
 }
@@ -440,10 +436,7 @@ export function ReviewerEventCard({
   const operatorStory = renderReviewerStoryLayer(run.matchedFiles, details);
   const inspectorExtras =
     mode === "inspector" ? (
-      <RunInspectorExpandedExtras
-        details={details}
-        rawJson={run.detailsJson}
-      />
+      <RunInspectorExpandedExtras details={details} rawJson={run.detailsJson} />
     ) : null;
   const expandedBody = composeExpandedBody(operatorStory, inspectorExtras);
 
@@ -486,7 +479,11 @@ export interface ErrorEventCardProps {
  * `workflowErrors` document — both rendered alongside `<ErrorBody />` in
  * the always-visible collapsed surface (errors do not expand/collapse).
  */
-export function ErrorEventCard({ error, eventTime, mode }: ErrorEventCardProps) {
+export function ErrorEventCard({
+  error,
+  eventTime,
+  mode,
+}: ErrorEventCardProps) {
   const status = mapErrorToStatus({
     blocked: error.blocked,
     retryable: error.retryable,
@@ -495,14 +492,14 @@ export function ErrorEventCard({ error, eventTime, mode }: ErrorEventCardProps) 
   const phaseLabel = error.phase ? operatorPhaseLabel(error.phase) : null;
   const verb = error.blocked
     ? phaseLabel
-      ? `Blocked — ${phaseLabel}`
+      ? `Blocked · ${phaseLabel}`
       : "Blocked"
     : error.retryable
       ? phaseLabel
-        ? `Retrying — ${phaseLabel}`
+        ? `Retrying · ${phaseLabel}`
         : "Retrying"
       : phaseLabel
-        ? `Errored — ${phaseLabel}`
+        ? `Errored · ${phaseLabel}`
         : "Errored";
 
   const inspectorMeta =
@@ -527,9 +524,7 @@ export function ErrorEventCard({ error, eventTime, mode }: ErrorEventCardProps) 
             errorType={error.errorType}
             errorMessage={error.errorMessage}
             errorStack={error.errorStack ?? null}
-            qualifier={
-              error.retryable && !error.blocked ? "retryable" : null
-            }
+            qualifier={error.retryable && !error.blocked ? "retryable" : null}
           />
           {mode === "inspector" && (
             <InspectorJsonToggle
@@ -585,7 +580,7 @@ function ErrorBody({
           {errorType}
         </code>
         {qualifier === "retryable" && (
-          <span className="text-status-caution">retryable</span>
+          <span className="text-status-caution">Retryable</span>
         )}
       </div>
       {errorMessage.length > 0 && (
@@ -602,14 +597,14 @@ function ErrorBody({
            * Tall scrollable monospace block. `max-h-[28rem]` (448px)
            * with `text-mono-sm` (12.5px / 1.4 line-height = 17.5px/line)
            * shows ~24 lines plus the 12px top/bottom padding from `p-3`.
-           * `whitespace-pre` preserves the verbatim trace; horizontal
-           * overflow scrolls instead of wrapping mid-frame.
+           * `whitespace-pre-wrap` preserves the trace while wrapping long
+           * paths/frames, so the card never creates horizontal scroll.
            */}
           <pre
             tabIndex={0}
             aria-label="Error stack trace"
             role="region"
-            className="max-h-[28rem] overflow-auto rounded-md border border-border-hairline bg-surface-inset p-3 text-mono-sm font-mono text-foreground/80 whitespace-pre"
+            className="max-h-[27rem] overflow-x-hidden overflow-y-auto border border-border-hairline border-t-2 border-t-status-blocked bg-surface-charcoal-deep p-3 text-mono-sm font-mono whitespace-pre-wrap break-words text-foreground/80 [overflow-wrap:anywhere]"
           >
             {errorStack}
           </pre>
@@ -686,21 +681,6 @@ function ManualEventCard({
     ? `Requested by ${event.actorLogin}`
     : "Requested manually";
 
-  const headRow = (
-    <div className="flex items-center gap-2 pt-0.5 text-meta text-muted-foreground">
-      <RotateCw
-        className={cn(
-          "h-3.5 w-3.5 shrink-0",
-          status === "live" && "animate-spin",
-        )}
-        aria-hidden
-      />
-      <span>
-        HEAD <code className="font-mono">{event.headSha.slice(0, 7)}</code>
-      </span>
-    </div>
-  );
-
   const inspectorMeta =
     mode === "inspector" ? (
       <InspectorMetaStrip
@@ -725,7 +705,7 @@ function ManualEventCard({
       eventTime={stateTime}
       verb={stateLabel}
       summary={summary}
-      collapsedExtras={composeCollapsedExtras(inspectorMeta, headRow)}
+      collapsedExtras={inspectorMeta}
       expandedBody={expandedBody}
       ariaLabel="Manual re-evaluate event"
     />
@@ -741,6 +721,10 @@ function GenericGitHubEventCard({
   eventTime: string | null;
   mode: ActivityStreamMode;
 }) {
+  if (mode === "operator") {
+    return null;
+  }
+
   // Operator mode hides non-manual GitHub events at the server, so this
   // branch is only ever rendered in Inspector mode (or when an operator
   // selects the "GitHub" filter chip with non-manual events present).
@@ -781,7 +765,7 @@ function GenericGitHubEventCard({
     <EventCardShell
       status="idle"
       eventTime={eventTime}
-      verb={`GitHub event — ${detail}`}
+      verb={`GitHub event · ${detail}`}
       summary={summary}
       collapsedExtras={composeCollapsedExtras(inspectorMeta, headRow)}
       expandedBody={expandedBody}
@@ -805,25 +789,25 @@ function agentRunVerb(
   details: RunDetails,
 ): string {
   if (status === "running") {
-    return `Working — ${operatorPhaseLabel(phase)}`;
+    return `Working · ${operatorPhaseLabel(phase)}`;
   }
   if (status === "skipped") {
-    return `Skipped — ${operatorPhaseLabel(phase)}`;
+    return `Skipped · ${operatorPhaseLabel(phase)}`;
   }
   if (status === "blocked") {
-    return `Blocked — ${operatorPhaseLabel(phase)}`;
+    return `Blocked · ${operatorPhaseLabel(phase)}`;
   }
   if (status === "failed") {
-    return `Failed — ${operatorPhaseLabel(phase)}`;
+    return `Failed · ${operatorPhaseLabel(phase)}`;
   }
   if (status === "noop") {
-    return `No-op reconciliation — ${operatorPhaseLabel(phase)}`;
+    return `No-op reconciliation · ${operatorPhaseLabel(phase)}`;
   }
   // Success / completed — use past tense and append a count suffix when the
   // details give us one (e.g. "fixed 2 of 4 threads").
   const past = operatorPhasePastLabel(phase);
   const suffix = pastSuffixForRun(details);
-  return suffix ? `${past} — ${suffix}` : past;
+  return suffix ? `${past} · ${suffix}` : past;
 }
 
 function pastSuffixForRun(details: RunDetails): string | null {
@@ -850,29 +834,29 @@ function reviewerRunVerb(
   details: RunDetails,
 ): string {
   if (status === "running") {
-    return `Reviewing — ${reviewerId}`;
+    return `Reviewing · ${reviewerId}`;
   }
   if (status === "skipped") {
-    return `Reviewer skipped — ${reviewerId}`;
+    return `Reviewer skipped · ${reviewerId}`;
   }
   if (status === "failed") {
-    return `Reviewer failed — ${reviewerId}`;
+    return `Reviewer failed · ${reviewerId}`;
   }
   if (status === "blocked") {
-    return `Reviewer blocked — ${reviewerId}`;
+    return `Reviewer blocked · ${reviewerId}`;
   }
   // Settled — say what it produced.
   if (details.kind === "reviewer_success") {
     const findings = details.result.findings.length;
     if (details.result.didCommitCode) {
-      return `Reviewer pushed fix — ${reviewerId}`;
+      return `Reviewer pushed fix · ${reviewerId}`;
     }
     if (findings > 0) {
-      return `Reviewer found ${findings} issue${findings === 1 ? "" : "s"} — ${reviewerId}`;
+      return `Reviewer found ${findings} issue${findings === 1 ? "" : "s"} · ${reviewerId}`;
     }
-    return `Reviewer cleared — ${reviewerId}`;
+    return `Reviewer cleared · ${reviewerId}`;
   }
-  return `Specialized reviewer — ${reviewerId}`;
+  return `Specialized reviewer · ${reviewerId}`;
 }
 
 /**
@@ -980,7 +964,7 @@ function renderReviewerStoryLayer(
             {matchedFiles.map((file) => (
               <code
                 key={file}
-                className="rounded bg-surface-inset px-1.5 py-0.5 text-mono-sm font-mono text-muted-foreground"
+                className="bg-surface-inset px-1.5 py-0.5 text-mono-sm font-mono text-muted-foreground"
               >
                 {file}
               </code>
@@ -1006,19 +990,19 @@ function renderSuccessStory(details: SuccessRunDetails): React.ReactNode {
   );
 }
 
-function renderReviewerStory(
-  details: ReviewerSuccessDetails,
-): React.ReactNode {
+function renderReviewerStory(details: ReviewerSuccessDetails): React.ReactNode {
   const { result } = details;
   const noFindingsHint =
-    result.findings.length === 0 && !result.didCommitCode && !result.didModifyCode;
+    result.findings.length === 0 &&
+    !result.didCommitCode &&
+    !result.didModifyCode;
 
   return (
     <div className="space-y-4">
       {noFindingsHint && (
         <p className="flex items-center gap-2 text-meta text-muted-foreground">
           <Eye className="h-3.5 w-3.5 shrink-0" aria-hidden />
-          No findings, no code changes — nothing actionable for this reviewer.
+          No findings, no code changes. Nothing actionable for this reviewer.
         </p>
       )}
       <AgentReasoning
@@ -1031,7 +1015,7 @@ function renderReviewerStory(
       {result.didCommitCode && result.findings.length === 0 && (
         <p className="flex items-center gap-2 text-meta text-status-healthy">
           <Forward className="h-3.5 w-3.5 shrink-0" aria-hidden />
-          Reviewer fixed its scoped issues — no unresolved findings remain.
+          Reviewer fixed its scoped issues. No unresolved findings remain.
         </p>
       )}
     </div>
@@ -1061,7 +1045,7 @@ function MergeConflictBlock({
           {files.map((file) => (
             <code
               key={file}
-              className="rounded bg-surface-inset px-1.5 py-0.5 text-mono-sm font-mono text-muted-foreground"
+              className="bg-surface-inset px-1.5 py-0.5 text-mono-sm font-mono text-muted-foreground"
             >
               {file}
             </code>
@@ -1200,7 +1184,12 @@ function InspectorMetaStrip({
   reviewerPack,
 }: InspectorMetaStripProps) {
   const hasContent =
-    !!phase || !!status || !!provider || !!workspacePath || !!usage || !!reviewerPack;
+    !!phase ||
+    !!status ||
+    !!provider ||
+    !!workspacePath ||
+    !!usage ||
+    !!reviewerPack;
   if (!hasContent) return null;
 
   return (
@@ -1219,7 +1208,7 @@ function InspectorMetaStrip({
 
 function InspectorEnumChip({ value }: { value: string }) {
   return (
-    <code className="rounded bg-surface-inset px-1.5 py-0.5 text-foreground/80">
+    <code className="bg-surface-inset px-1.5 py-0.5 text-foreground/80">
       {value}
     </code>
   );
@@ -1257,12 +1246,12 @@ function InspectorUsageBadge({ usage }: { usage: TokenUsage }) {
 
   return (
     <span
-      title={`${usage.totalTokens.toLocaleString()} total tokens — ${usage.inputTokens.toLocaleString()} input, ${usage.outputTokens.toLocaleString()} output${
+      title={`${usage.totalTokens.toLocaleString()} total tokens: ${usage.inputTokens.toLocaleString()} input, ${usage.outputTokens.toLocaleString()} output${
         cachedAvailable
           ? `, ${usage.cachedInputTokens?.toLocaleString()} cached input`
           : ""
       }`}
-      className="inline-flex items-center gap-1.5 rounded bg-surface-inset px-1.5 py-0.5"
+      className="inline-flex items-center gap-1.5 bg-surface-inset px-1.5 py-0.5"
     >
       <Cpu className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden />
       <span className="text-foreground/80">
@@ -1296,7 +1285,7 @@ function ReviewerPackChip({ pack }: { pack: ReviewerPack }) {
       title={`pack: ${pack.repoPath} · entry: ${pack.entrypointPath}${
         pack.repoCommitSha ? ` · commit: ${pack.repoCommitSha}` : ""
       }${knowledgeFiles > 0 ? ` · ${knowledgeFiles} knowledge files` : ""}`}
-      className="inline-flex items-center gap-1 rounded bg-surface-inset px-1.5 py-0.5"
+      className="inline-flex items-center gap-1 bg-surface-inset px-1.5 py-0.5"
     >
       <Package className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden />
       <span className="max-w-[18ch] truncate text-foreground/80">
@@ -1353,16 +1342,14 @@ function RunInspectorExpandedExtras({
           json={JSON.stringify(providerMetadata, null, 2)}
         />
       )}
-      {hasRawJson && <InspectorJsonToggle label="Raw event JSON" json={rawJson} />}
+      {hasRawJson && (
+        <InspectorJsonToggle label="Raw event JSON" json={rawJson} />
+      )}
     </section>
   );
 }
 
-function InspectorCommandsList({
-  commands,
-}: {
-  commands: readonly string[];
-}) {
+function InspectorCommandsList({ commands }: { commands: readonly string[] }) {
   const [open, setOpen] = useState(false);
   return (
     <div>
@@ -1381,7 +1368,7 @@ function InspectorCommandsList({
         )}
       </button>
       {open && (
-        <div className="mt-1.5 space-y-0.5 rounded-md border border-border-hairline bg-surface-inset p-2">
+        <div className="mt-1.5 space-y-0.5 border border-border-hairline bg-surface-inset p-2">
           {commands.map((cmd, i) => (
             <div
               key={i}
@@ -1397,13 +1384,7 @@ function InspectorCommandsList({
   );
 }
 
-function InspectorJsonToggle({
-  label,
-  json,
-}: {
-  label: string;
-  json: string;
-}) {
+function InspectorJsonToggle({ label, json }: { label: string; json: string }) {
   const [open, setOpen] = useState(false);
   let formatted: string;
   try {
@@ -1428,7 +1409,7 @@ function InspectorJsonToggle({
         )}
       </button>
       {open && (
-        <pre className="mt-1.5 max-h-72 overflow-auto rounded-md border border-border-hairline bg-surface-inset p-3 font-mono text-mono-sm leading-relaxed text-foreground/80 whitespace-pre">
+        <pre className="mt-1.5 max-h-72 overflow-x-hidden overflow-y-auto border border-border-hairline bg-surface-charcoal-deep p-3 font-mono text-mono-sm leading-relaxed whitespace-pre-wrap text-foreground/80 [overflow-wrap:anywhere]">
           {formatted}
         </pre>
       )}

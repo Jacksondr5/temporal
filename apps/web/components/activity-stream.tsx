@@ -2,7 +2,7 @@
 
 import { usePaginatedQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
-import { Activity } from "lucide-react";
+import { Activity, Radio } from "lucide-react";
 import { cn } from "../lib/utils";
 import { activityStreamEventAnchor } from "../lib/activity-stream-anchors";
 import { Button } from "./ui/button";
@@ -19,8 +19,8 @@ import {
 
 /**
  * `<ActivityStream />` — the unified operator/inspector activity stream
- * (per `docs/product/operator-ui-redesign.md` → "Component Patterns" →
- * "Activity stream").
+ * (per `PRODUCT.md`, `DESIGN.md`, and
+ * `docs/design/operator-and-inspector-modes.md`).
  *
  * Replaces today's separate sections — Reconciliation Timeline, Specialized
  * Reviewers, Artifacts, PR Events — with one vertical timeline whose dots
@@ -125,6 +125,7 @@ export function ActivityStream({
       data-mode={mode}
     >
       <FilterChipBar
+        mode={mode}
         filter={filter}
         onFilterChange={onFilterChange}
         eventCount={results.length}
@@ -150,23 +151,28 @@ export function ActivityStream({
    ────────────────────────────────────────────────────────────────────── */
 
 function FilterChipBar({
+  mode,
   filter,
   onFilterChange,
   eventCount,
   countIsFinal,
 }: {
+  mode: ActivityStreamMode;
   filter: ActivityStreamFilter;
   onFilterChange: (filter: ActivityStreamFilter) => void;
   eventCount: number;
   countIsFinal: boolean;
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <span className="text-micro font-semibold uppercase tracking-wider text-muted-foreground">
-        Filters
+    <div className="flex flex-wrap items-center gap-1 border border-border-hairline bg-surface-charcoal-up p-1">
+      <span className="flex items-center gap-1.5 px-2 text-micro font-semibold uppercase tracking-wider text-muted-foreground">
+        <Radio className="h-3 w-3 text-status-live" aria-hidden />
+        Stream
       </span>
       {FILTER_CHIPS.map((chip) => {
         const active = chip.id === filter;
+        const label =
+          mode === "operator" && chip.id === "github" ? "Manual" : chip.label;
         return (
           <button
             key={chip.id}
@@ -174,23 +180,24 @@ function FilterChipBar({
             onClick={() => onFilterChange(chip.id)}
             aria-pressed={active}
             className={cn(
-              "rounded-full px-2.5 py-1 text-meta font-medium transition",
+              "font-chrome px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] transition-colors",
               active
-                ? "bg-status-live/15 text-status-live"
-                : "bg-surface-panel text-muted-foreground hover:bg-surface-panel-hover hover:text-foreground",
+                ? "bg-status-live text-surface-charcoal-deep"
+                : "text-muted-foreground hover:bg-surface-panel-hover hover:text-foreground",
             )}
           >
-            {chip.label}
+            {label}{" "}
+            {active && (
+              <span className="font-mono text-[10px] tabular-nums">
+                {eventCount}
+              </span>
+            )}
           </button>
         );
       })}
-      <span className="ml-auto text-meta tabular-nums text-muted-foreground">
+      <span className="ml-auto px-2 font-mono text-mono-sm tabular-nums text-muted-foreground">
         {eventCount}{" "}
-        {countIsFinal
-          ? eventCount === 1
-            ? "event"
-            : "events"
-          : "shown"}
+        {countIsFinal ? (eventCount === 1 ? "event" : "events") : "shown"}
       </span>
     </div>
   );
@@ -235,37 +242,34 @@ function ActivityStreamBody({
         {/* Vertical spine */}
         <span
           aria-hidden
-          className="pointer-events-none absolute left-2 top-1.5 bottom-1.5 w-px bg-border-hairline"
+          className="pointer-events-none absolute left-2 top-1.5 bottom-1.5 w-px bg-border-strong"
         />
         <ol className="space-y-3 pl-6" role="list">
-        {events.map((event) => (
-          <li
-            key={eventKey(event)}
-            // Shared deep-link target — see `lib/activity-stream-anchors.ts`.
-            // `<ReviewerSummary />` (JAC-186) and any future surface that
-            // wants to scroll to a specific event uses the matching href via
-            // `activityStreamEventHref()`. Apply `scroll-mt` so the anchored
-            // card sits below the page chrome rather than flush against
-            // the viewport edge when navigated to.
-            id={activityStreamEventAnchor(
-              event.eventType,
-              event.source._id,
-            )}
-            className="relative scroll-mt-24"
-          >
-            <span
-              aria-hidden
-              className="pointer-events-none absolute -left-6 top-3.5 flex h-3 w-3 items-center justify-center bg-surface-canvas"
-            />
-            <EventCardForType
-              event={event}
-              repoSlug={repoSlug}
-              mode={mode}
-              now={now}
-              lookupCommit={lookupCommit}
-            />
-          </li>
-        ))}
+          {events.map((event) => (
+            <li
+              key={eventKey(event)}
+              // Shared deep-link target — see `lib/activity-stream-anchors.ts`.
+              // `<ReviewerSummary />` (JAC-186) and any future surface that
+              // wants to scroll to a specific event uses the matching href via
+              // `activityStreamEventHref()`. Apply `scroll-mt` so the anchored
+              // card sits below the page chrome rather than flush against
+              // the viewport edge when navigated to.
+              id={activityStreamEventAnchor(event.eventType, event.source._id)}
+              className="relative scroll-mt-24"
+            >
+              <span
+                aria-hidden
+                className="pointer-events-none absolute -left-6 top-3.5 flex h-3 w-3 items-center justify-center bg-surface-canvas"
+              />
+              <EventCardForType
+                event={event}
+                repoSlug={repoSlug}
+                mode={mode}
+                now={now}
+                lookupCommit={lookupCommit}
+              />
+            </li>
+          ))}
         </ol>
       </div>
 
@@ -358,16 +362,16 @@ function ActivityStreamSkeleton() {
     <div className="relative">
       <span
         aria-hidden
-        className="pointer-events-none absolute left-2 top-1.5 bottom-1.5 w-px bg-border-hairline"
+        className="pointer-events-none absolute left-2 top-1.5 bottom-1.5 w-px bg-border-strong"
       />
       <ol className="space-y-3 pl-6" role="list" aria-busy>
         {Array.from({ length: 4 }).map((_, index) => (
           <li key={index} className="relative">
             <span
               aria-hidden
-              className="pointer-events-none absolute -left-6 top-3.5 h-3 w-3 rounded-full bg-surface-panel"
+              className="pointer-events-none absolute -left-6 top-3.5 h-3 w-3 bg-surface-panel"
             />
-            <div className="h-14 w-full animate-shimmer rounded-md" />
+            <div className="h-14 w-full animate-shimmer" />
           </li>
         ))}
       </ol>
@@ -377,7 +381,7 @@ function ActivityStreamSkeleton() {
 
 function ActivityStreamEmpty() {
   return (
-    <div className="flex flex-col items-center justify-center gap-2 rounded-md border border-dashed border-border-hairline bg-surface-panel/30 px-4 py-12 text-muted-foreground">
+    <div className="flex flex-col items-center justify-center gap-2 border border-dashed border-border-hairline bg-surface-panel/30 px-4 py-12 text-muted-foreground">
       <Activity className="h-5 w-5 opacity-60" aria-hidden />
       <p className="text-meta">No activity matches the current filter yet.</p>
     </div>
