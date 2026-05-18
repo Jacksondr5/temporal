@@ -24,9 +24,9 @@ import { cn } from "../lib/utils";
  *
  *   - Distinct surface (`bg-surface-panel-hover`) and a 1px lime accent
  *     border so the chip pops out of its parent card.
- *   - Short SHA in technical mono (Monaspace Neon), copyable on click,
+ *   - Short SHA in technical mono (JetBrains Mono), copyable on click,
  *     full SHA on hover.
- *   - Message subject in narrative mono (Monaspace Argon), one line
+ *   - Message subject in narrative mono (Inter), one line
  *     truncated collapsed, two lines expanded.
  *   - GitHub link via the trailing arrow icon.
  *
@@ -79,8 +79,7 @@ export function CommitChip({
   const subjectLine = trimmedMessage.split(/\r?\n/, 1)[0] ?? "";
   const hasMessage = subjectLine.length > 0;
 
-  const showShaPair =
-    mode === "inspector" && !!targetSha && targetSha !== sha;
+  const showShaPair = mode === "inspector" && !!targetSha && targetSha !== sha;
 
   async function handleCopy() {
     try {
@@ -133,10 +132,7 @@ export function CommitChip({
           className="inline-flex h-5 w-5 items-center justify-center rounded text-muted-foreground transition hover:bg-foreground/5 hover:text-foreground"
         >
           {copied ? (
-            <Check
-              className="h-3.5 w-3.5 text-status-healthy"
-              aria-hidden
-            />
+            <Check className="h-3.5 w-3.5 text-status-healthy" aria-hidden />
           ) : (
             <Copy className="h-3.5 w-3.5" aria-hidden />
           )}

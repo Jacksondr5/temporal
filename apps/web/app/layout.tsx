@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import {
+  IBM_Plex_Sans_Condensed,
+  Inter,
+  JetBrains_Mono,
+} from "next/font/google";
 import "./globals.css";
 import { ConvexClientProvider } from "../components/convex-provider";
 import { Nav } from "../components/nav";
@@ -8,20 +12,19 @@ import { TooltipProvider } from "../components/ui/tooltip";
 // All pages use real-time Convex subscriptions; skip static prerendering.
 export const dynamic = "force-dynamic";
 
-// Geist Sans stays as the UI typeface. Geist Mono is no longer the canonical
-// monospace family — Monaspace Neon (technical) and Monaspace Argon
-// (narrative) take that role and are loaded via @font-face in globals.css
-// from self-hosted woff2 files in /public/fonts. Geist Mono is kept loaded
-// for now so any inline `font-mono` usage that still resolves through the
-// Next font variable continues to render until those call sites migrate to
-// the new mono utilities.
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const ibmPlexCondensed = IBM_Plex_Sans_Condensed({
+  variable: "--font-ibm-plex-condensed",
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
+});
+
+const jetBrainsMono = JetBrains_Mono({
+  variable: "--font-jetbrains-mono",
   subsets: ["latin"],
 });
 
@@ -39,15 +42,13 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} dark h-full antialiased`}
+      className={`${inter.variable} ${ibmPlexCondensed.variable} ${jetBrainsMono.variable} dark h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <ConvexClientProvider>
           <TooltipProvider>
             <Nav />
-            <main className="mx-auto w-full max-w-7xl flex-1 px-6 py-8">
-              {children}
-            </main>
+            <main className="w-full flex-1 px-6 py-8">{children}</main>
           </TooltipProvider>
         </ConvexClientProvider>
       </body>

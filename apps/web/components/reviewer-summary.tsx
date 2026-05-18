@@ -1,8 +1,5 @@
 import { Check, AlertTriangle } from "lucide-react";
-import {
-  parseReviewerRunDetails,
-  type RunDetails,
-} from "../lib/run-details";
+import { parseReviewerRunDetails, type RunDetails } from "../lib/run-details";
 import { activityStreamEventHref } from "../lib/activity-stream-anchors";
 import { StatusMark } from "./status-mark";
 import { cn } from "../lib/utils";
@@ -73,7 +70,7 @@ export function ReviewerSummary({
   return (
     <section
       className={cn(
-        "rounded-lg border border-border/60 bg-card/50 px-4 py-3",
+        "rounded-none border border-border/60 bg-card/50 px-4 py-3",
         className,
       )}
       aria-labelledby="reviewer-summary-heading"
@@ -156,17 +153,13 @@ function ReviewerOutcomeGlyph({ outcome }: { outcome: ReviewerOutcome }) {
         </span>
       );
     case "running":
-      return (
-        <span className="ml-auto text-status-live/90">Running</span>
-      );
+      return <span className="ml-auto text-status-live/90">Running</span>;
     case "failed":
       return <span className="ml-auto text-status-blocked">Failed</span>;
     case "blocked":
       return <span className="ml-auto text-status-blocked">Blocked</span>;
     case "skipped":
-      return (
-        <span className="ml-auto text-muted-foreground/60">Skipped</span>
-      );
+      return <span className="ml-auto text-muted-foreground/60">Skipped</span>;
     case "unknown":
       return null;
   }

@@ -2,60 +2,49 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { GitPullRequest, Radio, Settings } from "lucide-react";
 import { useConvexConnectionState } from "convex/react";
+import { GitPullRequest, Radio, Settings } from "lucide-react";
 import { cn } from "../lib/utils";
 import { StatusMark } from "./status-mark";
-
-/**
- * `<Nav />` — global app chrome.
- *
- * Restyled onto the redesign's canonical tokens and type scale (see
- * `docs/product/operator-ui-redesign.md` → "Per-Screen Direction" →
- * "Navigation"): warm dark canvas surfaces, hairline borders, the new
- * `text-title` / `text-meta` scale, and a 14px lucide icon size to match
- * the iconography rules for dense rows.
- *
- * The previous static "Live" dot is replaced by a small connection-state
- * indicator built from the canonical `<StatusMark />` primitive:
- *   - `live`    when the Convex WebSocket subscription is connected.
- *   - `caution` when the client has dropped the WebSocket and is
- *               reconnecting (or has not yet connected on first paint).
- */
 
 const navItems = [
   { href: "/", label: "Pull Requests", icon: GitPullRequest },
   { href: "/policies", label: "Policies", icon: Settings },
 ] as const;
 
-// Mirrors the gating in `convex-provider.tsx` so the connection-state hook
-// only runs when a real `ConvexProvider` is mounted in the tree above.
-// `NEXT_PUBLIC_*` env vars are inlined at build time, so the two checks are
-// guaranteed to agree.
 const CONVEX_URL = process.env.NEXT_PUBLIC_CONVEX_URL;
 
 export function Nav() {
   const pathname = usePathname();
+  const isInspector = pathname.includes("/inspect");
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border-hairline bg-surface-panel/80 backdrop-blur-md">
-      <div className="mx-auto flex h-14 max-w-7xl items-center gap-8 px-6">
+    <header className="sticky top-0 z-50 border-b border-border-hairline bg-surface-charcoal-up">
+      {isInspector && (
+        <div
+          className="h-1"
+          style={{
+            background:
+              "repeating-linear-gradient(-45deg, oklch(0.85 0.18 95) 0, oklch(0.85 0.18 95) 8px, oklch(0.16 0.012 50) 8px, oklch(0.16 0.012 50) 14px)",
+          }}
+        />
+      )}
+      <div className="flex min-h-14 flex-wrap items-center gap-x-5 gap-y-2 px-4 py-2 sm:px-6">
         <Link href="/" className="group flex items-center gap-2.5">
-          <div
-            className={cn(
-              "flex h-7 w-7 items-center justify-center rounded-md",
-              "bg-status-live/15 ring-1 ring-status-live/30",
-              "transition-colors group-hover:bg-status-live/25",
-            )}
-          >
-            <Radio className="h-3.5 w-3.5 text-status-live" />
+          <div className="flex h-7 w-7 items-center justify-center border border-border-strong bg-surface-panel transition-colors group-hover:border-primary">
+            <Radio
+              className={cn(
+                "h-3.5 w-3.5",
+                isInspector ? "text-status-caution" : "text-status-live",
+              )}
+            />
           </div>
-          <span className="text-title font-semibold tracking-tight text-foreground">
+          <span className="font-chrome text-[13px] font-bold uppercase tracking-[0.18em] text-foreground">
             PR Review
           </span>
         </Link>
 
-        <nav className="flex items-center gap-0.5">
+        <nav className="flex min-w-0 flex-wrap items-center gap-1">
           {navItems.map(({ href, label, icon: Icon }) => {
             const isActive =
               href === "/" ? pathname === "/" : pathname.startsWith(href);
@@ -65,11 +54,10 @@ export function Nav() {
                 href={href}
                 aria-current={isActive ? "page" : undefined}
                 className={cn(
-                  "flex items-center gap-2 rounded-md px-3 py-1.5",
-                  "text-meta font-medium transition-colors",
+                  "font-chrome flex items-center gap-2 border border-transparent px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.16em] transition-colors",
                   isActive
-                    ? "bg-status-live/10 text-status-live"
-                    : "text-muted-foreground hover:bg-surface-panel-hover hover:text-foreground",
+                    ? "border-primary text-primary"
+                    : "text-muted-foreground hover:border-border-strong hover:text-foreground",
                 )}
               >
                 <Icon className="h-3.5 w-3.5" />
@@ -79,52 +67,32 @@ export function Nav() {
           })}
         </nav>
 
-        <ConnectionStateIndicator />
+        <ConnectionStateIndicator isInspector={isInspector} />
       </div>
     </header>
   );
 }
 
-/* ──────────────────────────────────────────────────────────────────────────
-   Connection-state indicator.
-
-   Verified against the project's installed `convex` (`^1.34.1` per
-   `apps/web/package.json`):
-     - `useConvexConnectionState()` is exported from `convex/react`.
-     - `ConnectionState.isWebSocketConnected` is the canonical "is the live
-       subscription stream up" boolean. When false, the client is either
-       making its first connection or actively reconnecting; both map to
-       the same operator-facing "Reconnecting" state per the redesign doc.
-
-   The hook throws if it runs outside a `ConvexProvider`, so the inner
-   subscriber only mounts when `NEXT_PUBLIC_CONVEX_URL` is set — matching
-   the fall-through in `convex-provider.tsx` so static builds without the
-   env var still render.
-   ────────────────────────────────────────────────────────────────────── */
-function ConnectionStateIndicator() {
+function ConnectionStateIndicator({ isInspector }: { isInspector: boolean }) {
   if (!CONVEX_URL) return null;
-  return <ConnectionStateIndicatorInner />;
+  return <ConnectionStateIndicatorInner isInspector={isInspector} />;
 }
 
-function ConnectionStateIndicatorInner() {
+function ConnectionStateIndicatorInner({
+  isInspector,
+}: {
+  isInspector: boolean;
+}) {
   const state = useConvexConnectionState();
   const isConnected = state.isWebSocketConnected;
-  const status = isConnected ? "live" : "caution";
-  const label = isConnected ? "Live" : "Reconnecting";
+  const status = isInspector ? "caution" : isConnected ? "live" : "caution";
+  const label = isInspector ? "Inspect" : isConnected ? "Live" : "Reconnecting";
 
   return (
     <span
       role="status"
       aria-live="polite"
-      className={cn(
-        "ml-auto inline-flex items-center gap-2 text-meta text-muted-foreground",
-        // Motion lives at the indicator level, not on the mark itself
-        // (StatusMark is intentionally static per Principle 4). The live
-        // state pulses so an at-a-glance scan of the chrome reads as "this
-        // app is alive"; the caution state breathes amber so a dropped
-        // socket is noticeable without being alarming.
-        isConnected ? "animate-rail-pulse" : "animate-rail-breath",
-      )}
+      className="flex items-center gap-2 font-mono text-micro uppercase tracking-[0.18em] text-muted-foreground sm:ml-auto"
     >
       <StatusMark status={status} size="sm" label={null} />
       {label}

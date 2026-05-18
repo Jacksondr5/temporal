@@ -77,7 +77,7 @@ export default function PoliciesListPage() {
 
       <section
         aria-label="Repository policies"
-        className="overflow-hidden rounded-lg border border-border-hairline bg-surface-panel"
+        className="overflow-hidden rounded-none border border-border-hairline bg-surface-panel"
       >
         {isLoading && (
           <ul className="divide-y divide-border-hairline">

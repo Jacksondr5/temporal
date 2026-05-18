@@ -4,9 +4,8 @@
  * Every status concept (lifecycle, phase, run status, disposition, error)
  * maps into one of the eight `StatusKind`s defined here. Each kind owns
  * exactly one color and one shape (rendered by `<StatusMark />`) and one
- * canonical rail motion (rendered by `<StatusRail />`). See
- * `docs/product/operator-ui-redesign.md` → "Design System" → "Status
- * vocabulary" and "Motion language" for the source of truth.
+ * canonical rail treatment (rendered by `<StatusRail />`). See
+ * `docs/design/status-vocabulary.md` for the source of truth.
  *
  * Internal state-machine labels (`handling_code_rabbit`,
  * `running_special_reviewers`, etc.) translate to operator-friendly prose
@@ -216,10 +215,10 @@ export function mapErrorToStatus(error: ErrorStatusInput): StatusKind {
 /**
  * Canonical status for a top-level activity-stream event. Reviewer runs use
  * the dedicated `reviewer` kind regardless of their underlying run status,
- * so the indigo square reads as "this is a specialized reviewer event"
+ * so the station-blue small square reads as "this is a specialized reviewer event"
  * even when the reviewer is currently running. Failure and blocking states
  * still override that classification — a failed reviewer reads as a blocked
- * triangle, matching the operator's expectation that errors look the same
+ * bar, matching the operator's expectation that errors look the same
  * across event sources.
  */
 export function mapAgentRunStatusToEventStatus(

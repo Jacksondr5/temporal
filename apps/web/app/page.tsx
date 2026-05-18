@@ -149,7 +149,7 @@ export default function PullRequestListPage() {
 
       <section
         aria-label="Pull request list"
-        className="overflow-hidden rounded-lg border border-border-hairline bg-surface-panel"
+        className="overflow-hidden rounded-none border border-border-hairline bg-surface-panel"
       >
         {isLoading && (
           <ul className="divide-y divide-border-hairline">
@@ -193,10 +193,7 @@ function HomeEmptyState({ filter }: { filter: HomeFilter }) {
 
   return (
     <div className="flex flex-col items-center justify-center gap-2 px-6 py-14 text-center">
-      <GitPullRequest
-        className="size-5 text-muted-foreground/60"
-        aria-hidden
-      />
+      <GitPullRequest className="size-5 text-muted-foreground/60" aria-hidden />
       <p className="text-body text-muted-foreground">{message}</p>
     </div>
   );

@@ -17,7 +17,7 @@ import type { ManualRequestState } from "./pr-header-operator";
  * > adds a sibling block exposing the technical signals: branch name,
  * > current HEAD SHA, internal phase enum, internal lifecycle enum, dirty
  * > flag, manual event state, manual claim freshness, workflow ID, last
- * > reconciled timestamp. All in `Monaspace Neon`."
+ * > reconciled timestamp. All in `JetBrains Mono`."
  *
  * Where the operator `<SignalStack />` translates raw enums into
  * operator-friendly prose via `lib/status.ts`, the technical signal block
@@ -81,7 +81,7 @@ export function TechnicalSignalBlock({
     <section
       aria-label="Technical signals"
       className={cn(
-        "rounded-lg border border-border-strong bg-surface-inset px-4 py-3 font-mono text-mono-sm",
+        "rounded-none border border-border-strong bg-surface-inset px-4 py-3 font-mono text-mono-sm",
         className,
       )}
     >

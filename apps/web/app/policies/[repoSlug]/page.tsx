@@ -3,7 +3,14 @@
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@convex/_generated/api";
 import type { Doc } from "@convex/_generated/dataModel";
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Button } from "../../../components/ui/button";
@@ -103,7 +110,7 @@ export default function PolicyEditPage() {
       <div className="space-y-6">
         <div className="h-4 w-24 rounded animate-shimmer" />
         <div className="h-9 w-72 rounded animate-shimmer" />
-        <div className="h-64 w-full rounded-lg animate-shimmer" />
+        <div className="h-64 w-full rounded-none animate-shimmer" />
       </div>
     );
   }
@@ -954,7 +961,7 @@ function SaveBar({
       role="region"
       aria-label="Unsaved changes"
       className={cn(
-        "fixed inset-x-0 bottom-0 z-40 border-t border-border-strong bg-surface-panel/95 backdrop-blur-sm transition-transform",
+        "fixed inset-x-0 bottom-0 z-40 border-t border-border-strong bg-surface-panel/95 transition-transform",
         visible || saveStatus !== "idle" ? "translate-y-0" : "translate-y-full",
       )}
     >
@@ -1033,7 +1040,7 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="overflow-hidden rounded-lg border border-border-hairline bg-surface-panel">
+    <section className="overflow-hidden rounded-none border border-border-hairline bg-surface-panel">
       <div className="flex items-center justify-between gap-3 border-b border-border-hairline px-4 py-3">
         <h2 className="text-title font-medium text-foreground">{title}</h2>
         {action}

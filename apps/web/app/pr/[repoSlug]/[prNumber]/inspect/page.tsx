@@ -39,7 +39,7 @@ import {
  * >   command summaries, provider metadata, raw JSON toggle, internal phase
  * >   labels, token usage.
  * > - Outputs panel renders below the activity stream.
- * > - Inspector page background uses `--surface-inspector` and Monaspace
+ * > - Inspector page background uses `--surface-inspector` and JetBrains Mono
  * >   Neon is the dominant typeface, making the mode unambiguous."
  *
  * This route ships the full Inspector page: the page shell, the Inspector
@@ -50,7 +50,7 @@ import {
  * stream (JAC-191).
  *
  * The page wraps content in a full-bleed inspector surface that breaks out
- * of the `<main>` container's padding and applies `font-mono` so Monaspace
+ * of the `<main>` container's padding and applies `font-mono` so JetBrains Mono
  * Neon is the dominant typeface for descendant text. Components that need
  * sans-serif (e.g. action buttons, alert text) override locally with
  * `font-sans`.
@@ -147,8 +147,8 @@ export default function PullRequestInspectorPage({
         <div className="space-y-6">
           <div className="h-5 w-32 rounded animate-shimmer" />
           <div className="h-8 w-72 rounded animate-shimmer" />
-          <div className="h-40 w-full rounded-lg animate-shimmer" />
-          <div className="h-96 w-full rounded-lg animate-shimmer" />
+          <div className="h-40 w-full rounded-none animate-shimmer" />
+          <div className="h-96 w-full rounded-none animate-shimmer" />
         </div>
       </InspectorShell>
     );
@@ -249,7 +249,7 @@ export default function PullRequestInspectorPage({
             {threads.map((thread) => (
               <div
                 key={thread._id}
-                className="rounded-lg border border-border/60 bg-card/50 overflow-hidden"
+                className="rounded-none border border-border/60 bg-card/50 overflow-hidden"
               >
                 <div className="flex items-center justify-between px-4 py-2.5 border-b border-border/40 bg-card/80">
                   <div className="flex items-center gap-2 min-w-0">
@@ -277,7 +277,7 @@ export default function PullRequestInspectorPage({
                       </span>
                     </span>
                     {thread.isResolved && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-sans font-semibold uppercase tracking-wider text-emerald-400 ring-1 ring-inset ring-emerald-500/20">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-status-healthy/10 px-2 py-0.5 text-[10px] font-sans font-semibold uppercase tracking-wider text-status-healthy ring-1 ring-inset ring-status-healthy/20">
                         Resolved
                       </span>
                     )}
@@ -381,7 +381,7 @@ export default function PullRequestInspectorPage({
  * `--surface-inspector` token visually colours the entire viewport content
  * area (per the redesign doc: "Inspector page background uses
  * `--surface-inspector`"). The wrapper applies `font-mono` so descendant
- * text inherits Monaspace Neon as the default; sans-serif call-sites
+ * text inherits JetBrains Mono as the default; sans-serif call-sites
  * (buttons, prose) opt out locally with `font-sans`.
  */
 function InspectorShell({ children }: { children: React.ReactNode }) {
@@ -429,7 +429,7 @@ function EmptyState({
   text: string;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-lg border border-border/60 bg-card/50 py-12 font-sans text-muted-foreground">
+    <div className="flex flex-col items-center justify-center rounded-none border border-border/60 bg-card/50 py-12 font-sans text-muted-foreground">
       <Icon className="h-7 w-7 mb-3 opacity-30" />
       <p className="text-sm">{text}</p>
     </div>
