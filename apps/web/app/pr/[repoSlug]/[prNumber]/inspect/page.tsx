@@ -138,6 +138,17 @@ export default function PullRequestInspectorPage({
         : manualClaimIsFresh
           ? "dispatching"
           : "queued";
+  const latestRun = detail?.runs[0] ?? null;
+  const latestRunDetails = useMemo(
+    () =>
+      latestRun?.detailsJson != null
+        ? parseRunDetails(latestRun.detailsJson)
+        : null,
+    [latestRun?.detailsJson],
+  );
+  const observedCommitSha = latestRunDetails
+    ? observedCommitShaFromDetails(latestRunDetails)
+    : null;
 
   useEffect(() => {
     if (manualRequestState !== null) {
@@ -179,15 +190,7 @@ export default function PullRequestInspectorPage({
     );
   }
 
-  const { pr, threads, runs, reviewerRuns, artifacts, policyId } = detail;
-  const latestRun = runs[0] ?? null;
-  const latestRunDetails =
-    latestRun?.detailsJson != null
-      ? parseRunDetails(latestRun.detailsJson)
-      : null;
-  const observedCommitSha = latestRunDetails
-    ? observedCommitShaFromDetails(latestRunDetails)
-    : null;
+  const { pr, threads, reviewerRuns, artifacts, policyId } = detail;
 
   async function handleManualReevaluate(): Promise<void> {
     if (isSubmittingManualRequest) {

@@ -16,7 +16,7 @@ const CONVEX_URL = process.env.NEXT_PUBLIC_CONVEX_URL;
 
 export function Nav() {
   const pathname = usePathname();
-  const isInspector = pathname.includes("/inspect");
+  const isInspector = pathname.endsWith("/inspect");
   const operatorHref = isInspector ? pathname.replace(/\/inspect$/, "") : null;
 
   return (
