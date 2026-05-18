@@ -226,18 +226,17 @@ export default function PullRequestDetailPage({
 
       {/* ─── Reviewer summary for the current SHA ─── */}
       {/*
-        Sits above the unified activity stream per
-        `docs/product/operator-ui-redesign.md` → "PR detail — Operator". The
+        Sits above the unified activity stream per the Machine Room Operator
+        route contract in `docs/design/operator-and-inspector-modes.md`. The
         widget hides itself entirely when no reviewer has run on the current
         SHA, so the section header is intentionally inside the component.
       */}
       <ReviewerSummary headSha={pr.headSha} reviewerRuns={reviewerRuns} />
 
       {/* ─── Activity stream ─── */}
-      {/* The activity stream's filter-chip bar serves as the section
-          header per the redesign doc — no separate `<SectionHeader />`
-          here. Replaces today's Reconciliation Timeline, Specialized
-          Reviewers, Artifacts, and PR Events sections. */}
+      {/* The activity stream's filter-chip bar serves as the section header.
+          No separate `<SectionHeader />` here; the timeline is the primary
+          axis for run, reviewer, artifact, and manual-event history. */}
       <ActivityStream
         repoSlug={decodedSlug}
         prNumber={prNumber}

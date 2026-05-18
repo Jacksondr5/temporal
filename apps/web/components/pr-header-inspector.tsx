@@ -13,8 +13,8 @@ import { cn } from "../lib/utils";
  * `<PrHeaderInspector />` — the Inspector-mode header for the PR detail
  * page (`/pr/[repoSlug]/[prNumber]/inspect`).
  *
- * Implements `docs/product/operator-ui-redesign.md` →
- * "Component Patterns" → "PR detail header — Inspector":
+ * Implements the Inspector mode contract from
+ * `docs/design/operator-and-inspector-modes.md`:
  *
  * > "The Inspector header keeps the same title and Re-evaluate action and
  * > adds a sibling block exposing the technical signals: branch name,

@@ -9,8 +9,8 @@ import { cn } from "../lib/utils";
  * `<OutputsPanel />` — Inspector-only summary of every artifact the
  * orchestrator has produced for a PR, grouped by `artifactKind`.
  *
- * Implements `docs/product/operator-ui-redesign.md` →
- * "Component Patterns" → "Outputs panel (Inspector only)":
+ * Implements the Inspector mode contract from
+ * `docs/design/operator-and-inspector-modes.md`:
  *
  * > "Inspector mode includes a compact 'Outputs' panel that lists
  * > artifacts by kind, since the artifact set is small and well-defined.
@@ -131,8 +131,7 @@ export function OutputsPanel({
           )}
           {/*
             Defensive fallback. The orchestrator currently emits exactly the
-            three kinds above (per `docs/product/operator-ui-redesign.md` →
-            "Outputs panel"), but a future kind shipped before this panel
+            three kinds above, but a future kind shipped before this panel
             learns to render it would otherwise vanish from the Inspector.
             Group label echoes the raw `artifactKind` so the gap is obvious.
           */}

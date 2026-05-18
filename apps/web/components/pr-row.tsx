@@ -14,14 +14,11 @@ import { cn } from "../lib/utils";
 /**
  * `<PrRow />` — operator-mode home page row for a single tracked PR.
  *
- * Replaces the previous 7-column grid with a layered row built from the
- * canonical primitives: a `<StatusRail />` on the left edge that conveys
- * liveness through motion (Principle 4 in
- * `docs/product/operator-ui-redesign.md`), a title block with the repo +
- * PR number in sans and the PR title in narrative mono, and a multi-line
- * signal block that surfaces the orchestrator's published signals directly
- * in operator language (Principle 8). No SHAs are visible — those live in
- * the Inspector route per the layered-detail strategy.
+ * Built from canonical Machine Room primitives: a `<StatusRail />` on the
+ * left edge that conveys liveness through motion, a title block with the repo
+ * and PR number, and a multi-line signal block that surfaces the
+ * orchestrator's published signals directly in operator language. No SHAs are
+ * visible; those live in the Inspector route.
  */
 
 /** Threshold below which `dirty` is "fresh" rather than "stale". */
@@ -208,14 +205,14 @@ export function PrRow({ pr, now, className }: PrRowProps) {
 
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
         {/* Title line: sans repo+PR# slug, narrative-mono PR title. */}
-        <div className="flex min-w-0 items-baseline gap-2">
-          <span className="shrink-0 text-meta font-medium text-muted-foreground tabular-nums">
+        <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
+          <span className="min-w-0 text-meta font-medium break-words text-muted-foreground tabular-nums">
             {pr.repoSlug}
             <span className="px-1 text-muted-foreground/60">·</span>
             <span className="text-foreground">#{pr.prNumber}</span>
           </span>
           <span
-            className="min-w-0 flex-1 truncate text-title font-mono-narrative text-foreground"
+            className="min-w-0 flex-[1_1_14rem] text-title break-words font-mono-narrative text-foreground"
             title={titleDisplay}
           >
             {titleDisplay}
@@ -246,14 +243,14 @@ export function PrRow({ pr, now, className }: PrRowProps) {
               <span aria-hidden className="text-muted-foreground/40">
                 ·
               </span>
-              <span className={cn("truncate", q.tone)}>{q.text}</span>
+              <span className={cn("break-words", q.tone)}>{q.text}</span>
             </span>
           ))}
         </div>
 
         {/* Meta line: branch + last reconcile. No SHAs on the home page. */}
         <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-meta text-muted-foreground">
-          <code className="truncate font-mono text-mono-sm text-muted-foreground">
+          <code className="min-w-0 break-all font-mono text-mono-sm text-muted-foreground">
             {pr.branchName}
           </code>
           <span aria-hidden className="text-muted-foreground/40">
@@ -277,9 +274,7 @@ export function PrRow({ pr, now, className }: PrRowProps) {
    ────────────────────────────────────────────────────────────────────── */
 
 /**
- * Shimmer skeleton matching the new row layout. Per the redesign doc:
- * "shimmer rows that match the new row layout, capped at 4 rows so the
- * page doesn't feel like a slot machine on every nav."
+ * Shimmer skeleton matching the Machine Room row layout.
  */
 export function PrRowSkeleton() {
   return (
@@ -288,20 +283,20 @@ export function PrRowSkeleton() {
       aria-hidden
       role="presentation"
     >
-      <div className="w-1 self-stretch rounded-[2px] bg-surface-panel-hover" />
+      <div className="w-1 self-stretch bg-surface-panel-hover" />
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
         <div className="flex items-baseline gap-2">
-          <div className="h-4 w-32 rounded animate-shimmer" />
-          <div className="h-4 w-64 max-w-full rounded animate-shimmer" />
+          <div className="h-4 w-32 animate-shimmer" />
+          <div className="h-4 w-64 max-w-full animate-shimmer" />
         </div>
         <div className="flex items-center gap-2">
-          <div className="h-3 w-3 rounded-full animate-shimmer" />
-          <div className="h-3.5 w-44 rounded animate-shimmer" />
-          <div className="h-3.5 w-24 rounded animate-shimmer" />
+          <div className="h-3 w-3 animate-shimmer" />
+          <div className="h-3.5 w-44 animate-shimmer" />
+          <div className="h-3.5 w-24 animate-shimmer" />
         </div>
         <div className="flex items-center gap-2">
-          <div className="h-3 w-40 rounded animate-shimmer" />
-          <div className="h-3 w-20 rounded animate-shimmer" />
+          <div className="h-3 w-40 animate-shimmer" />
+          <div className="h-3 w-20 animate-shimmer" />
         </div>
       </div>
     </div>

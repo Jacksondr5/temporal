@@ -32,8 +32,8 @@ import {
 /**
  * Inspector route — `/pr/[repoSlug]/[prNumber]/inspect`.
  *
- * Implements `docs/product/operator-ui-redesign.md` →
- * "Per-Screen Direction" → "PR detail — Inspector":
+ * Implements the Inspector mode contract from
+ * `docs/design/operator-and-inspector-modes.md`:
  *
  * > "A separate page with its own component tree. Same overall layout shape
  * > as the Operator page so navigation feels consistent, but:
@@ -381,9 +381,7 @@ export default function PullRequestInspectorPage({
 
         {/* ─── Outputs panel (Inspector only) ─── */}
         {/*
-          Per `docs/product/operator-ui-redesign.md` →
-          "Per-Screen Direction" → "PR detail — Inspector": "Outputs panel
-          renders below the activity stream." Inspector mode also gets the
+          Inspector mode renders outputs below the activity stream. It gets the
           panel because its grouping makes it easy to verify "every
           deferred thread has a Linear ticket" / "the agent pushed exactly
           one commit this run" without scrubbing the timeline. Operator

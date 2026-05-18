@@ -3,10 +3,9 @@
 import { cn } from "../lib/utils";
 
 /**
- * `<HomeFilterBar />` — chip-style filter selector for the home page PR
- * list. Per `docs/product/operator-ui-redesign.md` → "Per-Screen
- * Direction" → "Home page", the chips are `Open` (default), `Needs
- * attention`, `Recently merged`, and `All`.
+ * `<HomeFilterBar />` — Machine Room filter selector for the home page PR
+ * list. Per `docs/design/status-vocabulary.md` and `DESIGN.md`, the chips
+ * stay rectangular, count-bearing, and visually consistent with rack controls.
  *
  * Each chip surfaces its own count in tabular numerics so the operator
  * can see at a glance how the active set compares to the others without
@@ -69,10 +68,10 @@ export function HomeFilterBar({
             aria-pressed={isActive}
             onClick={() => onChange(filter)}
             className={cn(
-              "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-meta font-medium transition-colors",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
+              "font-chrome inline-flex min-h-8 items-center gap-2 border px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] transition-colors",
+              "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
               isActive
-                ? "border-transparent bg-foreground text-surface-canvas"
+                ? "border-primary bg-primary text-primary-foreground"
                 : "border-border-hairline bg-surface-panel text-muted-foreground hover:bg-surface-panel-hover hover:text-foreground",
             )}
           >
@@ -80,8 +79,8 @@ export function HomeFilterBar({
             {!loading && (
               <span
                 className={cn(
-                  "tabular-nums text-mono-sm",
-                  isActive ? "text-surface-canvas/70" : "text-muted-foreground/70",
+                  "font-mono text-mono-sm tabular-nums",
+                  isActive ? "text-primary-foreground/75" : "text-muted-foreground/70",
                 )}
               >
                 {count}
