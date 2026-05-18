@@ -7,5 +7,6 @@ dist
 .env
 .env.local
 test-workspace
+output/playwright/
 .pnpm-debug.log
 .vercel
