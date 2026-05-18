@@ -6,11 +6,9 @@ import { cn } from "../lib/utils";
 /**
  * `<SignalStack />` — multi-line operator status block.
  *
- * Implements Principle 8 ("Surface the signals, do not synthesize the
- * verdict") from `docs/product/operator-ui-redesign.md`. The doc is explicit
- * that the operator status block should be a stack of short lines, one per
- * underlying signal — never a single English sentence that tries to
- * collapse multiple ambiguous signals into one verdict.
+ * Implements the "show signals, don't synthesize verdicts" rule from
+ * `PRODUCT.md` and the canonical mapping in
+ * `docs/design/status-vocabulary.md`.
  *
  * The component itself is a generic primitive: it takes an ordered list of
  * `Signal`s and renders one row per signal as `<StatusMark /> + text`. The

@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@convex/_generated/api";
+import type { FunctionReturnType } from "convex/server";
 import { use, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { StatusMark } from "../../../../components/status-mark";
@@ -18,10 +19,10 @@ import {
 } from "../../../../components/activity-stream";
 import {
   ArrowLeft,
-  MessageSquare,
-  Ticket,
   FileCode,
   GitPullRequest,
+  MessageSquare,
+  Ticket,
 } from "lucide-react";
 
 const MANUAL_EVENT_CLAIM_STALE_MS = 5 * 60 * 1000;
@@ -29,6 +30,9 @@ const MANUAL_EVENT_CLAIM_STALE_MS = 5 * 60 * 1000;
 // the wall clock. 15s matches the `<TimeAgo />` cadence so the transition
 // from "dispatching" to "queued" lines up with the timestamps in the row.
 const MANUAL_FRESHNESS_TICK_MS = 15_000;
+type PullRequestDetail = NonNullable<
+  FunctionReturnType<typeof api.ui.getPullRequestDetail>
+>;
 
 /**
  * Returns a monotonically updating `Date.now()` value, refreshed on the
@@ -125,8 +129,8 @@ export default function PullRequestDetailPage({
   if (detail === undefined) {
     return (
       <div className="space-y-6">
-        <div className="h-5 w-32 rounded animate-shimmer" />
-        <div className="h-8 w-72 rounded animate-shimmer" />
+        <div className="h-5 w-32 animate-shimmer" />
+        <div className="h-8 w-72 animate-shimmer" />
         <div className="h-24 w-full rounded-none animate-shimmer" />
         <div className="h-96 w-full rounded-none animate-shimmer" />
       </div>
@@ -218,101 +222,7 @@ export default function PullRequestDetailPage({
         onManualReevaluate={handleManualReevaluate}
       />
 
-      {/* ─── Threads ─── */}
-      <SectionHeader
-        icon={MessageSquare}
-        title="Review Threads"
-        count={threads.length}
-      />
-      {threads.length === 0 ? (
-        <EmptyState icon={MessageSquare} text="No review threads recorded" />
-      ) : (
-        <div className="space-y-3">
-          {threads.map((thread) => (
-            <div
-              key={thread._id}
-              className="rounded-none border border-border/60 bg-card/50 overflow-hidden"
-            >
-              <div className="flex items-center justify-between px-4 py-2.5 border-b border-border/40 bg-card/80">
-                <div className="flex items-center gap-2 min-w-0">
-                  <FileCode className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                  {thread.path ? (
-                    <code className="text-xs font-mono text-foreground/80 truncate">
-                      {thread.path}
-                      {thread.line != null ? `:${thread.line}` : ""}
-                    </code>
-                  ) : (
-                    <span className="text-xs text-muted-foreground">
-                      General comment
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className="inline-flex items-center gap-1.5">
-                    <StatusMark
-                      status={mapDispositionToStatus(thread.disposition)}
-                      size="sm"
-                      label={null}
-                    />
-                    <span className="text-[11px] text-muted-foreground">
-                      {operatorDispositionLabel(thread.disposition)}
-                    </span>
-                  </span>
-                  {thread.isResolved && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-status-healthy/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-status-healthy ring-1 ring-inset ring-status-healthy/20">
-                      Resolved
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              <div className="px-4 py-3">
-                <p className="text-sm leading-relaxed text-foreground/80 whitespace-pre-wrap">
-                  {thread.body}
-                </p>
-              </div>
-
-              {thread.decisions.length > 0 && (
-                <div className="border-t border-border/40 px-4 py-3 space-y-2">
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    Decisions
-                  </span>
-                  {thread.decisions.map((d) => (
-                    <div
-                      key={d._id}
-                      className="rounded-md border border-border/40 bg-muted/20 p-3 space-y-1.5"
-                    >
-                      <div className="flex items-center gap-2">
-                        <StatusMark
-                          status={mapDispositionToStatus(d.disposition)}
-                          size="sm"
-                          label={null}
-                        />
-                        <span className="text-[11px] text-muted-foreground">
-                          {operatorDispositionLabel(d.disposition)}
-                        </span>
-                        <TimeAgo date={d.createdAt} />
-                        <code className="ml-auto text-[11px] font-mono text-muted-foreground">
-                          {d.targetHeadSha.slice(0, 8)}
-                        </code>
-                      </div>
-                      <p className="text-xs text-muted-foreground leading-relaxed">
-                        {d.reasoningSummary}
-                      </p>
-                      {d.linearIssueId && (
-                        <div className="flex items-center gap-1.5 text-[11px] text-sky-400">
-                          <Ticket className="h-3 w-3" />
-                          {d.linearIssueId}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
+      <ThreadDecisionPanel threads={threads} />
 
       {/* ─── Reviewer summary for the current SHA ─── */}
       {/*
@@ -341,46 +251,109 @@ export default function PullRequestDetailPage({
   );
 }
 
-/* ── Section header with icon and count ── */
-function SectionHeader({
-  icon: Icon,
-  title,
-  count,
-  extra,
+function ThreadDecisionPanel({
+  threads,
 }: {
-  icon: React.ComponentType<{ className?: string }>;
-  title: string;
-  count: number;
-  extra?: string;
+  threads: PullRequestDetail["threads"];
 }) {
-  return (
-    <div className="flex items-center gap-2 pt-4">
-      <Icon className="h-4 w-4 text-muted-foreground" />
-      <h2 className="text-sm font-medium text-foreground">{title}</h2>
-      <span className="text-[11px] font-mono text-muted-foreground tabular-nums">
-        ({count})
-      </span>
-      {extra && (
-        <span className="text-[11px] font-mono text-rose-400/70 tabular-nums">
-          {extra}
-        </span>
-      )}
-    </div>
-  );
-}
+  if (threads.length === 0) {
+    return null;
+  }
 
-/* ── Shared empty state ── */
-function EmptyState({
-  icon: Icon,
-  text,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  text: string;
-}) {
+  const decisionCount = threads.reduce(
+    (total, thread) => total + thread.decisions.length,
+    0,
+  );
+
   return (
-    <div className="flex flex-col items-center justify-center rounded-none border border-border/60 bg-card/50 py-12 text-muted-foreground">
-      <Icon className="h-7 w-7 mb-3 opacity-30" />
-      <p className="text-sm">{text}</p>
-    </div>
+    <section
+      className="border border-border-hairline bg-surface-panel"
+      aria-labelledby="thread-decisions-heading"
+    >
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border-hairline bg-surface-charcoal-up px-4 py-3">
+        <div className="flex items-center gap-2">
+          <MessageSquare className="h-4 w-4 text-status-reviewer" aria-hidden />
+          <h2
+            id="thread-decisions-heading"
+            className="font-chrome text-[11px] font-bold uppercase tracking-[0.18em] text-foreground"
+          >
+            Thread decisions
+          </h2>
+        </div>
+        <span className="font-mono text-mono-sm tabular-nums text-muted-foreground">
+          {decisionCount} decision{decisionCount === 1 ? "" : "s"} across{" "}
+          {threads.length} thread{threads.length === 1 ? "" : "s"}
+        </span>
+      </div>
+
+      <div className="divide-y divide-border-hairline">
+        {threads.map((thread) => (
+          <article key={thread._id} className="px-4 py-3">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0 space-y-1">
+                <div className="flex min-w-0 items-center gap-2 text-meta text-muted-foreground">
+                  <FileCode className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                  {thread.path ? (
+                    <span className="truncate font-mono text-mono-sm text-foreground/80">
+                      {thread.path}
+                      {thread.line != null ? `:${thread.line}` : ""}
+                    </span>
+                  ) : (
+                    <span>General review comment</span>
+                  )}
+                </div>
+                <p className="max-w-[80ch] whitespace-pre-wrap text-body leading-relaxed text-foreground/85">
+                  {thread.body}
+                </p>
+              </div>
+              <span className="inline-flex shrink-0 items-center gap-1.5 text-meta text-muted-foreground">
+                <StatusMark
+                  status={mapDispositionToStatus(thread.disposition)}
+                  size="sm"
+                  label={null}
+                />
+                {thread.isResolved
+                  ? "Resolved"
+                  : operatorDispositionLabel(thread.disposition)}
+              </span>
+            </div>
+
+            {thread.decisions.length > 0 && (
+              <div className="mt-3 space-y-2">
+                {thread.decisions.map((decision) => (
+                  <div
+                    key={decision._id}
+                    className="border border-border-hairline bg-surface-charcoal-up px-3 py-2"
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      <StatusMark
+                        status={mapDispositionToStatus(decision.disposition)}
+                        size="sm"
+                        label={null}
+                      />
+                      <span className="text-meta text-foreground">
+                        {operatorDispositionLabel(decision.disposition)}
+                      </span>
+                      <TimeAgo date={decision.createdAt} />
+                      {decision.linearIssueId && (
+                        <span className="ml-auto inline-flex items-center gap-1.5 font-mono text-mono-sm text-status-deferred">
+                          <Ticket className="h-3 w-3" aria-hidden />
+                          {decision.linearIssueId}
+                        </span>
+                      )}
+                    </div>
+                    {decision.reasoningSummary && (
+                      <p className="mt-1.5 max-w-[80ch] text-meta leading-relaxed text-muted-foreground">
+                        {decision.reasoningSummary}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </article>
+        ))}
+      </div>
+    </section>
   );
 }

@@ -21,6 +21,8 @@ export default defineSchema({
 
   repoPolicies: defineTable({
     repoSlug: v.string(),
+    fixableChecks: v.optional(v.array(v.string())),
+    ignoredChecks: v.optional(v.array(v.string())),
     specializedReviewers: v.array(reviewerDefinitionValidator),
   }).index('by_repo_slug', ['repoSlug']),
 

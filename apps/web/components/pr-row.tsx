@@ -105,10 +105,7 @@ export function derivePrRowStatus(
   if (isPrLive(pr)) return "live";
   if (isPrStale(pr, now)) return "caution";
 
-  if (
-    pr.latestRunStatus === "success" ||
-    pr.latestRunStatus === "completed"
-  ) {
+  if (pr.latestRunStatus === "success" || pr.latestRunStatus === "completed") {
     return "healthy";
   }
   return "idle";
@@ -189,7 +186,9 @@ export function PrRow({ pr, now, className }: PrRowProps) {
   // Title falls back to the canonical placeholder when the orchestrator
   // hasn't reconciled the GitHub title yet (e.g. a freshly discovered PR).
   const titleDisplay =
-    pr.title.trim().length > 0 ? pr.title : "(title pending)";
+    typeof pr.title === "string" && pr.title.trim().length > 0
+      ? pr.title
+      : "(title pending)";
 
   // The row needs a stable accessible label since it's a card-style link.
   const ariaLabel = `${pr.repoSlug} #${pr.prNumber} — ${titleDisplay}`;
