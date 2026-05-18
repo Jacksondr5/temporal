@@ -161,8 +161,8 @@ function FilterChipBar({
   countIsFinal: boolean;
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <span className="text-micro font-semibold uppercase tracking-wider text-muted-foreground">
+    <div className="flex flex-wrap items-center gap-1 border border-border-hairline bg-surface-charcoal-deep p-1">
+      <span className="px-2 font-mono text-micro uppercase tracking-[0.18em] text-muted-foreground">
         Filters
       </span>
       {FILTER_CHIPS.map((chip) => {
@@ -174,17 +174,17 @@ function FilterChipBar({
             onClick={() => onFilterChange(chip.id)}
             aria-pressed={active}
             className={cn(
-              "rounded-full px-2.5 py-1 text-meta font-medium transition",
+              "border px-2.5 py-1 font-chrome text-[11px] font-bold uppercase tracking-[0.16em] transition",
               active
-                ? "bg-status-live/15 text-status-live"
-                : "bg-surface-panel text-muted-foreground hover:bg-surface-panel-hover hover:text-foreground",
+                ? "border-status-live bg-status-live text-surface-charcoal-deep"
+                : "border-transparent text-muted-foreground hover:border-border-strong hover:text-foreground",
             )}
           >
             {chip.label}
           </button>
         );
       })}
-      <span className="ml-auto text-meta tabular-nums text-muted-foreground">
+      <span className="ml-auto px-2 font-mono text-micro uppercase tracking-[0.12em] tabular-nums text-muted-foreground">
         {eventCount}{" "}
         {countIsFinal
           ? eventCount === 1
@@ -365,9 +365,9 @@ function ActivityStreamSkeleton() {
           <li key={index} className="relative">
             <span
               aria-hidden
-              className="pointer-events-none absolute -left-6 top-3.5 h-3 w-3 rounded-full bg-surface-panel"
+              className="pointer-events-none absolute -left-6 top-3.5 h-3 w-3 border border-border-hairline bg-surface-panel"
             />
-            <div className="h-14 w-full animate-shimmer rounded-md" />
+            <div className="h-14 w-full animate-shimmer" />
           </li>
         ))}
       </ol>
@@ -377,7 +377,7 @@ function ActivityStreamSkeleton() {
 
 function ActivityStreamEmpty() {
   return (
-    <div className="flex flex-col items-center justify-center gap-2 rounded-md border border-dashed border-border-hairline bg-surface-panel/30 px-4 py-12 text-muted-foreground">
+    <div className="flex flex-col items-center justify-center gap-2 border border-dashed border-border-hairline bg-surface-panel/30 px-4 py-12 text-muted-foreground">
       <Activity className="h-5 w-5 opacity-60" aria-hidden />
       <p className="text-meta">No activity matches the current filter yet.</p>
     </div>

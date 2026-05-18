@@ -18,6 +18,10 @@ import {
 } from "../../../../../components/activity-stream";
 import { OutputsPanel } from "../../../../../components/outputs-panel";
 import {
+  parseRunDetails,
+  type RunDetails,
+} from "../../../../../lib/run-details";
+import {
   ArrowLeft,
   MessageSquare,
   Ticket,
@@ -145,8 +149,8 @@ export default function PullRequestInspectorPage({
     return (
       <InspectorShell>
         <div className="space-y-6">
-          <div className="h-5 w-32 rounded animate-shimmer" />
-          <div className="h-8 w-72 rounded animate-shimmer" />
+          <div className="h-5 w-32 animate-shimmer" />
+          <div className="h-8 w-72 animate-shimmer" />
           <div className="h-40 w-full rounded-none animate-shimmer" />
           <div className="h-96 w-full rounded-none animate-shimmer" />
         </div>
@@ -175,7 +179,15 @@ export default function PullRequestInspectorPage({
     );
   }
 
-  const { pr, threads, reviewerRuns, artifacts } = detail;
+  const { pr, threads, runs, reviewerRuns, artifacts, policyId } = detail;
+  const latestRun = runs[0] ?? null;
+  const latestRunDetails =
+    latestRun?.detailsJson != null
+      ? parseRunDetails(latestRun.detailsJson)
+      : null;
+  const observedCommitSha = latestRunDetails
+    ? observedCommitShaFromDetails(latestRunDetails)
+    : null;
 
   async function handleManualReevaluate(): Promise<void> {
     if (isSubmittingManualRequest) {
@@ -210,12 +222,22 @@ export default function PullRequestInspectorPage({
           title={pr.title}
           technical={{
             branchName: pr.branchName,
-            headSha: pr.headSha,
+            targetHeadSha: pr.headSha,
+            observedCommitSha,
             currentPhase: pr.currentPhase,
             lifecycleState: pr.lifecycleState,
             dirty: pr.dirty,
+            blockedReason: pr.blockedReason,
+            statusSummary: pr.statusSummary,
+            hasBlockingError: pr.blockedReason !== null,
             workflowId: pr.workflowId,
+            runId: latestRun?.runKey ?? null,
+            manualClaimedAt: latestManualEvent?.claimedAt ?? null,
+            manualEventKind: latestManualEvent?.kind ?? null,
+            latestRunPhase: latestRun?.phase ?? null,
+            latestRunStatus: latestRun?.status ?? null,
             lastReconciledAt: pr.lastReconciledAt,
+            policyId,
           }}
           manualEvent={{
             state: manualRequestState,
@@ -249,9 +271,9 @@ export default function PullRequestInspectorPage({
             {threads.map((thread) => (
               <div
                 key={thread._id}
-                className="rounded-none border border-border/60 bg-card/50 overflow-hidden"
+                className="overflow-hidden border border-border/60 bg-surface-inspector-panel"
               >
-                <div className="flex items-center justify-between px-4 py-2.5 border-b border-border/40 bg-card/80">
+                <div className="flex items-center justify-between border-b border-border/40 bg-surface-charcoal-deep px-4 py-2.5">
                   <div className="flex items-center gap-2 min-w-0">
                     <FileCode className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                     {thread.path ? (
@@ -277,7 +299,7 @@ export default function PullRequestInspectorPage({
                       </span>
                     </span>
                     {thread.isResolved && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-status-healthy/10 px-2 py-0.5 text-[10px] font-sans font-semibold uppercase tracking-wider text-status-healthy ring-1 ring-inset ring-status-healthy/20">
+                      <span className="inline-flex items-center gap-1 border border-status-healthy/35 bg-status-healthy/10 px-2 py-0.5 font-mono text-micro uppercase tracking-[0.18em] text-status-healthy">
                         Resolved
                       </span>
                     )}
@@ -298,7 +320,7 @@ export default function PullRequestInspectorPage({
                     {thread.decisions.map((d) => (
                       <div
                         key={d._id}
-                        className="rounded-md border border-border/40 bg-muted/20 p-3 space-y-1.5"
+                        className="space-y-1.5 border border-border/40 bg-surface-inspector p-3"
                       >
                         <div className="flex items-center gap-2">
                           <StatusMark
@@ -318,7 +340,7 @@ export default function PullRequestInspectorPage({
                           {d.reasoningSummary}
                         </p>
                         {d.linearIssueId && (
-                          <div className="flex items-center gap-1.5 text-[11px] font-sans text-sky-400">
+                          <div className="flex items-center gap-1.5 font-mono text-micro text-status-deferred">
                             <Ticket className="h-3 w-3" />
                             {d.linearIssueId}
                           </div>
@@ -387,9 +409,24 @@ export default function PullRequestInspectorPage({
 function InspectorShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="-mx-6 -my-8 min-h-full bg-surface-inspector px-6 py-8 font-mono">
+      <div
+        aria-hidden
+        className="sticky top-0 z-40 -mx-6 -mt-8 mb-7 h-1"
+        style={{
+          background:
+            "repeating-linear-gradient(-45deg, oklch(0.85 0.18 95) 0, oklch(0.85 0.18 95) 8px, oklch(0.15 0.01 240) 8px, oklch(0.15 0.01 240) 14px)",
+        }}
+      />
       {children}
     </div>
   );
+}
+
+function observedCommitShaFromDetails(details: RunDetails): string | null {
+  if (details.kind === "success" || details.kind === "reviewer_success") {
+    return details.result.observedCommitSha;
+  }
+  return null;
 }
 
 /* ── Section header with icon and count ── */
@@ -429,7 +466,7 @@ function EmptyState({
   text: string;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-none border border-border/60 bg-card/50 py-12 font-sans text-muted-foreground">
+    <div className="flex flex-col items-center justify-center border border-border/60 bg-surface-inspector-panel py-12 font-sans text-muted-foreground">
       <Icon className="h-7 w-7 mb-3 opacity-30" />
       <p className="text-sm">{text}</p>
     </div>

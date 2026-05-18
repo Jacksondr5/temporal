@@ -63,7 +63,7 @@ export const getPullRequestDetail = query({
 
     if (!pr) return null;
 
-    const [threads, runs, reviewerRuns, artifacts, errors, events] =
+    const [threads, runs, reviewerRuns, artifacts, errors, events, policy] =
       await Promise.all([
         ctx.db
           .query("reviewThreads")
@@ -106,6 +106,10 @@ export const getPullRequestDetail = query({
           )
           .order("desc")
           .take(100),
+        ctx.db
+          .query("repoPolicies")
+          .withIndex("by_repo_slug", (q) => q.eq("repoSlug", args.repoSlug))
+          .unique(),
       ]);
 
     // Enrich threads with their latest decisions
@@ -143,6 +147,7 @@ export const getPullRequestDetail = query({
       artifacts,
       errors,
       events,
+      policyId: policy?._id ?? null,
     };
   },
 });

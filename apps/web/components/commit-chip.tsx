@@ -96,7 +96,7 @@ export function CommitChip({
   return (
     <div
       className={cn(
-        "flex flex-col gap-1.5 rounded-md border bg-surface-panel-hover px-3 py-2.5",
+        "flex flex-col gap-1.5 border bg-surface-panel-hover px-3 py-2.5",
         // 1px lime accent border keeps the chip visually distinct from the
         // parent card's hairline border. The faint inset ring picks up the
         // canonical Healthy color without overwhelming the row.
@@ -129,7 +129,7 @@ export function CommitChip({
           type="button"
           onClick={handleCopy}
           aria-label={copied ? "SHA copied" : "Copy SHA"}
-          className="inline-flex h-5 w-5 items-center justify-center rounded text-muted-foreground transition hover:bg-foreground/5 hover:text-foreground"
+          className="inline-flex h-5 w-5 items-center justify-center border border-transparent text-muted-foreground transition hover:border-border-strong hover:text-foreground"
         >
           {copied ? (
             <Check className="h-3.5 w-3.5 text-status-healthy" aria-hidden />
@@ -143,7 +143,7 @@ export function CommitChip({
           target="_blank"
           rel="noopener noreferrer"
           aria-label="Open commit on GitHub"
-          className="ml-auto inline-flex h-5 w-5 items-center justify-center rounded text-muted-foreground transition hover:bg-foreground/5 hover:text-foreground"
+          className="ml-auto inline-flex h-5 w-5 items-center justify-center border border-transparent text-muted-foreground transition hover:border-border-strong hover:text-foreground"
         >
           <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
         </a>
@@ -195,7 +195,7 @@ function ShaButton({
       type="button"
       onClick={onCopy}
       title={sha}
-      className="rounded px-1.5 py-0.5 font-mono text-mono-sm tabular-nums text-foreground transition hover:bg-foreground/5"
+      className="border border-transparent px-1.5 py-0.5 font-mono text-mono-sm tabular-nums text-foreground transition hover:border-border-strong"
     >
       {shortSha(sha)}
     </button>
@@ -220,7 +220,7 @@ function ShaPair({
     <span className="inline-flex items-center gap-1 font-mono text-mono-sm tabular-nums">
       <span
         title={targetSha}
-        className="rounded bg-surface-inset px-1.5 py-0.5 text-muted-foreground"
+        className="bg-surface-inset px-1.5 py-0.5 text-muted-foreground"
       >
         {shortSha(targetSha)}
       </span>
@@ -231,7 +231,7 @@ function ShaPair({
         type="button"
         onClick={onCopy}
         title={sha}
-        className="rounded px-1.5 py-0.5 text-foreground transition hover:bg-foreground/5"
+        className="border border-transparent px-1.5 py-0.5 text-foreground transition hover:border-border-strong"
       >
         {shortSha(sha)}
       </button>
